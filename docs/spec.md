@@ -1,0 +1,279 @@
+# gogcli spec
+
+## Goal
+
+Build a single, clean, modern Go CLI that talks to:
+
+- Gmail API
+- Google Calendar API
+- Google Drive API
+- Google People API (Contacts + directory)
+
+This replaces the existing separate CLIs (`gmcli`, `gccli`, `gdcli`) and the Python contacts server conceptually, but:
+
+- no backwards compatibility
+- no migration tooling
+
+## Non-goals
+
+- Preserving legacy command names/flags/output formats
+- Importing existing `~/.gmcli`, `~/.gccli`, `~/.gdcli` state
+- Running an MCP server (this is a CLI)
+
+## Language/runtime
+
+- Go `1.25` (see `go.mod`)
+
+## CLI framework
+
+- `github.com/spf13/cobra`
+- Root command: `gog`
+- Global flag:
+  - `--color=auto|always|never` (default `auto`)
+  - `--output=text|json` (default `text`)
+
+Notes:
+
+- We run `SilenceUsage: true` and print errors ourselves (colored when possible).
+- `NO_COLOR` is respected.
+
+Environment:
+
+- `GOG_COLOR=auto|always|never` (default `auto`, overridden by `--color`)
+- `GOG_OUTPUT=text|json` (default `text`, overridden by `--output`)
+
+## Output (TTY-aware colors)
+
+- `github.com/muesli/termenv` is used to detect rich TTY capabilities and render colored output.
+- Colors are enabled when:
+  - output is a rich terminal and `--color=auto`, and `NO_COLOR` is not set; or
+  - `--color=always`
+- Colors are disabled when:
+  - `--color=never`; or
+  - `NO_COLOR` is set
+
+Implementation: `internal/ui/ui.go`.
+
+## Auth + secret storage
+
+### OAuth client credentials (non-secret-ish)
+
+- Stored on disk in the per-user config directory:
+  - `$(os.UserConfigDir())/gogcli/credentials.json`
+- Written with mode `0600`.
+- Command:
+  - `gog auth credentials <credentials.json>`
+- Supports Google’s downloaded JSON format:
+  - `installed.client_id/client_secret` or `web.client_id/client_secret`
+
+Implementation: `internal/config/*`.
+
+### Refresh tokens (secrets)
+
+- Stored in OS credential store via `github.com/99designs/keyring`.
+- Key namespace is `gogcli` (keyring `ServiceName`).
+- Key format: `token:<email>`
+- Stored payload is JSON (refresh token + metadata like selected services/scopes).
+
+Current minimal management commands (implemented):
+
+- `gog auth tokens list` (keys only)
+- `gog auth tokens delete <email>`
+
+Implementation: `internal/secrets/store.go`.
+
+### OAuth flow
+
+- Desktop OAuth 2.0 flow using local HTTP redirect on an ephemeral port.
+- Supports a browserless/manual flow (paste redirect URL) for headless environments.
+- Refresh token issuance:
+  - requests `access_type=offline`
+  - supports `--force-consent` to force the consent prompt when Google doesn't return a refresh token
+  - uses `include_granted_scopes=true` to support incremental auth re-runs
+
+Scope selection note:
+
+- The consent screen shows the scopes the CLI requested.
+- Users cannot selectively un-check individual requested scopes in the consent screen; they either approve all requested scopes or cancel.
+- To request fewer scopes, choose fewer services via `gog auth add --services ...`.
+
+## Config layout
+
+- Base config dir: `$(os.UserConfigDir())/gogcli/`
+- Files:
+  - `credentials.json` (OAuth client id/secret)
+- Secrets:
+  - refresh tokens in keyring
+
+We intentionally avoid storing refresh tokens in plain JSON on disk.
+
+Environment:
+
+- `GOG_ACCOUNT=you@gmail.com` (used when `--account` is not set)
+
+## Commands (current + planned)
+
+### Implemented
+
+- `gog auth credentials <credentials.json>`
+- `gog auth add <email> [--services all|gmail,calendar,drive,contacts] [--manual] [--force-consent]`
+- `gog auth list`
+- `gog auth remove <email>`
+- `gog auth tokens list`
+- `gog auth tokens delete <email>`
+- `gog drive ls [folderId] [--max N] [--page TOKEN] [--query Q]`
+- `gog drive search <text> [--max N] [--page TOKEN]`
+- `gog drive get <fileId>`
+- `gog drive download <fileId> [destPath]`
+- `gog drive upload <localPath> [--name N] [--folder ID]`
+- `gog drive mkdir <name> [--parent ID]`
+- `gog drive delete <fileId>`
+- `gog drive move <fileId> <newParentId>`
+- `gog drive rename <fileId> <newName>`
+- `gog drive share <fileId> [--anyone | --email addr] [--role reader|writer] [--discoverable]`
+- `gog drive permissions <fileId>`
+- `gog drive unshare <fileId> <permissionId>`
+- `gog drive url <fileIds...>`
+- `gog calendar calendars`
+- `gog calendar acl <calendarId>`
+- `gog calendar events <calendarId> [--from RFC3339] [--to RFC3339] [--max N] [--page TOKEN] [--query Q]`
+- `gog calendar event <calendarId> <eventId>`
+- `gog calendar create <calendarId> --summary S --start DT --end DT [--description D] [--location L] [--attendees a@b.com,c@d.com] [--all-day]`
+- `gog calendar update <calendarId> <eventId> [--summary S] [--start DT] [--end DT] [--description D] [--location L] [--attendees ...] [--all-day]`
+- `gog calendar delete <calendarId> <eventId>`
+- `gog calendar freebusy <calendarIds> --from RFC3339 --to RFC3339`
+- `gog gmail search <query> [--max N] [--page TOKEN]`
+- `gog gmail thread <threadId> [--download]`
+- `gog gmail url <threadIds...>`
+- `gog gmail labels list`
+- `gog gmail labels modify <threadIds...> [--add ...] [--remove ...]`
+- `gog gmail send --to a@b.com --subject S --body B [--cc ...] [--bcc ...] [--reply-to <messageId>] [--attach <file>...]`
+- `gog gmail drafts list [--max N] [--page TOKEN]`
+- `gog gmail drafts get <draftId> [--download]`
+- `gog gmail drafts create --to a@b.com --subject S --body B [--cc ...] [--bcc ...] [--reply-to <messageId>] [--attach <file>...]`
+- `gog gmail drafts send <draftId>`
+- `gog gmail drafts delete <draftId>`
+- `gog contacts search <query> [--max N]`
+- `gog contacts list [--max N] [--page TOKEN]`
+- `gog contacts get <people/...|email>`
+- `gog contacts create --given NAME [--family NAME] [--email addr] [--phone num]`
+- `gog contacts update <people/...> [--given NAME] [--family NAME] [--email addr] [--phone num]`
+- `gog contacts delete <people/...>`
+- `gog contacts directory list [--max N] [--page TOKEN]`
+- `gog contacts directory search <query> [--max N] [--page TOKEN]`
+- `gog contacts other list [--max N] [--page TOKEN]`
+- `gog contacts other search <query> [--max N]`
+
+### Planned high-level command tree
+
+- `gog auth …`
+  - `gog auth credentials <credentials.json>`
+- `gog gmail …`
+- `gog calendar …`
+- `gog drive …`
+- `gog contacts …`
+
+Planned service identifiers (canonical):
+
+- `gmail`
+- `calendar`
+- `drive`
+- `contacts`
+
+## Google API dependencies (planned)
+
+- `golang.org/x/oauth2`
+- `golang.org/x/oauth2/google`
+- `google.golang.org/api/option`
+- `google.golang.org/api/gmail/v1`
+- `google.golang.org/api/calendar/v3`
+- `google.golang.org/api/drive/v3`
+- `google.golang.org/api/people/v1`
+
+## Scopes (planned)
+
+We store a single refresh token per Google account email.
+
+- `gog auth add` requests a union of scopes based on `--services`.
+- Each API client refreshes an access token for the subset of scopes needed for that service.
+- If you later want additional services, re-run `gog auth add <email> --services ...` (may require `--force-consent` to mint a new refresh token).
+
+- Gmail: `https://mail.google.com/` (or narrower scopes if we decide later)
+- Calendar: `https://www.googleapis.com/auth/calendar`
+- Drive: `https://www.googleapis.com/auth/drive`
+- Contacts/Directory:
+  - `https://www.googleapis.com/auth/contacts`
+  - `https://www.googleapis.com/auth/directory.readonly`
+
+## Output formats (planned)
+
+Default: machine-friendly tabular output using stdlib `text/tabwriter`.
+
+- Keep stdout stable and parseable:
+  - `--output=text`: plain text, typically tab-separated for list/search style commands
+  - `--output=json`: JSON objects/arrays suitable for scripting
+- Human-facing hints/progress are written to stderr so stdout can be safely captured.
+- Colors are only used for human-facing output and are disabled automatically for `--output=json`.
+
+We avoid heavy table deps unless we decide we need them.
+
+## Code layout (current)
+
+- `cmd/gog/main.go` — binary entrypoint
+- `internal/cmd/*` — cobra commands
+- `internal/ui/*` — color + printing
+- `internal/config/*` — config paths + credential parsing/writing
+- `internal/secrets/*` — keyring store
+
+## Formatting, linting, tests
+
+### Formatting
+
+Pinned tools, installed into local `.tools/` via `make tools`:
+
+- `mvdan.cc/gofumpt@v0.7.0`
+- `golang.org/x/tools/cmd/goimports@v0.38.0`
+- `github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.2`
+
+Commands:
+
+- `make fmt` — applies `goimports` + `gofumpt`
+- `make fmt-check` — formats and fails if Go files or `go.mod/go.sum` change
+
+### Lint
+
+- `golangci-lint` with config in `.golangci.yml`
+- `make lint`
+
+### Tests
+
+- stdlib `testing` (+ `httptest` when we add OAuth/API tests)
+- `make test`
+
+### Integration tests (local only)
+
+There is an opt-in integration test suite guarded by build tags (not run in CI).
+
+- Requires:
+  - stored `credentials.json` via `gog auth credentials ...`
+  - refresh token in keyring via `gog auth add <email>`
+- Run:
+  - `GOG_IT_ACCOUNT=you@gmail.com go test -tags=integration ./internal/integration`
+
+## CI (GitHub Actions)
+
+Workflow: `.github/workflows/ci.yml`
+
+- runs on push + PR
+- uses `actions/setup-go` with `go-version-file: go.mod`
+- runs:
+  - `make tools`
+  - `make fmt-check`
+  - `go test ./...`
+  - `golangci-lint` (pinned `v1.62.2`)
+
+## Next implementation steps
+
+- Expand Gmail further (labels by name everywhere, richer body rendering, compose edge cases).
+- Improve People updates (multi-field + richer contact data).
+- Harden UX (consistent output formats, retries/backoff on specific transient errors).
