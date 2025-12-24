@@ -110,6 +110,13 @@ Gmail:
 - `gog gmail watch serve --bind 127.0.0.1 --token <shared> --hook-url http://127.0.0.1:18789/hooks/agent`
 - `gog gmail history --since <historyId>`
 
+Gmail watch (Pub/Sub push):
+
+- Create Pub/Sub topic + push subscription (OIDC preferred; shared token ok for dev).
+- `gog gmail watch start --topic projects/<p>/topics/<t> --label INBOX`
+- `gog gmail watch serve --bind 0.0.0.0 --verify-oidc --oidc-email <svc@...> --hook-url <url>`
+- Full flow + payload details: `docs/watch.md`.
+
 Contacts:
 
 - `gog contacts list --max 50`
