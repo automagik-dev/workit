@@ -1,4 +1,4 @@
-# gog
+# 🧭 gogcli — Google in your terminal.
 
 Google in your terminal - CLI for Gmail, Calendar, Drive, Contacts, Tasks, and Sheets.
 
