@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -32,7 +33,10 @@ type Token struct {
 	RefreshToken string    `json:"-"`
 }
 
-const keyringPasswordEnv = "GOG_KEYRING_PASSWORD"
+const (
+	keyringPasswordEnv          = "GOG_KEYRING_PASSWORD"
+	keychainTrustApplicationEnv = "GOG_KEYCHAIN_TRUST_APPLICATION"
+)
 
 func fileKeyringPasswordFuncFrom(password string, isTTY bool) keyring.PromptFunc {
 	if password != "" {
@@ -52,6 +56,23 @@ func fileKeyringPasswordFunc() keyring.PromptFunc {
 	return fileKeyringPasswordFuncFrom(os.Getenv(keyringPasswordEnv), term.IsTerminal(int(os.Stdin.Fd())))
 }
 
+func shouldTrustKeychainApplication() bool {
+	if runtime.GOOS != "darwin" {
+		return false
+	}
+
+	v := strings.TrimSpace(strings.ToLower(os.Getenv(keychainTrustApplicationEnv)))
+	if v == "" {
+		return true
+	}
+	switch v {
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
+}
+
 func OpenDefault() (Store, error) {
 	// On Linux/WSL/containers, OS keychains (secret-service/kwallet) may be unavailable.
 	// In that case github.com/99designs/keyring falls back to the "file" backend,
@@ -62,9 +83,10 @@ func OpenDefault() (Store, error) {
 	}
 
 	ring, err := keyring.Open(keyring.Config{
-		ServiceName:      config.AppName,
-		FileDir:          keyringDir,
-		FilePasswordFunc: fileKeyringPasswordFunc(),
+		ServiceName:              config.AppName,
+		KeychainTrustApplication: shouldTrustKeychainApplication(),
+		FileDir:                  keyringDir,
+		FilePasswordFunc:         fileKeyringPasswordFunc(),
 	})
 	if err != nil {
 		return nil, err
