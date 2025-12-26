@@ -128,6 +128,8 @@ func Execute(args []string) error {
 
 	root.AddCommand(newAuthCmd(&flags))
 	root.AddCommand(newDriveCmd(&flags))
+	root.AddCommand(newDocsCmd(&flags))
+	root.AddCommand(newSlidesCmd(&flags))
 	root.AddCommand(newCalendarCmd(&flags))
 	root.AddCommand(newGmailCmd(&flags))
 	root.AddCommand(newContactsCmd(&flags))

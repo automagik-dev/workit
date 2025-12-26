@@ -9,6 +9,7 @@
 - Calendar: colors, conflicts, search, multi-timezone time.
 - Sheets: read/write/update/append/clear + create spreadsheets.
 - Drive: `gog drive download --format ...` for Google Docs exports (e.g. Sheets to PDF/XLSX, Docs to PDF/DOCX/TXT, Slides to PDF/PPTX).
+- Docs/Slides/Sheets: dedicated export commands (`gog docs export`, `gog slides export`, `gog sheets export`).
 - Auth: browser-based accounts manager (`gog auth manage`).
 - DX: shell completion (`gog completion ...`) and `--verbose` logging.
 

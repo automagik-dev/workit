@@ -9,7 +9,8 @@ Google in your terminal - CLI for Gmail, Calendar, Drive, Contacts, Tasks, and S
 - **Drive** - list/search/upload/download files, manage permissions, organize folders
 - **Contacts** - search/create/update contacts, access Workspace directory
 - **Tasks** - manage tasklists and tasks: create/add/update/done/undo/delete/clear
-- **Sheets** - read/write/update spreadsheets, create new sheets
+- **Sheets** - read/write/update spreadsheets, create new sheets (and export via Drive)
+- **Docs/Slides** - export to PDF/DOCX/PPTX via Drive
 - **People** - access profile information
 - **Multiple account support** - manage multiple Google accounts simultaneously
 - **Secure credential storage** using OS keyring (Keychain on macOS, Secret Service on Linux, Credential Manager on Windows)
@@ -368,8 +369,8 @@ gog sheets metadata <spreadsheetId>
 gog sheets get <spreadsheetId> 'Sheet1!A1:B10'
 
 # Export (via Drive)
-gog drive download <spreadsheetId> --format pdf --out ./sheet.pdf
-gog drive download <spreadsheetId> --format xlsx --out ./sheet.xlsx
+gog sheets export <spreadsheetId> --format pdf --out ./sheet.pdf
+gog sheets export <spreadsheetId> --format xlsx --out ./sheet.xlsx
 
 # Write
 gog sheets update <spreadsheetId> 'A1' 'val1|val2,val3|val4'
@@ -386,6 +387,23 @@ gog sheets create "My New Spreadsheet" --sheets "Sheet1,Sheet2"
 ```bash
 # Profile
 gog people me
+```
+
+### Docs
+
+```bash
+# Export (via Drive)
+gog docs export <docId> --format pdf --out ./doc.pdf
+gog docs export <docId> --format docx --out ./doc.docx
+gog docs export <docId> --format txt --out ./doc.txt
+```
+
+### Slides
+
+```bash
+# Export (via Drive)
+gog slides export <presentationId> --format pptx --out ./deck.pptx
+gog slides export <presentationId> --format pdf --out ./deck.pdf
 ```
 
 ## Output Formats

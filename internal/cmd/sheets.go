@@ -33,6 +33,76 @@ func newSheetsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newSheetsClearCmd(flags))
 	cmd.AddCommand(newSheetsMetadataCmd(flags))
 	cmd.AddCommand(newSheetsCreateCmd(flags))
+	cmd.AddCommand(newSheetsExportCmd(flags))
+	return cmd
+}
+
+func newSheetsExportCmd(flags *rootFlags) *cobra.Command {
+	var outPathFlag string
+	var format string
+
+	cmd := &cobra.Command{
+		Use:   "export <spreadsheetId>",
+		Short: "Export a Google Sheet (pdf|xlsx|csv) via Drive",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			u := ui.FromContext(cmd.Context())
+			account, err := requireAccount(flags)
+			if err != nil {
+				return err
+			}
+
+			spreadsheetID := strings.TrimSpace(args[0])
+			if spreadsheetID == "" {
+				return usage("empty spreadsheetId")
+			}
+
+			svc, err := newDriveService(cmd.Context(), account)
+			if err != nil {
+				return err
+			}
+
+			meta, err := svc.Files.Get(spreadsheetID).
+				SupportsAllDrives(true).
+				Fields("id, name, mimeType").
+				Context(cmd.Context()).
+				Do()
+			if err != nil {
+				return err
+			}
+			if meta == nil {
+				return fmt.Errorf("spreadsheet not found")
+			}
+			if meta.MimeType != "application/vnd.google-apps.spreadsheet" {
+				return fmt.Errorf("file is not a Google Sheet (mimeType=%q)", meta.MimeType)
+			}
+
+			destPath, err := resolveDriveDownloadDestPath(meta, outPathFlag)
+			if err != nil {
+				return err
+			}
+
+			format = strings.TrimSpace(format)
+			if format == "" {
+				format = "xlsx"
+			}
+
+			downloadedPath, size, err := downloadDriveFile(cmd.Context(), svc, meta, destPath, format)
+			if err != nil {
+				return err
+			}
+
+			if outfmt.IsJSON(cmd.Context()) {
+				return outfmt.WriteJSON(os.Stdout, map[string]any{"path": downloadedPath, "size": size})
+			}
+			u.Out().Printf("path\t%s", downloadedPath)
+			u.Out().Printf("size\t%s", formatDriveSize(size))
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&outPathFlag, "out", "", "Output file path (default: gogcli config dir)")
+	cmd.Flags().StringVar(&format, "format", "xlsx", "Export format: pdf|xlsx|csv")
 	return cmd
 }
 

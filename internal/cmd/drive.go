@@ -12,7 +12,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
-	"github.com/steipete/gogcli/internal/config"
 	"github.com/steipete/gogcli/internal/googleapi"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
@@ -300,21 +299,9 @@ func newDriveDownloadCmd(flags *rootFlags) *cobra.Command {
 				return errors.New("file has no name")
 			}
 
-			destPath := strings.TrimSpace(outPathFlag)
-			// Sanitize filename to prevent path traversal.
-			safeName := filepath.Base(meta.Name)
-			if safeName == "" || safeName == "." || safeName == ".." {
-				safeName = "download"
-			}
-			defaultName := fmt.Sprintf("%s_%s", fileID, safeName)
-			if destPath == "" {
-				dir, dirErr := config.EnsureDriveDownloadsDir()
-				if dirErr != nil {
-					return dirErr
-				}
-				destPath = filepath.Join(dir, defaultName)
-			} else if st, statErr := os.Stat(destPath); statErr == nil && st.IsDir() {
-				destPath = filepath.Join(destPath, defaultName)
+			destPath, err := resolveDriveDownloadDestPath(meta, outPathFlag)
+			if err != nil {
+				return err
 			}
 
 			downloadedPath, size, err := downloadDriveFile(cmd.Context(), svc, meta, destPath, format)
