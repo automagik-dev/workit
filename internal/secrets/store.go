@@ -62,6 +62,7 @@ const (
 	keyringBackendSourceEnv     = "env"
 	keyringBackendSourceConfig  = "config"
 	keyringBackendSourceDefault = "default"
+	keyringBackendAuto          = "auto"
 )
 
 func ResolveKeyringBackendInfo() (KeyringBackendInfo, error) {
@@ -80,19 +81,19 @@ func ResolveKeyringBackendInfo() (KeyringBackendInfo, error) {
 		}
 	}
 
-	return KeyringBackendInfo{Value: "auto", Source: keyringBackendSourceDefault}, nil
+	return KeyringBackendInfo{Value: keyringBackendAuto, Source: keyringBackendSourceDefault}, nil
 }
 
 func allowedBackends(info KeyringBackendInfo) ([]keyring.BackendType, error) {
 	switch info.Value {
-	case "", "auto":
+	case "", keyringBackendAuto:
 		return nil, nil
 	case "keychain":
 		return []keyring.BackendType{keyring.KeychainBackend}, nil
 	case "file":
 		return []keyring.BackendType{keyring.FileBackend}, nil
 	default:
-		return nil, fmt.Errorf("%w: %q (expected auto, keychain, or file)", errInvalidKeyringBackend, info.Value)
+		return nil, fmt.Errorf("%w: %q (expected %s, keychain, or file)", errInvalidKeyringBackend, info.Value, keyringBackendAuto)
 	}
 }
 
@@ -137,7 +138,7 @@ func normalizeKeyringBackend(value string) string {
 const keyringOpenTimeout = 5 * time.Second
 
 func shouldForceFileBackend(goos string, backendInfo KeyringBackendInfo, dbusAddr string) bool {
-	return goos == "linux" && backendInfo.Value == "auto" && dbusAddr == ""
+	return goos == "linux" && backendInfo.Value == keyringBackendAuto && dbusAddr == ""
 }
 
 func shouldUseKeyringTimeout(goos string, backendInfo KeyringBackendInfo, dbusAddr string) bool {

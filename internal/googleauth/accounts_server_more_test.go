@@ -16,6 +16,7 @@ func TestHandleAccountsPage(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ms.handleAccountsPage(rec, req)
+
 	if rec.Code != http.StatusOK {
 		t.Fatalf("unexpected status: %d", rec.Code)
 	}
@@ -26,6 +27,7 @@ func TestHandleAccountsPage(t *testing.T) {
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodGet, "/nope", nil)
 	ms.handleAccountsPage(rec, req)
+
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for bad path")
 	}
@@ -69,6 +71,7 @@ func TestReadHTTPBodySnippet(t *testing.T) {
 func TestRenderSuccessPageWithDetails_More(t *testing.T) {
 	rec := httptest.NewRecorder()
 	renderSuccessPageWithDetails(rec, "a@b.com", []string{"gmail"})
+
 	if !strings.Contains(rec.Body.String(), "a@b.com") {
 		t.Fatalf("expected email in success page")
 	}

@@ -44,6 +44,7 @@ func TestPromptLine(t *testing.T) {
 		os.Stdin = orig
 	}()
 	os.Stdin = r
+
 	_, writeErr := w.WriteString("world\n")
 	if writeErr != nil {
 		t.Fatalf("write: %v", writeErr)
