@@ -56,6 +56,7 @@ Help:
 
 Before adding an account, create OAuth2 credentials from Google Cloud Console:
 
+1. Open the Google Cloud Console credentials page: https://console.cloud.google.com/apis/credentials
 1. Create a project: https://console.cloud.google.com/projectcreate
 2. Enable the APIs you need:
    - Gmail API: https://console.cloud.google.com/apis/api/gmail.googleapis.com
@@ -99,6 +100,8 @@ gog gmail labels list
 ### Accounts and tokens
 
 `gog` stores your OAuth refresh tokens in a “keyring” backend. Default is `auto` (best available backend for your OS/environment).
+
+Before you can run `gog auth add`, you must store OAuth client credentials once via `gog auth credentials <credentials.json>` (download a Desktop app OAuth client JSON from the Cloud Console).
 
 List accounts:
 

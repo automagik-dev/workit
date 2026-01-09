@@ -32,7 +32,10 @@ func Format(err error) string {
 
 	var credErr *config.CredentialsMissingError
 	if errors.As(err, &credErr) {
-		return fmt.Sprintf("OAuth credentials missing. Run: gog auth credentials <credentials.json> (expected at %s)", credErr.Path)
+		return fmt.Sprintf(
+			"OAuth client credentials missing (OAuth client ID JSON).\nDownload from: https://console.cloud.google.com/apis/credentials (Create Credentials → OAuth client ID → Desktop app → Download JSON)\nThen run: gog auth credentials <credentials.json> (expected at %s)",
+			credErr.Path,
+		)
 	}
 
 	if errors.Is(err, keyring.ErrKeyNotFound) {
