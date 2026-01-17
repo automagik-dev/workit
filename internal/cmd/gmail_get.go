@@ -27,6 +27,7 @@ const (
 type attachmentOutput struct {
 	Filename     string `json:"filename"`
 	Size         int64  `json:"size"`
+	SizeHuman    string `json:"sizeHuman"`
 	MimeType     string `json:"mimeType"`
 	AttachmentID string `json:"attachmentId"`
 }
@@ -97,6 +98,8 @@ func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 			if body := bestBodyText(msg.Payload); body != "" {
 				payload["body"] = body
 			}
+		}
+		if format == gmailFormatFull || format == gmailFormatMetadata {
 			attachments := collectAttachments(msg.Payload)
 			if len(attachments) > 0 {
 				out := make([]attachmentOutput, len(attachments))
@@ -104,6 +107,7 @@ func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 					out[i] = attachmentOutput{
 						Filename:     a.Filename,
 						Size:         a.Size,
+						SizeHuman:    formatBytes(a.Size),
 						MimeType:     a.MimeType,
 						AttachmentID: a.AttachmentID,
 					}
@@ -139,14 +143,14 @@ func (c *GmailGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 		if unsubscribe != "" {
 			u.Out().Printf("unsubscribe\t%s", unsubscribe)
 		}
-		if format == gmailFormatFull {
-			attachments := collectAttachments(msg.Payload)
-			if len(attachments) > 0 {
-				u.Out().Println("")
-				for _, a := range attachments {
-					u.Out().Printf("attachment\t%s\t%d\t%s\t%s", a.Filename, a.Size, a.MimeType, a.AttachmentID)
-				}
+		attachments := collectAttachments(msg.Payload)
+		if len(attachments) > 0 {
+			u.Out().Println("")
+			for _, a := range attachments {
+				u.Out().Printf("attachment\t%s\t%s\t%s\t%s", a.Filename, formatBytes(a.Size), a.MimeType, a.AttachmentID)
 			}
+		}
+		if format == gmailFormatFull {
 			body := bestBodyText(msg.Payload)
 			if body != "" {
 				u.Out().Println("")

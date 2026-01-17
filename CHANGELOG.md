@@ -2,6 +2,10 @@
 
 ## 0.7.0 - Unreleased
 
+### Added
+
+- Gmail: show attachment info (incl. humanized sizes) for `gmail get` full/metadata output, with JSON `sizeHuman`. (#83) — thanks @jeanregisser.
+
 ### Fixed
 
 - Gmail: include `gmail.settings.sharing` scope for filter operations to avoid 403 insufficientPermissions. (#69) — thanks @ryanh-ai.
