@@ -156,6 +156,43 @@ run_gmail_tests() {
   fi
 
   run_required "gmail" "gmail search" gog gmail search "subject:gogcli smoke send $TS" --json >/dev/null
+
+  local messages_json
+  echo "==> gmail messages search"
+  messages_json=$(gog gmail messages search "subject:gogcli smoke send $TS" --json --max 5)
+  $PY - "$TS" <<'PY' <<<"$messages_json"
+import json,sys
+ts=sys.argv[1]
+obj=json.load(sys.stdin)
+msgs=obj.get("messages") or []
+if not msgs:
+    raise SystemExit("no messages found for smoke search")
+PY
+
+  if skip "gmail-messages-body"; then
+    echo "==> gmail messages search include body (skipped)"
+  else
+    local body_json
+    echo "==> gmail messages search include body"
+    body_json=$(gog gmail messages search "subject:gogcli smoke send $TS" --include-body --json --max 5)
+    if ! $PY - "$TS" <<'PY' <<<"$body_json"; then
+import json,sys
+ts=sys.argv[1]
+obj=json.load(sys.stdin)
+msgs=obj.get("messages") or []
+needle=f"hello from gogcli {ts}"
+for m in msgs:
+    body=m.get("body") or ""
+    if needle in body:
+        sys.exit(0)
+raise SystemExit(f"missing body snippet: {needle}")
+PY
+      if [ "${STRICT:-false}" = true ]; then
+        return 1
+      fi
+    fi
+  fi
+
   run_required "gmail" "gmail batch modify add" gog gmail batch modify "$send_msg_id" --add STARRED --json >/dev/null
   run_required "gmail" "gmail batch modify remove" gog gmail batch modify "$send_msg_id" --remove STARRED --json >/dev/null
 

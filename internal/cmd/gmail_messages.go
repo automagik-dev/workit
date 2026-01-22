@@ -47,6 +47,7 @@ func (c *GmailMessagesSearchCmd) Run(ctx context.Context, flags *RootFlags) erro
 		Q(query).
 		MaxResults(c.Max).
 		PageToken(c.Page).
+		Fields("messages(id,threadId),nextPageToken").
 		Context(ctx).
 		Do()
 	if err != nil {
@@ -151,7 +152,9 @@ func fetchMessageDetails(ctx context.Context, svc *gmail.Service, messages []*gm
 			if includeBody {
 				call = call.Format("full")
 			} else {
-				call = call.Format("metadata").MetadataHeaders("From", "Subject", "Date")
+				call = call.Format("metadata").
+					MetadataHeaders("From", "Subject", "Date").
+					Fields("id,threadId,labelIds,payload(headers)")
 			}
 			msg, err := call.Context(ctx).Do()
 			if err != nil {

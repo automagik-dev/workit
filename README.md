@@ -4,7 +4,7 @@ Fast, script-friendly CLI for Gmail, Calendar, Chat, Classroom, Drive, Docs, Sli
 
 ## Features
 
-- **Gmail** - search threads, send emails, view attachments, manage labels/drafts/filters/delegation/vacation settings, history, and watch (Pub/Sub push)
+- **Gmail** - search threads and messages, send emails, view attachments, manage labels/drafts/filters/delegation/vacation settings, history, and watch (Pub/Sub push)
 - **Email tracking** - track opens for `gog gmail send --track` with a small Cloudflare Worker backend
 - **Calendar** - list/create/update events, detect conflicts, manage invitations, check free/busy status, team calendars, propose new times, focus/OOO/working-location events, recurrence + reminders
 - **Classroom** - manage courses, roster, coursework/materials, submissions, announcements, topics, invitations, guardians, profiles
@@ -977,7 +977,7 @@ THREAD_ID           SUBJECT                           FROM                  DATE
 16d1c2b3a4e5f6d7    Project update                    bob@example.com       2025-01-08
 ```
 
-Message-level search (one row per email):
+Message-level search (one row per email; add `--include-body` to fetch/decode bodies):
 
 ```bash
 $ gog gmail messages search 'newer_than:7d' --max 3
@@ -1017,6 +1017,22 @@ $ gog gmail messages search 'newer_than:7d' --max 3 --json
       "date": "2025-01-10"
     },
     ...
+  ]
+}
+```
+
+```bash
+$ gog gmail messages search 'newer_than:7d' --max 1 --include-body --json
+{
+  "messages": [
+    {
+      "id": "18f1a2b3c4d5e6f7",
+      "threadId": "9e8d7c6b5a4f3e2d",
+      "subject": "Meeting notes",
+      "from": "alice@example.com",
+      "date": "2025-01-10",
+      "body": "Hi team — meeting notes..."
+    }
   ]
 }
 ```
