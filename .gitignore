@@ -40,3 +40,8 @@ bin/
 
 # Node (optional dev scripts)
 node_modules/
+
+# OpenClaw agent files (local state, not for repo)
+memory/
+.openclaw/
+MEMORY.md

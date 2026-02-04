@@ -3,8 +3,9 @@
 ## Milestone 1: Repository Setup ✅
 - [x] Create repo structure
 - [x] Write AGENT.md (implementation spec)
-- [x] Write CLAUDE.md (quick reference)
-- [ ] Fork upstream gogcli
+- [x] Write TODO.md (infrastructure guide)
+- [x] Fork upstream gogcli
+- [x] Set up OpenClaw agent structure (SOUL, ROLE, IDENTITY, MEMORY, etc.)
 - [ ] Set up CI (GitHub Actions)
 - [ ] Verify build works
 
