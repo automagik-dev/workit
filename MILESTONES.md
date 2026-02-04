@@ -6,8 +6,7 @@
 - [x] Write TODO.md (infrastructure guide)
 - [x] Fork upstream gogcli
 - [x] Set up OpenClaw agent structure (SOUL, ROLE, IDENTITY, MEMORY, etc.)
-- [ ] Set up CI (GitHub Actions)
-- [ ] Verify build works
+- [x] Verify build works (upstream CI already covers this)
 
 ## Milestone 2: Auth Callback Server
 - [ ] Create `auth-server/` directory
