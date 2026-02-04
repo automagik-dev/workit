@@ -1,15 +1,93 @@
 # gog-cli Agent Instructions
 
-You are the maintainer of **gog-cli**, a fork of [steipete/gogcli](https://github.com/steipete/gogcli) with enhancements for agent-driven Google Workspace access.
+You are the maintainer of **gog-cli**, a fork of [steipete/gogcli](https://github.com/steipete/gogcli) - a comprehensive CLI for **all Google Workspace products**.
 
-## Project Overview
+## Project Vision
 
-**gog-cli** extends gogcli with two key features:
+**"Google Drive for Linux + frictionless Google Workspace CLI"**
 
-1. **Headless OAuth Flow** - Enables agents to authenticate users via mobile-friendly OAuth URLs (WhatsApp, Telegram, etc.)
-2. **Real-time Folder Sync** - Bidirectional Google Drive sync like Google Drive for Desktop
+gog-cli is a **public service with batteries included**:
+- Users install gog-cli → run `gog auth add me@gmail.com` → tap link on phone → done
+- **No GCP project setup, no credentials.json, no friction**
+- Automagik/Namastex provides the OAuth app, callback server, and pre-configured binary
 
-This tool runs on agent infrastructure and is operated by AI agents on behalf of users who authorize via their mobile devices.
+## Supported Google Products
+
+gog-cli provides CLI access to the **full Google Workspace suite**:
+
+| Product | Features |
+|---------|----------|
+| **Gmail** | Search, send, labels, drafts, filters, delegation, vacation, watch (Pub/Sub) |
+| **Calendar** | Events, invitations, free/busy, team calendars, focus/OOO, recurrence |
+| **Drive** | List, search, upload, download, permissions, comments, folders, shared drives |
+| **Docs** | Export to PDF/DOCX, create, copy, text extraction |
+| **Sheets** | Read, write, update, format cells, create new sheets |
+| **Slides** | Export to PDF/PPTX |
+| **Contacts** | Search, create, update, Workspace directory |
+| **Tasks** | Tasklists, create, update, done, repeat schedules |
+| **Chat** | Spaces, messages, threads, DMs (Workspace-only) |
+| **Classroom** | Courses, roster, coursework, submissions, announcements |
+| **Keep** | Notes, attachments (Workspace-only, service account) |
+| **Groups** | List groups, members (Workspace) |
+
+## Key Features We're Adding
+
+1. **Headless OAuth Flow** - Mobile-friendly auth for users on VPN
+2. **Real-time Drive Sync** - Bidirectional folder sync like Google Drive for Desktop
+
+---
+
+## Architecture Decisions (from brainstorm 2026-02-04)
+
+| Component | Decision |
+|-----------|----------|
+| **Callback Server** | Simple Go server at `auth.namastex.io` |
+| **Access** | VPN-only (Phase 1), public later |
+| **Handoff Storage** | In-memory with 15-min TTL |
+| **Handoff Security** | State parameter only (sufficient for VPN) |
+| **Token Storage** | User's local keyring (existing gogcli behavior) |
+| **Sync (local→remote)** | fsnotify - instant upload on file save |
+| **Sync (remote→local)** | 5-second polling (feels instant, simple) |
+| **Upstream Strategy** | Generic code + Namastex defaults via -ldflags |
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     User's Linux PC (on VPN)                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   gog CLI                                                       │
+│   ├── auth add → gets OAuth URL → user taps on phone            │
+│   ├── gmail send / calendar list / drive upload / etc           │
+│   ├── sync init ~/Drive --drive-folder "My Folder"              │
+│   └── sync start --daemon                                       │
+│         ├── fsnotify (local changes) ──► upload immediately     │
+│         └── polling every 5s (remote) ──► download changes      │
+│                                                                 │
+│   Keyring: stores refresh tokens permanently                    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+              │                              │
+              │ OAuth handoff                │ Google APIs
+              ▼                              ▼
+  ┌───────────────────────┐      ┌───────────────────────┐
+  │  auth.namastex.io     │      │  Google APIs          │
+  │  (callback server)    │      │  Drive, Gmail, Cal,   │
+  │  VPN-only             │      │  Docs, Sheets, etc    │
+  └───────────────────────┘      └───────────────────────┘
+```
+
+### User Experience
+
+1. User installs gog-cli (binary with Namastex credentials baked in)
+2. Runs `gog auth add user@gmail.com`
+3. Gets OAuth URL, taps on phone (phone on VPN)
+4. Completes Google login
+5. Token stored in local keyring - **login once, use forever**
+6. All gog commands work: gmail, drive, calendar, sync, etc.
+
+---
 
 ---
 
@@ -257,8 +335,8 @@ CREATE TABLE sync_log (
 
 **Remote Watcher (`internal/sync/drive_changes.go`):**
 - Poll `changes.list` API with saved pageToken
-- Default poll interval: 30 seconds (configurable)
-- Future: Implement `changes.watch` for push notifications
+- Default poll interval: **5 seconds** (feels instant)
+- Future: Implement `changes.watch` for push notifications if needed
 
 **Sync Logic (`internal/sync/engine.go`):**
 ```go
@@ -409,7 +487,7 @@ require (
 | `GOG_CLIENT_SECRET` | OAuth client secret | Yes (or build-time) |
 | `GOG_CALLBACK_SERVER` | Callback server URL | Yes (or build-time) |
 | `GOG_ACCOUNT` | Default account email | No |
-| `GOG_SYNC_POLL_INTERVAL` | Remote poll interval (default: 30s) | No |
+| `GOG_SYNC_POLL_INTERVAL` | Remote poll interval (default: 5s) | No |
 | `GOG_SYNC_DEBOUNCE` | Local change debounce (default: 500ms) | No |
 
 ---

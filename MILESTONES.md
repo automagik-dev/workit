@@ -1,5 +1,9 @@
 # gog-cli Development Milestones
 
+> **Vision**: "Google Drive for Linux + frictionless Google Workspace CLI"
+> 
+> Full CLI access to Gmail, Calendar, Drive, Docs, Sheets, Slides, Contacts, Tasks, Chat, Classroom, Keep, Groups - with zero-friction OAuth setup.
+
 ## Milestone 1: Repository Setup ✅
 - [x] Create repo structure
 - [x] Write AGENT.md (implementation spec)
@@ -7,17 +11,20 @@
 - [x] Fork upstream gogcli
 - [x] Set up OpenClaw agent structure (SOUL, ROLE, IDENTITY, MEMORY, etc.)
 - [x] Verify build works (upstream CI already covers this)
+- [x] Brainstorm and lock architecture decisions
 
 ## Milestone 2: Auth Callback Server
+**Location:** `auth.namastex.io` (VPN-only Phase 1)
+
 - [ ] Create `auth-server/` directory
-- [ ] Implement `/callback` handler (receives OAuth code)
-- [ ] Implement `/token/{state}` endpoint (CLI polls this)
+- [ ] Implement `/callback` handler (receives OAuth code, exchanges for token)
+- [ ] Implement `/token/{state}` endpoint (CLI polls this, 15-min TTL)
 - [ ] Implement `/status/{state}` endpoint (check without consuming)
-- [ ] Add Redis storage (with in-memory fallback)
+- [ ] In-memory storage with TTL (Redis later if needed)
 - [ ] Add Dockerfile
 - [ ] Add health check endpoint
 - [ ] Test with ngrok on mobile
-- [ ] Deploy to staging
+- [ ] Deploy to auth.namastex.io
 
 ## Milestone 3: Headless OAuth in CLI
 - [ ] Add `--headless` flag to `AuthAddCmd` in `internal/cmd/auth.go`
@@ -55,7 +62,7 @@
 ## Milestone 6: Remote Change Detection
 - [ ] Implement `drive_changes.go`
 - [ ] Use changes.list API with startPageToken
-- [ ] Implement configurable poll interval
+- [ ] **5-second poll interval** (feels instant, within quota)
 - [ ] Handle pagination
 - [ ] Track change tokens in DB
 - [ ] Test with remote changes
