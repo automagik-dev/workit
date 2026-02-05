@@ -7,7 +7,7 @@
 # - GOG_CLIENT_SECRET
 
 PORT=8089
-REDIRECT_URL="http://10.114.0.111:${PORT}/callback"
+REDIRECT_URL="https://gogoauth.namastex.io/callback"
 
 # Check for credentials
 if [ -z "$GOG_CLIENT_ID" ] || [ -z "$GOG_CLIENT_SECRET" ]; then
