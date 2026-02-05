@@ -26,6 +26,9 @@ var (
 	checkRefreshToken    = googleauth.CheckRefreshToken
 	ensureKeychainAccess = secrets.EnsureKeychainAccess
 	fetchAuthorizedEmail = googleauth.EmailForRefreshToken
+	headlessAuthorize    = googleauth.HeadlessAuthorize
+	pollForToken         = googleauth.PollForToken
+	callbackServerURLFn  = googleauth.CallbackServerURL
 )
 
 func ensureKeychainAccessIfNeeded() error {
@@ -52,6 +55,7 @@ const (
 type AuthCmd struct {
 	Credentials AuthCredentialsCmd    `cmd:"" name:"credentials" help:"Manage OAuth client credentials"`
 	Add         AuthAddCmd            `cmd:"" name:"add" help:"Authorize and store a refresh token"`
+	Poll        AuthPollCmd           `cmd:"" name:"poll" help:"Poll for headless OAuth token"`
 	Services    AuthServicesCmd       `cmd:"" name:"services" help:"List supported auth services and scopes"`
 	List        AuthListCmd           `cmd:"" name:"list" help:"List stored accounts"`
 	Aliases     AuthAliasCmd          `cmd:"" name:"alias" help:"Manage account aliases"`
@@ -479,12 +483,16 @@ func (c *AuthTokensImportCmd) Run(ctx context.Context) error {
 }
 
 type AuthAddCmd struct {
-	Email        string `arg:"" name:"email" help:"Email"`
-	Manual       bool   `name:"manual" help:"Browserless auth flow (paste redirect URL)"`
-	ForceConsent bool   `name:"force-consent" help:"Force consent screen to obtain a refresh token"`
-	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"user"`
-	Readonly     bool   `name:"readonly" help:"Use read-only scopes where available (still includes OIDC identity scopes)"`
-	DriveScope   string `name:"drive-scope" help:"Drive scope mode: full|readonly|file" enum:"full,readonly,file" default:"full"`
+	Email          string        `arg:"" name:"email" help:"Email"`
+	Manual         bool          `name:"manual" help:"Browserless auth flow (paste redirect URL)"`
+	Headless       bool          `name:"headless" help:"Headless auth flow for agents (outputs URL, polls callback server)"`
+	CallbackServer string        `name:"callback-server" help:"Callback server URL for headless auth"`
+	PollTimeout    time.Duration `name:"poll-timeout" help:"Timeout for polling callback server" default:"5m"`
+	NoPoll         bool          `name:"no-poll" help:"In headless mode, output URL without polling (use 'gog auth poll' later)"`
+	ForceConsent   bool          `name:"force-consent" help:"Force consent screen to obtain a refresh token"`
+	ServicesCSV    string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"user"`
+	Readonly       bool          `name:"readonly" help:"Use read-only scopes where available (still includes OIDC identity scopes)"`
+	DriveScope     string        `name:"drive-scope" help:"Drive scope mode: full|readonly|file" enum:"full,readonly,file" default:"full"`
 }
 
 func (c *AuthAddCmd) Run(ctx context.Context) error {
@@ -513,6 +521,11 @@ func (c *AuthAddCmd) Run(ctx context.Context) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	// Handle headless mode
+	if c.Headless {
+		return c.runHeadless(ctx, client, services, scopes)
 	}
 
 	// Pre-flight: ensure keychain is accessible before starting OAuth
@@ -570,6 +583,237 @@ func (c *AuthAddCmd) Run(ctx context.Context) error {
 			return err
 		}
 	}
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(os.Stdout, map[string]any{
+			"stored":   true,
+			"email":    authorizedEmail,
+			"services": serviceNames,
+			"client":   client,
+		})
+	}
+	u.Out().Printf("email\t%s", authorizedEmail)
+	u.Out().Printf("services\t%s", strings.Join(serviceNames, ","))
+	u.Out().Printf("client\t%s", client)
+	return nil
+}
+
+func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []googleauth.Service, scopes []string) error {
+	u := ui.FromContext(ctx)
+
+	// Get callback server URL
+	callbackServer, err := callbackServerURLFn(c.CallbackServer)
+	if err != nil {
+		return err
+	}
+
+	// Generate headless auth info
+	info, err := headlessAuthorize(ctx, googleauth.HeadlessOptions{
+		Services:       services,
+		Scopes:         scopes,
+		ForceConsent:   c.ForceConsent,
+		Client:         client,
+		CallbackServer: callbackServer,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Output the auth info
+	if outfmt.IsJSON(ctx) {
+		if err := outfmt.WriteJSON(os.Stdout, map[string]any{
+			"auth_url":   info.AuthURL,
+			"state":      info.State,
+			"poll_url":   info.PollURL,
+			"expires_in": info.ExpiresIn,
+		}); err != nil {
+			return err
+		}
+	} else {
+		u.Err().Println("Visit this URL to authorize:")
+		u.Err().Println(info.AuthURL)
+		u.Err().Println("")
+		u.Err().Printf("State: %s", info.State)
+		u.Err().Printf("Poll URL: %s", info.PollURL)
+		u.Err().Printf("Expires in: %d seconds", info.ExpiresIn)
+		u.Err().Println("")
+	}
+
+	// If no-poll, return now
+	if c.NoPoll {
+		if !outfmt.IsJSON(ctx) {
+			u.Err().Println("Use 'gog auth poll <state>' to retrieve the token after authorization.")
+		}
+		return nil
+	}
+
+	// Poll for the token
+	if !outfmt.IsJSON(ctx) {
+		u.Err().Println("Waiting for authorization...")
+	}
+
+	refreshToken, err := pollForToken(ctx, callbackServer, info.State, c.PollTimeout)
+	if err != nil {
+		return err
+	}
+
+	// Pre-flight: ensure keychain is accessible before storing token
+	if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
+		return fmt.Errorf("keychain access: %w", keychainErr)
+	}
+
+	// Verify the email matches (if possible)
+	authorizedEmail, err := fetchAuthorizedEmail(ctx, client, refreshToken, scopes, 15*time.Second)
+	if err != nil {
+		return fmt.Errorf("fetch authorized email: %w", err)
+	}
+	if normalizeEmail(authorizedEmail) != normalizeEmail(c.Email) {
+		return fmt.Errorf("authorized as %s, expected %s", authorizedEmail, c.Email)
+	}
+
+	// Store the token
+	store, err := openSecretsStore()
+	if err != nil {
+		return err
+	}
+	serviceNames := make([]string, 0, len(services))
+	for _, svc := range services {
+		serviceNames = append(serviceNames, string(svc))
+	}
+	sort.Strings(serviceNames)
+
+	if err := store.SetToken(client, authorizedEmail, secrets.Token{
+		Client:       client,
+		Email:        authorizedEmail,
+		Services:     serviceNames,
+		Scopes:       scopes,
+		RefreshToken: refreshToken,
+	}); err != nil {
+		return err
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(os.Stdout, map[string]any{
+			"stored":   true,
+			"email":    authorizedEmail,
+			"services": serviceNames,
+			"client":   client,
+		})
+	}
+	u.Out().Printf("email\t%s", authorizedEmail)
+	u.Out().Printf("services\t%s", strings.Join(serviceNames, ","))
+	u.Out().Printf("client\t%s", client)
+	return nil
+}
+
+// AuthPollCmd polls for a headless OAuth token.
+type AuthPollCmd struct {
+	State          string        `arg:"" name:"state" help:"OAuth state from headless auth"`
+	Email          string        `name:"email" help:"Email to verify and store token for"`
+	CallbackServer string        `name:"callback-server" help:"Callback server URL"`
+	Timeout        time.Duration `name:"timeout" help:"Poll timeout" default:"5m"`
+	ServicesCSV    string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services}" default:"user"`
+	Readonly       bool          `name:"readonly" help:"Use read-only scopes where available"`
+	DriveScope     string        `name:"drive-scope" help:"Drive scope mode: full|readonly|file" enum:"full,readonly,file" default:"full"`
+}
+
+func (c *AuthPollCmd) Run(ctx context.Context) error {
+	u := ui.FromContext(ctx)
+
+	if strings.TrimSpace(c.State) == "" {
+		return usage("state is required")
+	}
+
+	// Get callback server URL
+	callbackServer, err := callbackServerURLFn(c.CallbackServer)
+	if err != nil {
+		return err
+	}
+
+	if !outfmt.IsJSON(ctx) {
+		u.Err().Println("Polling for token...")
+	}
+
+	// Poll for the token
+	refreshToken, err := pollForToken(ctx, callbackServer, c.State, c.Timeout)
+	if err != nil {
+		return err
+	}
+
+	// If email is provided, verify and store the token
+	if strings.TrimSpace(c.Email) != "" {
+		return c.storeToken(ctx, refreshToken)
+	}
+
+	// Just output the refresh token
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(os.Stdout, map[string]any{
+			"refresh_token": refreshToken,
+		})
+	}
+	u.Out().Printf("refresh_token\t%s", refreshToken)
+	return nil
+}
+
+func (c *AuthPollCmd) storeToken(ctx context.Context, refreshToken string) error {
+	u := ui.FromContext(ctx)
+
+	override := authclient.ClientOverrideFromContext(ctx)
+	client, err := authclient.ResolveClientWithOverride(c.Email, override)
+	if err != nil {
+		return err
+	}
+
+	services, err := parseAuthServices(c.ServicesCSV)
+	if err != nil {
+		return err
+	}
+	if len(services) == 0 {
+		return fmt.Errorf("no services selected")
+	}
+
+	scopes, err := googleauth.ScopesForManageWithOptions(services, googleauth.ScopeOptions{
+		Readonly:   c.Readonly,
+		DriveScope: googleauth.DriveScopeMode(c.DriveScope),
+	})
+	if err != nil {
+		return err
+	}
+
+	// Pre-flight: ensure keychain is accessible before storing token
+	if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
+		return fmt.Errorf("keychain access: %w", keychainErr)
+	}
+
+	// Verify the email matches
+	authorizedEmail, err := fetchAuthorizedEmail(ctx, client, refreshToken, scopes, 15*time.Second)
+	if err != nil {
+		return fmt.Errorf("fetch authorized email: %w", err)
+	}
+	if normalizeEmail(authorizedEmail) != normalizeEmail(c.Email) {
+		return fmt.Errorf("authorized as %s, expected %s", authorizedEmail, c.Email)
+	}
+
+	// Store the token
+	store, err := openSecretsStore()
+	if err != nil {
+		return err
+	}
+	serviceNames := make([]string, 0, len(services))
+	for _, svc := range services {
+		serviceNames = append(serviceNames, string(svc))
+	}
+	sort.Strings(serviceNames)
+
+	if err := store.SetToken(client, authorizedEmail, secrets.Token{
+		Client:       client,
+		Email:        authorizedEmail,
+		Services:     serviceNames,
+		Scopes:       scopes,
+		RefreshToken: refreshToken,
+	}); err != nil {
+		return err
+	}
+
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(os.Stdout, map[string]any{
 			"stored":   true,

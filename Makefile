@@ -4,7 +4,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := build
 
 .PHONY: build gog gogcli gog-help gogcli-help help fmt fmt-check lint test ci tools
-.PHONY: worker-ci
+.PHONY: worker-ci build-internal
 
 BIN_DIR := $(CURDIR)/bin
 BIN := $(BIN_DIR)/gog
@@ -31,6 +31,16 @@ endif
 build:
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS)" -o $(BIN) $(CMD)
+
+# Build with internal defaults for headless OAuth (credentials baked in)
+# Usage: make build-internal GOG_CLIENT_ID=... GOG_CLIENT_SECRET=... GOG_CALLBACK_SERVER=...
+build-internal:
+	@mkdir -p $(BIN_DIR)
+	@go build -ldflags "$(LDFLAGS) \
+		-X 'github.com/steipete/gogcli/internal/config.DefaultClientID=$(GOG_CLIENT_ID)' \
+		-X 'github.com/steipete/gogcli/internal/config.DefaultClientSecret=$(GOG_CLIENT_SECRET)' \
+		-X 'github.com/steipete/gogcli/internal/config.DefaultCallbackServer=$(GOG_CALLBACK_SERVER)'" \
+		-o $(BIN) $(CMD)
 
 gog: build
 	@if [ -n "$(RUN_ARGS)" ]; then \
