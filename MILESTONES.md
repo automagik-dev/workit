@@ -1,7 +1,7 @@
 # gog-cli Development Milestones
 
 > **Vision**: "Google Drive for Linux + frictionless Google Workspace CLI"
-> 
+>
 > Full CLI access to Gmail, Calendar, Drive, Docs, Sheets, Slides, Contacts, Tasks, Chat, Classroom, Keep, Groups - with zero-friction OAuth setup.
 
 ## Milestone 1: Repository Setup ✅
@@ -13,91 +13,92 @@
 - [x] Verify build works (upstream CI already covers this)
 - [x] Brainstorm and lock architecture decisions
 
-## Milestone 2: Auth Callback Server
+## Milestone 2: Auth Callback Server ✅
 **Location:** `auth.namastex.io` (VPN-only Phase 1)
 
-- [ ] Create `auth-server/` directory
-- [ ] Implement `/callback` handler (receives OAuth code, exchanges for token)
-- [ ] Implement `/token/{state}` endpoint (CLI polls this, 15-min TTL)
-- [ ] Implement `/status/{state}` endpoint (check without consuming)
-- [ ] In-memory storage with TTL (Redis later if needed)
-- [ ] Add Dockerfile
-- [ ] Add health check endpoint
+- [x] Create `auth-server/` directory
+- [x] Implement `/callback` handler (receives OAuth code, exchanges for token)
+- [x] Implement `/token/{state}` endpoint (CLI polls this, 15-min TTL)
+- [x] Implement `/status/{state}` endpoint (check without consuming)
+- [x] In-memory storage with TTL (Redis later if needed)
+- [x] Add Dockerfile
+- [x] Add health check endpoint
 - [ ] Test with ngrok on mobile
 - [ ] Deploy to auth.namastex.io
 
-## Milestone 3: Headless OAuth in CLI
-- [ ] Add `--headless` flag to `AuthAddCmd` in `internal/cmd/auth.go`
-- [ ] Add `--callback-server` flag/env var
-- [ ] Modify `Authorize()` in `internal/googleauth/oauth_flow.go` for headless path
-- [ ] Create `internal/googleauth/headless.go` for callback server polling
-- [ ] Create `internal/config/defaults.go` for build-time injected values
-- [ ] Modify `ReadClientCredentialsFor()` in `internal/config/credentials.go` to fallback to defaults
+## Milestone 3: Headless OAuth in CLI ✅
+- [x] Add `--headless` flag to `AuthAddCmd` in `internal/cmd/auth.go`
+- [x] Add `--callback-server` flag/env var
+- [x] Create `internal/googleauth/headless.go` for callback server polling
+- [x] Create `internal/config/defaults.go` for build-time injected values
+- [x] Modify `ReadClientCredentialsFor()` in `internal/config/credentials.go` to fallback to defaults
+- [x] Implement `gog auth poll <state>` command
+- [x] Document in `docs/headless-auth.md`
 - [ ] Add `build-internal` target to Makefile
-- [ ] Implement `gog auth poll <state>` command
 - [ ] Update `gog auth status` to show token expiry
 - [ ] Test full flow: CLI → WhatsApp → mobile → callback → token
-- [ ] Document in `docs/headless-auth.md`
 
-## Milestone 4: Sync Foundation
-- [ ] Create `internal/sync/` package
-- [ ] Implement SQLite state DB (`internal/sync/db.go`)
-- [ ] Implement sync config management (`internal/sync/config.go`)
-- [ ] Add `SyncCmd` struct to `internal/cmd/sync.go`
-- [ ] Register sync command in `cmd/gog/main.go`
-- [ ] Add `gog sync init` command
-- [ ] Add `gog sync list` command
-- [ ] Add `gog sync remove` command
-- [ ] Add fsnotify and go-sqlite3 to go.mod
-- [ ] Test DB operations
+## Milestone 4: Sync Foundation ✅
+- [x] Create `internal/sync/` package
+- [x] Implement SQLite state DB (`internal/sync/db.go`)
+- [x] Implement sync config management (`internal/sync/config.go`)
+- [x] Add `SyncCmd` struct to `internal/cmd/sync.go`
+- [x] Register sync command in `cmd/gog/main.go`
+- [x] Add `gog sync init` command
+- [x] Add `gog sync list` command
+- [x] Add `gog sync remove` command
+- [x] Add fsnotify and go-sqlite3 to go.mod
+- [x] Test DB operations
 
-## Milestone 5: Local Filesystem Watching
-- [ ] Add fsnotify dependency
-- [ ] Implement `watcher.go`
-- [ ] Add debouncing logic
-- [ ] Add ignore patterns (.git, .gog-sync, temp files)
-- [ ] Handle CREATE, WRITE, DELETE, RENAME events
-- [ ] Test with rapid file changes
+## Milestone 5: Local Filesystem Watching ✅
+- [x] Add fsnotify dependency
+- [x] Implement `watcher.go`
+- [x] Add debouncing logic
+- [x] Add ignore patterns (.git, .gog-sync, temp files)
+- [x] Handle CREATE, WRITE, DELETE, RENAME events
+- [x] Test with rapid file changes
 
-## Milestone 6: Remote Change Detection
-- [ ] Implement `drive_changes.go`
-- [ ] Use changes.list API with startPageToken
-- [ ] **5-second poll interval** (feels instant, within quota)
-- [ ] Handle pagination
-- [ ] Track change tokens in DB
-- [ ] Test with remote changes
+## Milestone 6: Remote Change Detection ✅
+- [x] Implement `drive_changes.go`
+- [x] Use changes.list API with startPageToken
+- [x] **5-second poll interval** (feels instant, within quota)
+- [x] Handle pagination
+- [x] Track change tokens in DB
+- [x] Test with remote changes
 
-## Milestone 7: Sync Engine
-- [ ] Implement `engine.go` main loop
-- [ ] Implement upload logic (local → Drive)
-- [ ] Implement download logic (Drive → local)
-- [ ] Implement delete propagation (both directions)
-- [ ] Calculate and compare MD5 hashes
-- [ ] Handle folder creation
-- [ ] Test bidirectional sync
+## Milestone 7: Sync Engine ✅
+- [x] Implement `engine.go` main loop
+- [x] Implement upload logic (local → Drive)
+- [x] Implement download logic (Drive → local)
+- [x] Implement delete propagation (both directions)
+- [x] Calculate and compare MD5 hashes
+- [x] Handle folder creation
+- [ ] Test bidirectional sync (requires integration testing)
 
-## Milestone 8: Conflict Resolution
-- [ ] Implement `conflict.go`
-- [ ] Implement "rename" strategy (file.conflict-date.ext)
-- [ ] Implement "local-wins" strategy
-- [ ] Implement "remote-wins" strategy
-- [ ] Add `--conflict` flag to sync start
-- [ ] Log conflicts to sync_log table
-- [ ] Test concurrent edits
+## Milestone 8: Conflict Resolution ✅
+- [x] Implement `conflict.go`
+- [x] Implement "rename" strategy (file.conflict-date.ext)
+- [x] Implement "local-wins" strategy
+- [x] Implement "remote-wins" strategy
+- [x] Add `--conflict` flag to sync start
+- [x] Log conflicts to sync_log table
+- [ ] Test concurrent edits (requires integration testing)
 
-## Milestone 9: Daemon Mode
-- [ ] Implement `daemon.go`
-- [ ] Implement PID file management
+## Milestone 9: Daemon Mode ✅
+- [x] Implement `daemon.go`
+- [x] Implement PID file management
+- [x] Add `gog sync start --daemon`
+- [x] Add `gog sync stop`
+- [x] Add `gog sync status` (daemon status + sync stats)
+- [x] Handle graceful shutdown (SIGTERM)
 - [ ] Implement log file rotation
-- [ ] Add `gog sync start --daemon`
-- [ ] Add `gog sync stop`
-- [ ] Add `gog sync status` (daemon status + sync stats)
-- [ ] Handle graceful shutdown (SIGTERM)
 - [ ] Test daemon lifecycle
 
-## Milestone 10: Polish & Documentation
-- [ ] Write `docs/sync.md`
-- [ ] Update main README
+## Milestone 10: Polish & Documentation ✅
+- [x] Write `docs/sync.md`
+- [x] Write `docs/headless-auth.md`
+- [x] Write `docs/infrastructure.md`
+- [x] Update main README
 - [ ] Add integration tests
 - [ ] Performance testing with large folders
 - [ ] Error handling review

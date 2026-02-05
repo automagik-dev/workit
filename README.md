@@ -13,6 +13,7 @@ Fast, script-friendly CLI for Gmail, Calendar, Chat, Classroom, Drive, Docs, Sli
 - **Classroom** - manage courses, roster, coursework/materials, submissions, announcements, topics, invitations, guardians, profiles
 - **Chat** - list/find/create spaces, list messages/threads (filter by thread/unread), send messages and DMs (Workspace-only)
 - **Drive** - list/search/upload/download files, manage permissions/comments, organize folders, list shared drives
+- **Drive Sync** - bidirectional folder sync like Google Drive for Desktop, with daemon mode and conflict resolution
 - **Contacts** - search/create/update contacts, access Workspace directory/other contacts
 - **Tasks** - manage tasklists and tasks: get/create/add/update/done/undo/delete/clear, repeat schedules
 - **Sheets** - read/write/update spreadsheets, format cells, create new sheets (and export via Drive)
@@ -23,6 +24,7 @@ Fast, script-friendly CLI for Gmail, Calendar, Chat, Classroom, Drive, Docs, Sli
 - **Local time** - quick local/UTC time display for scripts and agents
 - **Multiple accounts** - manage multiple Google accounts simultaneously (with aliases)
 - **Command allowlist** - restrict top-level commands for sandboxed/agent runs
+- **Headless OAuth** - authenticate users who complete OAuth on mobile/web, ideal for AI agents
 - **Secure credential storage** using OS keyring or encrypted on-disk keyring (configurable)
 - **Auto-refreshing tokens** - authenticate once, use indefinitely
 - **Least-privilege auth** - `--readonly` and `--drive-scope` to request fewer scopes

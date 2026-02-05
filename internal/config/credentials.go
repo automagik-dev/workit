@@ -92,26 +92,42 @@ func ReadClientCredentialsFor(client string) (ClientCredentials, error) {
 	if err != nil {
 		return ClientCredentials{}, fmt.Errorf("resolve credentials path: %w", err)
 	}
-	var b []byte
 
-	if b, err = os.ReadFile(path); err != nil { //nolint:gosec // user-provided path
-		if os.IsNotExist(err) {
-			return ClientCredentials{}, &CredentialsMissingError{Path: path, Cause: err}
+	// 1. Try file-based credentials (existing behavior)
+	b, err := os.ReadFile(path) //nolint:gosec // user-provided path
+	if err == nil {
+		var c ClientCredentials
+		if err := json.Unmarshal(b, &c); err != nil {
+			return ClientCredentials{}, fmt.Errorf("decode credentials: %w", err)
 		}
 
+		if c.ClientID != "" && c.ClientSecret != "" {
+			return c, nil
+		}
+	} else if !os.IsNotExist(err) {
 		return ClientCredentials{}, fmt.Errorf("read credentials: %w", err)
 	}
 
-	var c ClientCredentials
-	if err := json.Unmarshal(b, &c); err != nil {
-		return ClientCredentials{}, fmt.Errorf("decode credentials: %w", err)
+	// 2. Fall back to build-time defaults
+	if DefaultClientID != "" && DefaultClientSecret != "" {
+		return ClientCredentials{
+			ClientID:     DefaultClientID,
+			ClientSecret: DefaultClientSecret,
+		}, nil
 	}
 
-	if c.ClientID == "" || c.ClientSecret == "" {
-		return ClientCredentials{}, errMissingClientID
+	// 3. Fall back to environment variables
+	envClientID := os.Getenv("GOG_CLIENT_ID")
+	envClientSecret := os.Getenv("GOG_CLIENT_SECRET")
+	if envClientID != "" && envClientSecret != "" {
+		return ClientCredentials{
+			ClientID:     envClientID,
+			ClientSecret: envClientSecret,
+		}, nil
 	}
 
-	return c, nil
+	// No credentials found
+	return ClientCredentials{}, &CredentialsMissingError{Path: path, Cause: os.ErrNotExist}
 }
 
 func ClientCredentialsExists(client string) (bool, error) {

@@ -55,6 +55,7 @@ type CLI struct {
 	People     PeopleCmd             `cmd:"" help:"Google People"`
 	Keep       KeepCmd               `cmd:"" help:"Google Keep (Workspace only)"`
 	Sheets     SheetsCmd             `cmd:"" help:"Google Sheets"`
+	Sync       SyncCmd               `cmd:"" help:"Google Drive sync"`
 	Config     ConfigCmd             `cmd:"" help:"Manage configuration"`
 	VersionCmd VersionCmd            `cmd:"" name:"version" help:"Print version"`
 	Completion CompletionCmd         `cmd:"" help:"Generate shell completion scripts"`
