@@ -42,6 +42,23 @@ build-internal:
 		-X 'github.com/steipete/gogcli/internal/config.DefaultCallbackServer=$(GOG_CALLBACK_SERVER)'" \
 		-o $(BIN) $(CMD)
 
+# Build with credentials from ~/.config/gog/credentials.env
+# Usage: make build-namastex
+build-namastex:
+	@mkdir -p $(BIN_DIR)
+	@if [ -f "$(HOME)/.config/gog/credentials.env" ]; then \
+		. $(HOME)/.config/gog/credentials.env && \
+		go build -ldflags "$(LDFLAGS) \
+			-X 'github.com/steipete/gogcli/internal/config.DefaultClientID=$${GOG_CLIENT_ID}' \
+			-X 'github.com/steipete/gogcli/internal/config.DefaultClientSecret=$${GOG_CLIENT_SECRET}' \
+			-X 'github.com/steipete/gogcli/internal/config.DefaultCallbackServer=$${GOG_CALLBACK_SERVER}'" \
+			-o $(BIN) $(CMD); \
+	else \
+		echo "❌ Missing credentials file: $(HOME)/.config/gog/credentials.env"; \
+		echo "   Run: ./scripts/setup-credentials.sh"; \
+		exit 1; \
+	fi
+
 gog: build
 	@if [ -n "$(RUN_ARGS)" ]; then \
 		$(BIN) $(RUN_ARGS); \
