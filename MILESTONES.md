@@ -114,6 +114,27 @@
 
 ---
 
+## Current Status (2026-02-06)
+
+**Core functionality complete.** Headless OAuth + Drive sync are implemented and working.
+
+**Remaining polish (deferred):**
+- Milestones 2-3: Full flow testing with mobile + callback server deployment
+- Milestones 7-9: Integration testing 
+- Milestone 10: Integration tests, perf testing, error/logging review
+
+**Known bugs (see BACKLOG.md):**
+- `sync status` doesn't detect systemd-launched daemon
+- Progress tracking shows 0 synced items
+
+**Next actions:**
+1. Fix BACKLOG bugs (low priority - cosmetic)
+2. Deploy auth callback server to gogoauth.namastex.io
+3. Test full headless flow on mobile
+4. Prepare upstream PRs (Milestone 11)
+
+---
+
 ## Notes
 
 - Always keep upstream compatibility: `git fetch upstream && git merge upstream/main`
