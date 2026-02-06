@@ -221,21 +221,21 @@ GOG_CALLBACK_SERVER=https://abc123.ngrok.io ./bin/gog auth add test@gmail.com --
 ## 6. Checklist Summary
 
 ### Prerequisites (Do First)
-- [ ] GCP Project created
-- [ ] Required APIs enabled
-- [ ] OAuth consent screen configured
-- [ ] OAuth Web client created
-- [ ] Client ID and Secret saved securely
+- [x] GCP Project created (felipe-bot / felipe-bot-485616)
+- [x] Required APIs enabled (Drive, Gmail, Calendar, People, Tasks, Sheets, Docs)
+- [x] OAuth consent screen configured (Internal, namastex.ai)
+- [x] OAuth Web client created (gog-cli-headless)
+- [x] Client ID and Secret saved securely
 
 ### Infrastructure (Before Production)
-- [ ] Callback server domain chosen (auth.yourcompany.com)
-- [ ] DNS configured
-- [ ] SSL certificate obtained
+- [x] Callback server domain chosen (gogoauth.namastex.io)
+- [x] DNS configured
+- [x] SSL certificate obtained
 - [ ] Redis instance available (or use in-memory for low-volume)
 
 ### After Milestone 2 Complete
-- [ ] Callback server deployed
-- [ ] Google OAuth redirect URI updated
+- [x] Callback server deployed (auth-server/)
+- [x] Google OAuth redirect URI updated
 - [ ] End-to-end flow tested with mobile device
 
 ### After Milestone 3 Complete
