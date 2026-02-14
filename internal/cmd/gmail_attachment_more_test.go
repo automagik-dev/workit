@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,8 @@ import (
 
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
+
+	"github.com/steipete/gogcli/internal/outfmt"
 )
 
 func TestDownloadAttachmentToPath_MissingOutPath(t *testing.T) {
@@ -91,6 +94,120 @@ func TestDownloadAttachmentToPath_EmptyData(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "d.bin")
 	if _, _, _, err := downloadAttachmentToPath(context.Background(), gsvc, "m1", "a1", path, 0); err == nil {
 		t.Fatalf("expected error")
+	}
+}
+
+func TestDownloadAttachmentToPath_DirectoryNotCached(t *testing.T) {
+	dir := t.TempDir()
+	// A directory should not be treated as a cached attachment even though
+	// os.Stat succeeds and Size() > 0 on directories.
+	srv := httptestServerForAttachment(t, base64.RawURLEncoding.EncodeToString([]byte("data")))
+	gsvc, err := gmail.NewService(context.Background(),
+		option.WithoutAuthentication(),
+		option.WithHTTPClient(srv.Client()),
+		option.WithEndpoint(srv.URL+"/"),
+	)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	outPath := filepath.Join(dir, "subdir")
+	if err := os.Mkdir(outPath, 0o700); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	// With expectedSize == -1, a directory should NOT be returned as cached.
+	// Instead it should attempt download and fail trying to write to the dir path.
+	_, _, _, dlErr := downloadAttachmentToPath(context.Background(), gsvc, "m1", "a1", outPath, -1)
+	// We expect an error because outPath is a directory and WriteFile to a dir fails.
+	if dlErr == nil {
+		t.Fatalf("expected error when outPath is a directory")
+	}
+}
+
+func TestDownloadAttachmentToPath_DirectoryNotCachedBySize(t *testing.T) {
+	dir := t.TempDir()
+	// Even with a positive expectedSize matching the directory's metadata
+	// size, a directory should not be treated as a cached file.
+	srv := httptestServerForAttachment(t, base64.RawURLEncoding.EncodeToString([]byte("data")))
+	gsvc, err := gmail.NewService(context.Background(),
+		option.WithoutAuthentication(),
+		option.WithHTTPClient(srv.Client()),
+		option.WithEndpoint(srv.URL+"/"),
+	)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+
+	// Pass the directory size as expectedSize - should NOT match because
+	// the path is a directory, not a regular file.
+	info, _ := os.Stat(dir)
+	_, cached, _, dlErr := downloadAttachmentToPath(context.Background(), gsvc, "m1", "a1", dir, info.Size())
+	// It should not return cached=true; it will try to download and fail
+	// because WriteFile to a directory fails.
+	if dlErr == nil && cached {
+		t.Fatalf("directory should not be treated as cached file")
+	}
+}
+
+func TestGmailAttachmentCmd_DryRun_OutDir_UsesName(t *testing.T) {
+	outDir := t.TempDir()
+	ctx := outfmt.WithMode(context.Background(), outfmt.Mode{JSON: true})
+
+	out := captureStdout(t, func() {
+		err := runKong(t, &GmailAttachmentCmd{}, []string{"m1", "a1", "--out", outDir, "--name", "invoice.pdf"}, ctx, &RootFlags{DryRun: true})
+		var exitErr *ExitError
+		if !errors.As(err, &exitErr) || exitErr.Code != 0 {
+			t.Fatalf("expected exit code 0, got: %v", err)
+		}
+	})
+
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%q", err, out)
+	}
+	req, ok := got["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected request object, got=%T", got["request"])
+	}
+	path, ok := req["path"].(string)
+	if !ok {
+		t.Fatalf("expected request.path string, got=%T", req["path"])
+	}
+	want := filepath.Join(outDir, "invoice.pdf")
+	if path != want {
+		t.Fatalf("unexpected path: got=%q want=%q", path, want)
+	}
+}
+
+func TestGmailAttachmentCmd_DryRun_OutDirTrailingSlash_UsesNameEvenIfMissing(t *testing.T) {
+	base := t.TempDir()
+	outDir := filepath.Join(base, "newdir") + string(os.PathSeparator)
+	ctx := outfmt.WithMode(context.Background(), outfmt.Mode{JSON: true})
+
+	out := captureStdout(t, func() {
+		err := runKong(t, &GmailAttachmentCmd{}, []string{"m1", "a1", "--out", outDir, "--name", "invoice.pdf"}, ctx, &RootFlags{DryRun: true})
+		var exitErr *ExitError
+		if !errors.As(err, &exitErr) || exitErr.Code != 0 {
+			t.Fatalf("expected exit code 0, got: %v", err)
+		}
+	})
+
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%q", err, out)
+	}
+	req, ok := got["request"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected request object, got=%T", got["request"])
+	}
+	path, ok := req["path"].(string)
+	if !ok {
+		t.Fatalf("expected request.path string, got=%T", req["path"])
+	}
+	want := filepath.Join(filepath.Join(base, "newdir"), "invoice.pdf")
+	if path != want {
+		t.Fatalf("unexpected path: got=%q want=%q", path, want)
 	}
 }
 
