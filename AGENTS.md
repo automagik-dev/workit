@@ -46,3 +46,15 @@
 
 - Never commit OAuth client credential JSON files or tokens.
 - Prefer OS keychain backends; use `GOG_KEYRING_BACKEND=file` + `GOG_KEYRING_PASSWORD` only for headless environments.
+
+
+## ⚠️ Worktree Policy (MANDATORY)
+
+**NEVER work on main for feature development.**
+
+Before ANY code work:
+1. Verify branch: `git branch --show-current` (must NOT be main)
+2. If on main → STOP → create worktree or cd to existing one
+3. THEN start editing
+
+Full policy: `/home/genie/workspace/docs/WORKTREE-RULES.md`
