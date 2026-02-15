@@ -1,25 +1,19 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"google.golang.org/api/drive/v3"
-	"google.golang.org/api/option"
 )
 
 func TestExecute_DriveMoreCommands_JSON(t *testing.T) {
 	origNew := newDriveService
 	t.Cleanup(func() { newDriveService = origNew })
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	svc, closeSrv := newDriveTestService(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		switch {
 		case strings.Contains(path, "/files") && r.Method == http.MethodGet:
@@ -67,9 +61,7 @@ func TestExecute_DriveMoreCommands_JSON(t *testing.T) {
 			return
 		case strings.Contains(path, "/files/id1") && (r.Method == http.MethodPatch || r.Method == http.MethodPut):
 			w.Header().Set("Content-Type", "application/json")
-			if got := r.URL.Query().Get("supportsAllDrives"); got != "true" {
-				t.Fatalf("expected supportsAllDrives=true, got: %q (raw=%q)", got, r.URL.RawQuery)
-			}
+			requireSupportsAllDrives(t, r)
 			if addParents := r.URL.Query().Get("addParents"); addParents != "" {
 				if addParents != "np" {
 					t.Fatalf("expected addParents=np, got: %q", r.URL.RawQuery)
@@ -85,8 +77,8 @@ func TestExecute_DriveMoreCommands_JSON(t *testing.T) {
 				})
 				return
 			}
-			body, _ := io.ReadAll(r.Body)
-			if strings.Contains(string(body), "\"trashed\":true") {
+			body := readBody(t, r)
+			if strings.Contains(body, "\"trashed\":true") {
 				_ = json.NewEncoder(w).Encode(map[string]any{
 					"id":      "id1",
 					"trashed": true,
@@ -120,17 +112,9 @@ func TestExecute_DriveMoreCommands_JSON(t *testing.T) {
 			return
 		}
 	}))
-	defer srv.Close()
+	defer closeSrv()
 
-	svc, err := drive.NewService(context.Background(),
-		option.WithoutAuthentication(),
-		option.WithHTTPClient(srv.Client()),
-		option.WithEndpoint(srv.URL+"/"),
-	)
-	if err != nil {
-		t.Fatalf("NewService: %v", err)
-	}
-	newDriveService = func(context.Context, string) (*drive.Service, error) { return svc, nil }
+	newDriveService = stubDriveService(svc)
 
 	tmpFile := filepath.Join(t.TempDir(), "upload.bin")
 	if err := os.WriteFile(tmpFile, []byte("abc"), 0o600); err != nil {
@@ -201,7 +185,7 @@ func TestExecute_DriveMoreCommands_Text(t *testing.T) {
 	origNew := newDriveService
 	t.Cleanup(func() { newDriveService = origNew })
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	svc, closeSrv := newDriveTestService(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		switch {
 		case strings.Contains(path, "/files") && r.Method == http.MethodGet:
@@ -246,11 +230,9 @@ func TestExecute_DriveMoreCommands_Text(t *testing.T) {
 			return
 		case strings.Contains(path, "/files/id1") && (r.Method == http.MethodPatch || r.Method == http.MethodPut):
 			w.Header().Set("Content-Type", "application/json")
-			if got := r.URL.Query().Get("supportsAllDrives"); got != "true" {
-				t.Fatalf("expected supportsAllDrives=true, got: %q (raw=%q)", got, r.URL.RawQuery)
-			}
-			body, _ := io.ReadAll(r.Body)
-			if strings.Contains(string(body), "\"trashed\":true") {
+			requireSupportsAllDrives(t, r)
+			body := readBody(t, r)
+			if strings.Contains(body, "\"trashed\":true") {
 				_ = json.NewEncoder(w).Encode(map[string]any{
 					"id":      "id1",
 					"trashed": true,
@@ -284,17 +266,9 @@ func TestExecute_DriveMoreCommands_Text(t *testing.T) {
 			return
 		}
 	}))
-	defer srv.Close()
+	defer closeSrv()
 
-	svc, err := drive.NewService(context.Background(),
-		option.WithoutAuthentication(),
-		option.WithHTTPClient(srv.Client()),
-		option.WithEndpoint(srv.URL+"/"),
-	)
-	if err != nil {
-		t.Fatalf("NewService: %v", err)
-	}
-	newDriveService = func(context.Context, string) (*drive.Service, error) { return svc, nil }
+	newDriveService = stubDriveService(svc)
 
 	tmpFile := filepath.Join(t.TempDir(), "upload.bin")
 	if err := os.WriteFile(tmpFile, []byte("abc"), 0o600); err != nil {
