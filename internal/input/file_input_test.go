@@ -363,8 +363,8 @@ func TestResolveFileInput_SymlinkedCWDAllowsValidFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.Chdir(linkDir); err != nil {
-		t.Fatal(err)
+	if chdirErr := os.Chdir(linkDir); chdirErr != nil {
+		t.Fatal(chdirErr)
 	}
 
 	t.Cleanup(func() { _ = os.Chdir(orig) })
