@@ -60,11 +60,12 @@ func generateInputTemplate(kctx *kong.Context) (map[string]any, error) {
 			continue
 		}
 		name := p.Name
-		if p.Required {
+		switch {
+		case p.Required:
 			template[name] = fmt.Sprintf("(required) %s", reflectTypeString(p.Target))
-		} else if p.HasDefault && p.Default != "" {
+		case p.HasDefault && p.Default != "":
 			template[name] = p.Default
-		} else {
+		default:
 			template[name] = fmt.Sprintf("<%s>", reflectTypeString(p.Target))
 		}
 	}
