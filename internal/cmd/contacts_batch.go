@@ -46,6 +46,7 @@ type batchCreateResult struct {
 const (
 	batchCreateChunkSize = 200 // People API limit per batch create request.
 	batchDeleteChunkSize = 500 // People API limit per batch delete request.
+	statusError          = "error"
 )
 
 // parseContactInputs reads and validates JSON contact input from a reader.
@@ -90,10 +91,10 @@ func (c *ContactsBatchCreateCmd) Run(ctx context.Context, flags *RootFlags) erro
 		return err
 	}
 
-	if err := dryRunExit(ctx, flags, "contacts.batch.create", map[string]any{
+	if dryErr := dryRunExit(ctx, flags, "contacts.batch.create", map[string]any{
 		"count": len(contacts),
-	}); err != nil {
-		return err
+	}); dryErr != nil {
+		return dryErr
 	}
 
 	account, err := requireAccount(flags)
@@ -148,7 +149,7 @@ func (c *ContactsBatchCreateCmd) Run(ctx context.Context, flags *RootFlags) erro
 			for j := range chunk {
 				results = append(results, batchCreateResult{
 					Index:  i + j,
-					Status: "error",
+					Status: statusError,
 					Error:  batchErr.Error(),
 				})
 			}
@@ -163,7 +164,7 @@ func (c *ContactsBatchCreateCmd) Run(ctx context.Context, flags *RootFlags) erro
 					r.Name = resp.CreatedPeople[j].Person.ResourceName
 				}
 				if resp.CreatedPeople[j].Status != nil && resp.CreatedPeople[j].Status.Code != 0 {
-					r.Status = "error"
+					r.Status = statusError
 					r.Error = resp.CreatedPeople[j].Status.Message
 				}
 			}
@@ -209,8 +210,7 @@ type ContactsBatchDeleteCmd struct {
 func (c *ContactsBatchDeleteCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
 
-	names := make([]string, len(c.ResourceNames))
-	copy(names, c.ResourceNames)
+	names := append([]string(nil), c.ResourceNames...)
 
 	// If --file provided, read from file/stdin instead.
 	if c.File != "" {
@@ -298,7 +298,7 @@ func (c *ContactsBatchDeleteCmd) Run(ctx context.Context, flags *RootFlags) erro
 			Status:     "deleted",
 		}
 		if batchErr != nil {
-			r.Status = "error"
+			r.Status = statusError
 			r.Error = batchErr.Error()
 			totalErrors += len(chunk)
 		} else {

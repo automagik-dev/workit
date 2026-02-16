@@ -117,10 +117,8 @@ func TestEnforceReadOnly_BlocksWriteCommands(t *testing.T) {
 				if !strings.Contains(err.Error(), "read-only mode") {
 					t.Fatalf("unexpected error message: %v", err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("expected %q to be allowed in read-only mode, got: %v", tt.command, err)
-				}
+			} else if err != nil {
+				t.Fatalf("expected %q to be allowed in read-only mode, got: %v", tt.command, err)
 			}
 		})
 	}
@@ -169,10 +167,8 @@ func TestEnforceReadOnly_NestedWriteCommands(t *testing.T) {
 				if !strings.Contains(err.Error(), "read-only mode") {
 					t.Fatalf("unexpected error message: %v", err)
 				}
-			} else {
-				if err != nil {
-					t.Fatalf("expected %q to be allowed in read-only mode, got: %v", tt.command, err)
-				}
+			} else if err != nil {
+				t.Fatalf("expected %q to be allowed in read-only mode, got: %v", tt.command, err)
 			}
 		})
 	}
