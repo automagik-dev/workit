@@ -12,15 +12,20 @@ import (
 // cleanup function that restores the previous CWD.
 func helperChdirTemp(t *testing.T) string {
 	t.Helper()
+
 	tmp := t.TempDir()
+
 	orig, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.Chdir(tmp); err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() { _ = os.Chdir(orig) })
+
 	return tmp
 }
 
@@ -31,6 +36,7 @@ func TestResolveFileInput_LiteralPassthrough(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if val != "hello world" {
 		t.Fatalf("expected literal passthrough, got %q", val)
 	}
@@ -43,6 +49,7 @@ func TestResolveFileInput_EmptyString(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if val != "" {
 		t.Fatalf("expected empty string, got %q", val)
 	}
@@ -89,6 +96,7 @@ func TestResolveFileInput_ReadSuccessSubdir(t *testing.T) {
 	if err := os.Mkdir(subdir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	content := "subdir content"
 	if err := os.WriteFile(filepath.Join(subdir, "file.txt"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
@@ -205,6 +213,7 @@ func TestResolveFileInput_SensitiveFileRejected(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expected error for sensitive file %q, got nil", tt.filename)
 			}
+
 			if !strings.Contains(err.Error(), "access to sensitive file blocked") {
 				t.Fatalf("expected 'access to sensitive file blocked' error for %q, got: %v", tt.filename, err)
 			}
@@ -236,6 +245,7 @@ func TestResolveFileInput_CaseInsensitiveSensitiveMatch(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expected error for sensitive file %q, got nil", tt.filename)
 			}
+
 			if !strings.Contains(err.Error(), "access to sensitive file blocked") {
 				t.Fatalf("expected 'access to sensitive file blocked' error for %q, got: %v", tt.filename, err)
 			}

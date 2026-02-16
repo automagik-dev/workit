@@ -2,10 +2,19 @@ package input
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+)
+
+// Sentinel errors for security validation.
+var (
+	errPathEscapesCWD = errors.New("file path escapes working directory")
+	errSensitiveFile  = errors.New("access to sensitive file blocked")
+	errSymlinkEscape  = errors.New("symlink target escapes working directory")
+	errFileTooLarge   = errors.New("file exceeds maximum size")
 )
 
 const (
@@ -49,6 +58,7 @@ func ResolveFileInput(value string) (string, error) {
 	if binary {
 		return base64.StdEncoding.EncodeToString(data), nil
 	}
+
 	return string(data), nil
 }
 
@@ -77,7 +87,7 @@ func readSecureFile(path string) ([]byte, error) {
 
 	// Step 3: validate within CWD subtree
 	if !isWithinDir(cleaned, cwdClean) {
-		return nil, fmt.Errorf("file path escapes working directory: %s", path)
+		return nil, fmt.Errorf("%w: %s", errPathEscapesCWD, path)
 	}
 
 	// Check sensitive file patterns before any I/O
@@ -86,45 +96,50 @@ func readSecureFile(path string) ([]byte, error) {
 		if relErr != nil {
 			relPath = path
 		}
-		return nil, fmt.Errorf("access to sensitive file blocked: %s", relPath)
+
+		return nil, fmt.Errorf("%w: %s", errSensitiveFile, relPath)
 	}
 
 	// Step 4: Lstat (no symlink follow)
 	info, err := os.Lstat(cleaned)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("lstat: %w", err)
 	}
 
 	// Step 5: if symlink, evaluate and re-check
 	if info.Mode()&os.ModeSymlink != 0 {
-		target, err := filepath.EvalSymlinks(cleaned)
-		if err != nil {
-			return nil, fmt.Errorf("resolve symlink: %w", err)
+		target, evalErr := filepath.EvalSymlinks(cleaned)
+		if evalErr != nil {
+			return nil, fmt.Errorf("resolve symlink: %w", evalErr)
 		}
+
 		target = filepath.Clean(target)
+
 		if !isWithinDir(target, cwdClean) {
-			return nil, fmt.Errorf("symlink target escapes working directory: %s", target)
+			return nil, fmt.Errorf("%w: %s", errSymlinkEscape, target)
 		}
+
 		// Re-check sensitive pattern on the resolved target
 		if isSensitiveFile(target, cwdClean) {
-			return nil, fmt.Errorf("access to sensitive file blocked: %s", path)
+			return nil, fmt.Errorf("%w: %s", errSensitiveFile, path)
 		}
+
 		// Stat the target to get size
 		info, err = os.Stat(target)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("stat symlink target: %w", err)
 		}
 	}
 
 	// Check file size
 	if info.Size() > maxFileSize {
-		return nil, fmt.Errorf("file exceeds maximum size (%d bytes > %d bytes)", info.Size(), maxFileSize)
+		return nil, fmt.Errorf("%w (%d bytes > %d bytes)", errFileTooLarge, info.Size(), maxFileSize)
 	}
 
 	// Step 6: read the file
 	data, err := os.ReadFile(cleaned)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read file: %w", err)
 	}
 
 	return data, nil
@@ -138,6 +153,7 @@ func isWithinDir(path, dir string) bool {
 	}
 	// Ensure the dir ends with separator for prefix matching
 	prefix := dir + string(filepath.Separator)
+
 	return strings.HasPrefix(path, prefix)
 }
 
