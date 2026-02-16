@@ -7,6 +7,7 @@ import (
 
 func TestApplyJQ_SimpleFieldExtraction(t *testing.T) {
 	input := `[{"name":"alice","age":25},{"name":"bob","age":35}]`
+
 	got, err := ApplyJQ([]byte(input), ".[].name")
 	if err != nil {
 		t.Fatalf("ApplyJQ: %v", err)
@@ -52,6 +53,7 @@ func TestApplyJQ_Length(t *testing.T) {
 
 func TestApplyJQ_Identity(t *testing.T) {
 	input := `{"key":"value","num":42}`
+
 	got, err := ApplyJQ([]byte(input), ".")
 	if err != nil {
 		t.Fatalf("ApplyJQ: %v", err)

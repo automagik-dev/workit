@@ -28,6 +28,7 @@ func ApplyJQ(jsonBytes []byte, expression string) ([]byte, error) {
 		if !ok {
 			break
 		}
+
 		if err, isErr := v.(error); isErr {
 			return nil, fmt.Errorf("jq error: %w", err)
 		}
@@ -36,6 +37,7 @@ func ApplyJQ(jsonBytes []byte, expression string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("marshal jq result: %w", err)
 		}
+
 		if len(results) > 0 {
 			results = append(results, '\n')
 		}

@@ -97,16 +97,20 @@ func WriteJSON(ctx context.Context, w io.Writer, v any) error {
 		if err != nil {
 			return fmt.Errorf("marshal for jq: %w", err)
 		}
+
 		result, err := ApplyJQ(b, t.JQ)
 		if err != nil {
 			return fmt.Errorf("jq: %w", err)
 		}
+
 		if _, err = w.Write(result); err != nil {
 			return fmt.Errorf("write jq result: %w", err)
 		}
+
 		if _, err = w.Write([]byte("\n")); err != nil {
 			return fmt.Errorf("write jq newline: %w", err)
 		}
+
 		return nil
 	}
 
