@@ -60,6 +60,8 @@ type JSONTransform struct {
 	// Select projects objects to only the requested fields (comma-separated; supports dot paths).
 	// When applied to a list, it projects each element.
 	Select []string
+	// JQ is a jq expression to apply after results-only and select transforms.
+	JQ string
 }
 
 type jsonTransformKey struct{}
@@ -86,6 +88,26 @@ func WriteJSON(ctx context.Context, w io.Writer, v any) error {
 			return fmt.Errorf("transform json: %w", err)
 		}
 		v = transformed
+	}
+
+	// Apply JQ filter if set.
+	if t, ok := JSONTransformFromContext(ctx); ok && t.JQ != "" {
+		// First marshal to JSON bytes.
+		b, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("marshal for jq: %w", err)
+		}
+		result, err := ApplyJQ(b, t.JQ)
+		if err != nil {
+			return fmt.Errorf("jq: %w", err)
+		}
+		if _, err = w.Write(result); err != nil {
+			return fmt.Errorf("write jq result: %w", err)
+		}
+		if _, err = w.Write([]byte("\n")); err != nil {
+			return fmt.Errorf("write jq newline: %w", err)
+		}
+		return nil
 	}
 
 	enc := json.NewEncoder(w)

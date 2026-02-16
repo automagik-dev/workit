@@ -81,6 +81,50 @@ func TestWriteJSON_ResultsOnlyAndSelect(t *testing.T) {
 	}
 }
 
+func TestWriteJSON_JQFilter(t *testing.T) {
+	ctx := WithJSONTransform(context.Background(), JSONTransform{
+		JQ: ".[].name",
+	})
+
+	var buf bytes.Buffer
+	if err := WriteJSON(ctx, &buf, []map[string]any{
+		{"name": "alice", "age": 25},
+		{"name": "bob", "age": 35},
+	}); err != nil {
+		t.Fatalf("WriteJSON: %v", err)
+	}
+
+	want := "\"alice\"\n\"bob\"\n"
+	if buf.String() != want {
+		t.Fatalf("got %q, want %q", buf.String(), want)
+	}
+}
+
+func TestWriteJSON_ResultsOnlyThenJQ(t *testing.T) {
+	// Pipeline: --results-only strips the envelope, then --jq extracts fields.
+	ctx := WithJSONTransform(context.Background(), JSONTransform{
+		ResultsOnly: true,
+		JQ:          "length",
+	})
+
+	var buf bytes.Buffer
+	if err := WriteJSON(ctx, &buf, map[string]any{
+		"files": []map[string]any{
+			{"id": "1", "name": "one"},
+			{"id": "2", "name": "two"},
+			{"id": "3", "name": "three"},
+		},
+		"nextPageToken": "tok",
+	}); err != nil {
+		t.Fatalf("WriteJSON: %v", err)
+	}
+
+	want := "3\n"
+	if buf.String() != want {
+		t.Fatalf("got %q, want %q", buf.String(), want)
+	}
+}
+
 func TestFromEnvAndParseError(t *testing.T) {
 	t.Setenv("GOG_JSON", "yes")
 	t.Setenv("GOG_PLAIN", "0")
