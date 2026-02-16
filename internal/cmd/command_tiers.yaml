@@ -1,0 +1,118 @@
+# Command tier definitions. Each top-level key is a service name,
+# each child key is a subcommand name, value is tier: core, extended, or complete.
+# Commands not listed default to "complete" tier.
+# Utility commands (auth, config, time, agent, schema, sync, version, completion) are always visible.
+gmail:
+  search: core
+  send: core
+  get: core
+  labels: extended
+  modify: extended
+  batch: extended
+  settings: complete
+  delete: complete
+  trash: complete
+  untrash: complete
+drive:
+  ls: core
+  search: core
+  download: core
+  upload: core
+  get: core
+  cat: core
+  mkdir: extended
+  mv: extended
+  rm: extended
+  cp: extended
+  share: extended
+  permissions: complete
+calendar:
+  ls: core
+  get: core
+  create: extended
+  update: extended
+  delete: extended
+docs:
+  get: core
+  export: core
+  create: extended
+  update: extended
+  write: extended
+  insert: extended
+  comments: extended
+slides:
+  get: core
+  export: core
+  create: extended
+sheets:
+  get: core
+  metadata: core
+  export: core
+  update: extended
+  append: extended
+  create: extended
+  clear: extended
+  format: complete
+  notes: complete
+  copy: complete
+contacts:
+  list: core
+  get: core
+  search: core
+  create: extended
+  update: extended
+  delete: extended
+  batch: complete
+tasks:
+  lists: core
+  list: core
+  get: core
+  add: extended
+  update: extended
+  done: extended
+  undo: extended
+  delete: extended
+  clear: complete
+chat:
+  spaces: core
+  messages: core
+  members: core
+  dm: extended
+people:
+  me: core
+  get: core
+  search: extended
+  relations: complete
+groups:
+  list: core
+  get: core
+  members: extended
+  memberships: extended
+keep:
+  list: core
+  get: core
+  search: extended
+  attachment: extended
+forms:
+  get: core
+  responses: core
+  create: extended
+appscript:
+  get: core
+  content: core
+  run: extended
+  create: extended
+classroom:
+  courses: core
+  students: extended
+  teachers: extended
+  roster: extended
+  coursework: extended
+  materials: extended
+  submissions: extended
+  announcements: complete
+  topics: complete
+  invitations: complete
+  guardians: complete
+  guardian-invitations: complete
+  profile: complete

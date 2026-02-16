@@ -32,12 +32,14 @@ type RootFlags struct {
 	Account        string `help:"Account email for API commands (gmail/calendar/chat/classroom/drive/docs/slides/contacts/tasks/people/sheets/forms/appscript)" aliases:"acct" short:"a"`
 	Client         string `help:"OAuth client name (selects stored credentials + token bucket)" default:"${client}"`
 	EnableCommands string `help:"Comma-separated list of enabled top-level commands (restricts CLI)" default:"${enabled_commands}"`
+	CommandTier    string `name:"command-tier" help:"Command visibility tier: core|extended|complete (default: complete)" default:"${command_tier}" enum:"core,extended,complete"`
 	JSON           bool   `help:"Output JSON to stdout (best for scripting)" default:"${json}" aliases:"machine" short:"j"`
 	Plain          bool   `help:"Output stable, parseable text to stdout (TSV; no colors)" default:"${plain}" aliases:"tsv" short:"p"`
 	ResultsOnly    bool   `name:"results-only" help:"In JSON mode, emit only the primary result (drops envelope fields like nextPageToken)"`
 	Select         string `name:"select" aliases:"pick,project" help:"In JSON mode, select comma-separated fields (best-effort; supports dot paths). Desire path: use --fields for most commands."`
 	DryRun         bool   `help:"Do not make changes; print intended actions and exit successfully" aliases:"noop,preview,dryrun" short:"n"`
 	Force          bool   `help:"Skip confirmations for destructive commands" aliases:"yes,assume-yes" short:"y"`
+	ReadOnly       bool   `name:"read-only" help:"Hide write commands and request read-only OAuth scopes" default:"${read_only}"`
 	NoInput        bool   `help:"Never prompt; fail instead (useful for CI)" aliases:"non-interactive,noninteractive"`
 	Verbose        bool   `help:"Enable verbose logging" short:"v"`
 }
@@ -119,6 +121,16 @@ func Execute(args []string) (err error) {
 	}
 
 	if err = enforceEnabledCommands(kctx, cli.EnableCommands); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(err))
+		return err
+	}
+
+	if err = enforceCommandTier(kctx, cli.CommandTier); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(err))
+		return err
+	}
+
+	if err = enforceReadOnly(kctx, cli.ReadOnly); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(err))
 		return err
 	}
@@ -255,7 +267,7 @@ func isCalendarEventsCommand(args []string) bool {
 
 func globalFlagTakesValue(flag string) bool {
 	switch flag {
-	case "--color", "--account", "--acct", "--client", "--enable-commands", "--select", "--pick", "--project", "-a":
+	case "--color", "--account", "--acct", "--client", "--enable-commands", "--command-tier", "--select", "--pick", "--project", "-a":
 		return true
 	default:
 		return false
@@ -302,6 +314,8 @@ func newParser(description string) (*kong.Kong, *CLI, error) {
 		"calendar_weekday": envOr("GOG_CALENDAR_WEEKDAY", "false"),
 		"client":           envOr("GOG_CLIENT", ""),
 		"enabled_commands": envOr("GOG_ENABLE_COMMANDS", ""),
+		"command_tier":     envOr("GOG_COMMAND_TIER", "complete"),
+		"read_only":        boolString(envBool("GOG_READ_ONLY")),
 		"json":             boolString(envMode.JSON),
 		"plain":            boolString(envMode.Plain),
 		"version":          VersionString(),
