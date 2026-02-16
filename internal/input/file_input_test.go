@@ -67,6 +67,7 @@ func TestResolveFileInput_ReadSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if val != content {
 		t.Fatalf("expected %q, got %q", content, val)
 	}
@@ -84,6 +85,7 @@ func TestResolveFileInput_ReadSuccessAbsolutePath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if val != content {
 		t.Fatalf("expected %q, got %q", content, val)
 	}
@@ -106,6 +108,7 @@ func TestResolveFileInput_ReadSuccessSubdir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if val != content {
 		t.Fatalf("expected %q, got %q", content, val)
 	}
@@ -118,6 +121,7 @@ func TestResolveFileInput_PathTraversalBlocked(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for path traversal, got nil")
 	}
+
 	if !strings.Contains(err.Error(), "escapes working directory") {
 		t.Fatalf("expected 'escapes working directory' error, got: %v", err)
 	}
@@ -141,6 +145,7 @@ func TestResolveFileInput_SymlinkWithinCWDAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error for symlink within CWD: %v", err)
 	}
+
 	if val != content {
 		t.Fatalf("expected %q, got %q", content, val)
 	}
@@ -164,6 +169,7 @@ func TestResolveFileInput_SymlinkOutsideCWDRejected(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for symlink outside CWD, got nil")
 	}
+
 	if !strings.Contains(err.Error(), "symlink target escapes working directory") {
 		t.Fatalf("expected 'symlink target escapes working directory' error, got: %v", err)
 	}
@@ -266,6 +272,7 @@ func TestResolveFileInput_SizeLimitExceeded(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for oversized file, got nil")
 	}
+
 	if !strings.Contains(err.Error(), "exceeds maximum size") {
 		t.Fatalf("expected 'exceeds maximum size' error, got: %v", err)
 	}
@@ -312,6 +319,7 @@ func TestResolveFileInput_NonSensitiveFileAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if val != "ok" {
 		t.Fatalf("expected 'ok', got %q", val)
 	}
