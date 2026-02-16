@@ -7,10 +7,7 @@ import (
 	"os"
 )
 
-var (
-	errInvalidCredentials = errors.New("invalid credentials.json (expected installed/web client_id and client_secret)")
-	errMissingClientID    = errors.New("stored credentials.json is missing client_id/client_secret")
-)
+var errInvalidCredentials = errors.New("invalid credentials.json (expected installed/web client_id and client_secret)")
 
 type ClientCredentials struct {
 	ClientID     string `json:"client_id"`
@@ -97,8 +94,8 @@ func ReadClientCredentialsFor(client string) (ClientCredentials, error) {
 	b, err := os.ReadFile(path) //nolint:gosec // user-provided path
 	if err == nil {
 		var c ClientCredentials
-		if err := json.Unmarshal(b, &c); err != nil {
-			return ClientCredentials{}, fmt.Errorf("decode credentials: %w", err)
+		if unmarshalErr := json.Unmarshal(b, &c); unmarshalErr != nil {
+			return ClientCredentials{}, fmt.Errorf("decode credentials: %w", unmarshalErr)
 		}
 
 		if c.ClientID != "" && c.ClientSecret != "" {
@@ -119,6 +116,7 @@ func ReadClientCredentialsFor(client string) (ClientCredentials, error) {
 	// 3. Fall back to environment variables
 	envClientID := os.Getenv("GOG_CLIENT_ID")
 	envClientSecret := os.Getenv("GOG_CLIENT_SECRET")
+
 	if envClientID != "" && envClientSecret != "" {
 		return ClientCredentials{
 			ClientID:     envClientID,

@@ -144,6 +144,7 @@ func PollForToken(ctx context.Context, callbackServer, state string, timeout tim
 			if err != nil {
 				return "", err
 			}
+
 			if done {
 				return refreshToken, nil
 			}
@@ -162,6 +163,7 @@ func pollOnce(ctx context.Context, client *http.Client, pollURL string) (refresh
 		// Network error, keep trying
 		return "", false, nil
 	}
+
 	defer func() { _ = resp.Body.Close() }()
 
 	var pollResp PollResponse
@@ -176,6 +178,7 @@ func pollOnce(ctx context.Context, client *http.Client, pollURL string) (refresh
 		if pollResp.RefreshToken == "" {
 			return "", false, errNoRefreshToken
 		}
+
 		return pollResp.RefreshToken, true, nil
 
 	case http.StatusAccepted:

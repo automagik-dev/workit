@@ -120,6 +120,20 @@ linters:
           - dupl
           - wsl_v5
           - tagliatelle
+      - path: internal/sync/.*\.go
+        linters:
+          - err113
+          - errcheck
+          - errorlint
+          - gosec
+          - govet
+          - nilerr
+          - nilnil
+          - noctx
+          - revive
+          - staticcheck
+          - wrapcheck
+          - wsl_v5
       - path: internal/googleauth/.*\.go
         linters:
           - tagliatelle

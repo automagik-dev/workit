@@ -301,7 +301,7 @@ func (c *SyncStartCmd) Run(ctx context.Context, flags *RootFlags) error {
 		if err := sync.WritePIDFile(); err != nil {
 			return fmt.Errorf("write PID file: %w", err)
 		}
-		defer sync.RemovePIDFile()
+		defer func() { _ = sync.RemovePIDFile() }()
 	}
 
 	db, err := sync.OpenDB()

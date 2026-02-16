@@ -709,13 +709,13 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 
 	// Output the auth info
 	if outfmt.IsJSON(ctx) {
-		if err := outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+		if writeErr := outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 			"auth_url":   info.AuthURL,
 			"state":      info.State,
 			"poll_url":   info.PollURL,
 			"expires_in": info.ExpiresIn,
-		}); err != nil {
-			return err
+		}); writeErr != nil {
+			return writeErr
 		}
 	} else {
 		u.Err().Println("Visit this URL to authorize:")
