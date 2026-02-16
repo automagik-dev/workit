@@ -66,7 +66,7 @@ func (c *SyncInitCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(os.Stdout, map[string]any{
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 			"config":  cfg,
 			"created": true,
 		})
@@ -100,7 +100,7 @@ func (c *SyncListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(os.Stdout, map[string]any{
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 			"configs": configs,
 			"count":   len(configs),
 		})
@@ -167,7 +167,7 @@ func (c *SyncRemoveCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(os.Stdout, map[string]any{
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 			"removed":    true,
 			"local_path": cfg.LocalPath,
 		})
@@ -211,7 +211,7 @@ func (c *SyncStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
 			}
 		}
 
-		return outfmt.WriteJSON(os.Stdout, result)
+		return outfmt.WriteJSON(ctx, os.Stdout, result)
 	}
 
 	// Print daemon status
@@ -284,7 +284,7 @@ func (c *SyncStartCmd) Run(ctx context.Context, flags *RootFlags) error {
 		}
 
 		if outfmt.IsJSON(ctx) {
-			return outfmt.WriteJSON(os.Stdout, map[string]any{
+			return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 				"started": true,
 				"pid":     pid,
 			})
@@ -360,7 +360,7 @@ func (c *SyncStopCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	if !status.Running {
 		if outfmt.IsJSON(ctx) {
-			return outfmt.WriteJSON(os.Stdout, map[string]any{
+			return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 				"stopped": false,
 				"error":   "daemon not running",
 			})
@@ -378,7 +378,7 @@ func (c *SyncStopCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(os.Stdout, map[string]any{
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 			"stopped": true,
 			"pid":     pid,
 		})
