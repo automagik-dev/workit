@@ -97,6 +97,7 @@ func WriteJSON(ctx context.Context, w io.Writer, v any) error {
 		if IsFieldDiscovery("", t.SelectExplicit) && len(t.Select) == 0 && t.FieldDiscoveryWriter != nil {
 			fields := DiscoverFields(v)
 			PrintFieldDiscovery(t.FieldDiscoveryWriter, fields, "")
+
 			return nil
 		}
 

@@ -164,17 +164,6 @@ func generateInputTemplateFromNode(node *kong.Node) (map[string]any, error) {
 	return template, nil
 }
 
-func printGenerateInput(kctx *kong.Context) error {
-	template, err := generateInputTemplate(kctx)
-	if err != nil {
-		return err
-	}
-
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	return enc.Encode(template)
-}
-
 // printGenerateInputFromNode prints the input template for a command node
 // without requiring a fully parsed kong.Context.
 func printGenerateInputFromNode(node *kong.Node) error {

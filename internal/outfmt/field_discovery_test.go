@@ -167,6 +167,7 @@ func TestFieldDiscovery_MapStringAny(t *testing.T) {
 
 func TestFieldDiscovery_EmptyMap(t *testing.T) {
 	m := map[string]any{}
+
 	got := DiscoverFields(m)
 	if len(got) != 0 {
 		t.Fatalf("expected 0 fields for empty map, got %d: %v", len(got), got)

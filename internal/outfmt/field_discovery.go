@@ -29,11 +29,15 @@ func DiscoverFields(v any) []string {
 		for val.Kind() == reflect.Ptr {
 			val = val.Elem()
 		}
+
 		keys := make([]string, 0, val.Len())
+
 		for _, k := range val.MapKeys() {
 			keys = append(keys, fmt.Sprintf("%v", k.Interface()))
 		}
+
 		sort.Strings(keys)
+
 		return keys
 	}
 
