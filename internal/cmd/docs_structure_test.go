@@ -519,6 +519,54 @@ func TestDocsStructure_Text(t *testing.T) {
 	}
 }
 
+func TestParagraphContentSummary_PreservesRawContent(t *testing.T) {
+	t.Parallel()
+
+	p := &docs.Paragraph{
+		Elements: []*docs.ParagraphElement{
+			{TextRun: &docs.TextRun{Content: "hello\tworld"}},
+		},
+	}
+
+	// paragraphContentSummary returns raw content; sanitization happens at TSV output.
+	got := paragraphContentSummary(p)
+	if got != "hello\tworld" {
+		t.Fatalf("expected raw content preserved, got %q", got)
+	}
+
+	// sanitizeTSVField cleans it for TSV output.
+	sanitized := sanitizeTSVField(got)
+	if sanitized != "hello world" {
+		t.Fatalf("expected sanitized output, got %q", sanitized)
+	}
+}
+
+func TestSanitizeTSVField(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "no special chars", in: "hello", want: "hello"},
+		{name: "tab replaced", in: "a\tb", want: "a b"},
+		{name: "newline escaped", in: "a\nb", want: `a\nb`},
+		{name: "carriage return escaped", in: "a\rb", want: `a\rb`},
+		{name: "multiple", in: "a\tb\nc\rd", want: `a b\nc\rd`},
+		{name: "empty string", in: "", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := sanitizeTSVField(tt.in); got != tt.want {
+				t.Fatalf("sanitizeTSVField(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDocsStructure_EmptyDocID(t *testing.T) {
 	flags := &RootFlags{Account: "a@b.com"}
 	u, _ := ui.New(ui.Options{Stdout: io.Discard, Stderr: io.Discard, Color: "never"})

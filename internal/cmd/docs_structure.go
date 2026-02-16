@@ -75,7 +75,8 @@ func (c *DocsStructureCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u.Out().Printf("TYPE\tSTART\tEND\tSTYLE\tCONTENT")
 	for _, el := range elements {
 		u.Out().Printf("%s\t%d\t%d\t%s\t%s",
-			el.Type, el.StartIndex, el.EndIndex, el.Style, el.ContentSummary)
+			el.Type, el.StartIndex, el.EndIndex,
+			sanitizeTSVField(el.Style), sanitizeTSVField(el.ContentSummary))
 	}
 	return nil
 }
@@ -130,6 +131,15 @@ func classifyStructuralElement(el *docs.StructuralElement) DocElement {
 	}
 
 	return elem
+}
+
+// sanitizeTSVField replaces tab characters with spaces and escapes newlines/carriage
+// returns so the value stays within a single TSV column.
+func sanitizeTSVField(s string) string {
+	s = strings.ReplaceAll(s, "\t", " ")
+	s = strings.ReplaceAll(s, "\r", `\r`)
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	return s
 }
 
 // paragraphContentSummary extracts the first ~80 characters of text from a paragraph.
