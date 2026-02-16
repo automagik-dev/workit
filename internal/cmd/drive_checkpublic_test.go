@@ -274,6 +274,81 @@ func TestDriveCheckPublicCmd_EmptyFileID(t *testing.T) {
 	}
 }
 
+func TestDriveCheckPublicCmd_PaginatedPermissions_JSON(t *testing.T) {
+	origNew := newDriveService
+	t.Cleanup(func() { newDriveService = origNew })
+
+	srv := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/files/filepag/permissions") {
+			w.Header().Set("Content-Type", "application/json")
+			pageToken := r.URL.Query().Get("pageToken")
+			if pageToken == "" {
+				// First page: only user permissions, with a nextPageToken.
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"permissions": []map[string]any{
+						{"id": "perm1", "type": "user", "role": "owner", "emailAddress": "owner@example.com"},
+					},
+					"nextPageToken": "page2",
+				})
+			} else if pageToken == "page2" {
+				// Second page: contains an "anyone" permission.
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"permissions": []map[string]any{
+						{"id": "perm2", "type": "anyone", "role": "reader"},
+					},
+				})
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+		http.NotFound(w, r)
+	})
+	defer srv.Close()
+
+	svc, err := drive.NewService(context.Background(),
+		option.WithoutAuthentication(),
+		option.WithHTTPClient(srv.Client()),
+		option.WithEndpoint(srv.URL+"/"),
+	)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+	newDriveService = func(context.Context, string) (*drive.Service, error) { return svc, nil }
+
+	flags := &RootFlags{Account: "test@example.com"}
+	ctx := outfmt.WithMode(context.Background(), outfmt.Mode{JSON: true})
+	u, err := ui.New(ui.Options{Stdout: io.Discard, Stderr: io.Discard, Color: "never"})
+	if err != nil {
+		t.Fatalf("ui.New: %v", err)
+	}
+	ctx = ui.WithUI(ctx, u)
+
+	out := captureStdout(t, func() {
+		cmd := &DriveCheckPublicCmd{}
+		if execErr := runKong(t, cmd, []string{"filepag"}, ctx, flags); execErr != nil {
+			t.Fatalf("execute: %v", execErr)
+		}
+	})
+
+	var parsed struct {
+		Public     bool              `json:"public"`
+		Permission *drive.Permission `json:"permission"`
+	}
+	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
+		t.Fatalf("json parse: %v\nout=%q", err, out)
+	}
+	if !parsed.Public {
+		t.Fatalf("expected public=true after pagination, got false")
+	}
+	if parsed.Permission == nil {
+		t.Fatalf("expected permission to be set")
+	}
+	if parsed.Permission.Type != "anyone" {
+		t.Fatalf("expected permission type=anyone, got %q", parsed.Permission.Type)
+	}
+}
+
 // newTestServer creates an httptest.Server from a handler function.
 func newTestServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
 	t.Helper()

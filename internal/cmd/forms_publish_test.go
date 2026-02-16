@@ -23,7 +23,7 @@ func TestExecute_FormsPublish_JSON(t *testing.T) {
 	})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !(strings.Contains(r.URL.Path, "/forms/form123:setPublishSettings") && r.Method == http.MethodPost) {
+		if !(strings.Contains(r.URL.Path, "/v1/forms/form123:setPublishSettings") && r.Method == http.MethodPost) {
 			t.Logf("unexpected request: %s %s", r.Method, r.URL.Path)
 			http.NotFound(w, r)
 			return
@@ -103,7 +103,7 @@ func TestExecute_FormsPublish_RequireAuth_JSON(t *testing.T) {
 	})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !(strings.Contains(r.URL.Path, "/forms/form123:setPublishSettings") && r.Method == http.MethodPost) {
+		if !(strings.Contains(r.URL.Path, "/v1/forms/form123:setPublishSettings") && r.Method == http.MethodPost) {
 			t.Logf("unexpected request: %s %s", r.Method, r.URL.Path)
 			http.NotFound(w, r)
 			return
@@ -181,7 +181,7 @@ func TestExecute_FormsPublish_Text(t *testing.T) {
 	})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !(strings.Contains(r.URL.Path, "/forms/form123:setPublishSettings") && r.Method == http.MethodPost) {
+		if !(strings.Contains(r.URL.Path, "/v1/forms/form123:setPublishSettings") && r.Method == http.MethodPost) {
 			http.NotFound(w, r)
 			return
 		}
@@ -294,7 +294,7 @@ func makeTestFormsSetPublishSettings(srv *httptest.Server) func(ctx context.Cont
 		}
 		data, _ := json.Marshal(body)
 
-		endpoint := srv.URL + "/forms/" + formID + ":setPublishSettings"
+		endpoint := srv.URL + "/v1/forms/" + formID + ":setPublishSettings"
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(data)))
 		if err != nil {
 			return nil, err

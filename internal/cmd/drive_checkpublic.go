@@ -31,30 +31,42 @@ func (c *DriveCheckPublicCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
-	resp, err := svc.Permissions.List(fileID).
-		SupportsAllDrives(true).
-		Fields("permissions(id,type,role,emailAddress,domain)").
-		Context(ctx).
-		Do()
-	if err != nil {
-		return err
-	}
-
-	// Check if any permission grants public or domain-wide access.
-	for _, p := range resp.Permissions {
-		if p.Type == "anyone" || p.Type == "domain" {
-			if outfmt.IsJSON(ctx) {
-				return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-					"public":     true,
-					"permission": p,
-				})
-			}
-			return writeResult(ctx, u,
-				kv("public", true),
-				kv("type", p.Type),
-				kv("role", p.Role),
-			)
+	pageToken := ""
+	for {
+		call := svc.Permissions.List(fileID).
+			SupportsAllDrives(true).
+			Fields("permissions(id,type,role,emailAddress,domain),nextPageToken").
+			Context(ctx)
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
 		}
+
+		resp, err := call.Do()
+		if err != nil {
+			return err
+		}
+
+		// Check if any permission grants public or domain-wide access.
+		for _, p := range resp.Permissions {
+			if p.Type == "anyone" || p.Type == "domain" {
+				if outfmt.IsJSON(ctx) {
+					return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+						"public":     true,
+						"permission": p,
+					})
+				}
+				return writeResult(ctx, u,
+					kv("public", true),
+					kv("type", p.Type),
+					kv("role", p.Role),
+				)
+			}
+		}
+
+		if resp.NextPageToken == "" {
+			break
+		}
+		pageToken = resp.NextPageToken
 	}
 
 	// No public permissions found.

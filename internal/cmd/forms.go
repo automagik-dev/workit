@@ -55,7 +55,7 @@ func defaultFormsSetPublishSettings(ctx context.Context, svc *formsapi.Service, 
 		return nil, fmt.Errorf("marshal publish settings: %w", err)
 	}
 
-	endpoint := strings.TrimRight(svc.BasePath, "/") + "/forms/" + formID + ":setPublishSettings"
+	endpoint := strings.TrimRight(svc.BasePath, "/") + "/v1/forms/" + formID + ":setPublishSettings"
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
