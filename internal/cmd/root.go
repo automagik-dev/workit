@@ -171,10 +171,13 @@ func Execute(args []string) (err error) {
 
 	ctx := context.Background()
 	ctx = outfmt.WithMode(ctx, mode)
+	selectExplicit := outfmt.SelectFlagExplicitlySet(args)
 	ctx = outfmt.WithJSONTransform(ctx, outfmt.JSONTransform{
-		ResultsOnly: cli.ResultsOnly,
-		Select:      splitCommaList(cli.Select),
-		JQ:          cli.JQ,
+		ResultsOnly:          cli.ResultsOnly,
+		Select:               splitCommaList(cli.Select),
+		JQ:                   cli.JQ,
+		SelectExplicit:       selectExplicit,
+		FieldDiscoveryWriter: os.Stderr,
 	})
 	ctx = authclient.WithClient(ctx, cli.Client)
 

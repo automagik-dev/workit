@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/alecthomas/kong"
@@ -41,7 +42,7 @@ func generateInputTemplate(kctx *kong.Context) (map[string]any, error) {
 			case f.Required:
 				value = fmt.Sprintf("(required) %s", typeName)
 			case f.HasDefault && f.Default != "":
-				value = f.Default
+				value = parseDefaultTyped(f.Default, typeName)
 			case typeName == "bool":
 				value = false
 			case typeName == "int" || typeName == "int64":
@@ -60,17 +61,44 @@ func generateInputTemplate(kctx *kong.Context) (map[string]any, error) {
 			continue
 		}
 		name := p.Name
+		typeName := reflectTypeString(p.Target)
 		switch {
 		case p.Required:
-			template[name] = fmt.Sprintf("(required) %s", reflectTypeString(p.Target))
+			template[name] = fmt.Sprintf("(required) %s", typeName)
 		case p.HasDefault && p.Default != "":
-			template[name] = p.Default
+			template[name] = parseDefaultTyped(p.Default, typeName)
 		default:
-			template[name] = fmt.Sprintf("<%s>", reflectTypeString(p.Target))
+			template[name] = fmt.Sprintf("<%s>", typeName)
 		}
 	}
 
 	return template, nil
+}
+
+// parseDefaultTyped converts a string default value to its native Go type based
+// on the reflected type name. This ensures JSON output has typed values (e.g.
+// integers as numbers, bools as booleans) instead of everything being a string.
+func parseDefaultTyped(defaultVal, typeName string) any {
+	switch typeName {
+	case "bool":
+		if b, err := strconv.ParseBool(defaultVal); err == nil {
+			return b
+		}
+	case "int":
+		if n, err := strconv.Atoi(defaultVal); err == nil {
+			return n
+		}
+	case "int64":
+		if n, err := strconv.ParseInt(defaultVal, 10, 64); err == nil {
+			return n
+		}
+	case "float64":
+		if f, err := strconv.ParseFloat(defaultVal, 64); err == nil {
+			return f
+		}
+	}
+	// Fall back to string for types we cannot parse or on parse error.
+	return defaultVal
 }
 
 func printGenerateInput(kctx *kong.Context) error {

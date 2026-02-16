@@ -62,6 +62,14 @@ type JSONTransform struct {
 	Select []string
 	// JQ is a jq expression to apply after results-only and select transforms.
 	JQ string
+	// SelectExplicit indicates that --select was explicitly passed by the user
+	// (as opposed to being absent). When true and Select is empty, field
+	// discovery mode is triggered: available field names are printed to
+	// FieldDiscoveryWriter and the command output is still written normally.
+	SelectExplicit bool
+	// FieldDiscoveryWriter is the writer for field discovery output (typically
+	// os.Stderr). When nil and field discovery is triggered, discovery is skipped.
+	FieldDiscoveryWriter io.Writer
 }
 
 type jsonTransformKey struct{}
@@ -82,12 +90,20 @@ func JSONTransformFromContext(ctx context.Context) (JSONTransform, bool) {
 }
 
 func WriteJSON(ctx context.Context, w io.Writer, v any) error {
-	if t, ok := JSONTransformFromContext(ctx); ok && (t.ResultsOnly || len(t.Select) > 0) {
-		transformed, err := applyJSONTransform(v, t)
-		if err != nil {
-			return fmt.Errorf("transform json: %w", err)
+	if t, ok := JSONTransformFromContext(ctx); ok {
+		// Field discovery: --select was explicitly set to "" (empty).
+		if IsFieldDiscovery("", t.SelectExplicit) && len(t.Select) == 0 && t.FieldDiscoveryWriter != nil {
+			fields := DiscoverFields(v)
+			PrintFieldDiscovery(t.FieldDiscoveryWriter, fields, "")
 		}
-		v = transformed
+
+		if t.ResultsOnly || len(t.Select) > 0 {
+			transformed, err := applyJSONTransform(v, t)
+			if err != nil {
+				return fmt.Errorf("transform json: %w", err)
+			}
+			v = transformed
+		}
 	}
 
 	// Apply JQ filter if set.

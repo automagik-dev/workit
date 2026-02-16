@@ -145,3 +145,64 @@ func TestFromContext_WrongType(t *testing.T) {
 		t.Fatalf("expected zero mode, got %#v", got)
 	}
 }
+
+type fieldDiscoverySample struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+}
+
+func TestWriteJSON_FieldDiscovery(t *testing.T) {
+	// When SelectExplicit is true and Select is empty, WriteJSON should write
+	// field names to the FieldDiscoveryWriter instead of just passing data through.
+	var stderrBuf bytes.Buffer
+	ctx := WithJSONTransform(context.Background(), JSONTransform{
+		SelectExplicit:       true,
+		Select:               nil,
+		FieldDiscoveryWriter: &stderrBuf,
+	})
+
+	var stdoutBuf bytes.Buffer
+
+	err := WriteJSON(ctx, &stdoutBuf, fieldDiscoverySample{ID: "1", Name: "test", Size: 42})
+	if err != nil {
+		t.Fatalf("WriteJSON: %v", err)
+	}
+
+	// Field discovery output should go to stderr (the FieldDiscoveryWriter).
+	output := stderrBuf.String()
+
+	if !bytes.Contains(stderrBuf.Bytes(), []byte("Available fields:")) {
+		t.Fatalf("expected field discovery output on FieldDiscoveryWriter, got %q", output)
+	}
+
+	if !bytes.Contains(stderrBuf.Bytes(), []byte("id")) {
+		t.Fatalf("expected 'id' in discovered fields, got %q", output)
+	}
+
+	if !bytes.Contains(stderrBuf.Bytes(), []byte("name")) {
+		t.Fatalf("expected 'name' in discovered fields, got %q", output)
+	}
+}
+
+func TestWriteJSON_FieldDiscovery_NotTriggeredWhenSelectHasValues(t *testing.T) {
+	// When Select has values, field discovery should NOT be triggered even if SelectExplicit is true.
+	var stderrBuf bytes.Buffer
+	ctx := WithJSONTransform(context.Background(), JSONTransform{
+		SelectExplicit:       true,
+		Select:               []string{"id"},
+		FieldDiscoveryWriter: &stderrBuf,
+	})
+
+	var stdoutBuf bytes.Buffer
+
+	err := WriteJSON(ctx, &stdoutBuf, fieldDiscoverySample{ID: "1", Name: "test", Size: 42})
+	if err != nil {
+		t.Fatalf("WriteJSON: %v", err)
+	}
+
+	// Should NOT have field discovery output; should have normal JSON select output.
+	if stderrBuf.Len() > 0 {
+		t.Fatalf("expected no field discovery output when Select has values, got %q", stderrBuf.String())
+	}
+}

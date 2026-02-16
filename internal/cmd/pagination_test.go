@@ -13,11 +13,13 @@ func TestPaginationApply_GlobalMaxWhenPerCommandZero(t *testing.T) {
 	}
 }
 
-func TestPaginationApply_PerCommandMaxTakesPrecedence(t *testing.T) {
+func TestPaginationApply_GlobalMaxWinsOverPerCommandDefault(t *testing.T) {
+	// When user passes --max-results 25, it should override per-command defaults
+	// (e.g. drive ls default of 20). Global flag takes precedence when set.
 	flags := &RootFlags{MaxResults: 25}
 	maxResults, pageToken := applyPagination(flags, 10, "")
-	if maxResults != 10 {
-		t.Fatalf("expected maxResults=10 (per-command wins), got %d", maxResults)
+	if maxResults != 25 {
+		t.Fatalf("expected maxResults=25 (global --max-results wins when set), got %d", maxResults)
 	}
 	if pageToken != "" {
 		t.Fatalf("expected empty pageToken, got %q", pageToken)
@@ -57,14 +59,35 @@ func TestPaginationApply_BothZeroEmpty_ReturnsDefaults(t *testing.T) {
 	}
 }
 
-func TestPaginationApply_BothSet_PerCommandWins(t *testing.T) {
+func TestPaginationApply_BothSet_GlobalMaxWins_PerCmdPageWins(t *testing.T) {
+	// Global --max-results takes priority over per-command max (which is typically
+	// a default, not explicitly set by the user). Per-command page token still wins.
 	flags := &RootFlags{MaxResults: 50, PageToken: "global-tok"}
 	maxResults, pageToken := applyPagination(flags, 5, "cmd-tok")
-	if maxResults != 5 {
-		t.Fatalf("expected maxResults=5, got %d", maxResults)
+	if maxResults != 50 {
+		t.Fatalf("expected maxResults=50 (global wins), got %d", maxResults)
 	}
 	if pageToken != "cmd-tok" {
-		t.Fatalf("expected pageToken=%q, got %q", "cmd-tok", pageToken)
+		t.Fatalf("expected pageToken=%q (per-command wins), got %q", "cmd-tok", pageToken)
+	}
+}
+
+func TestPaginationApply_PerCommandMax_UsedAsFallback(t *testing.T) {
+	// When global --max-results is 0 (not set), per-command max is used as fallback.
+	flags := &RootFlags{MaxResults: 0}
+	maxResults, _ := applyPagination(flags, 20, "")
+	if maxResults != 20 {
+		t.Fatalf("expected maxResults=20 (per-command fallback), got %d", maxResults)
+	}
+}
+
+func TestPaginationApply_NilFlags_PerCommandFallback(t *testing.T) {
+	maxResults, pageToken := applyPagination(nil, 20, "tok")
+	if maxResults != 20 {
+		t.Fatalf("expected maxResults=20 (per-command fallback), got %d", maxResults)
+	}
+	if pageToken != "tok" {
+		t.Fatalf("expected pageToken=%q, got %q", "tok", pageToken)
 	}
 }
 

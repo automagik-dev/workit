@@ -33,12 +33,20 @@ var ServicePaginationParams = map[string]PaginationParamInfo{
 	"Keep":      {MaxResultsParam: "pageSize", PageTokenParam: "pageToken"},
 }
 
-// applyPagination resolves the effective maxResults and pageToken by applying
-// the precedence rule (DEC-7): per-command flags win over global flags.
+// applyPagination resolves the effective maxResults and pageToken.
+//
+// For maxResults, the global --max-results flag takes priority when set (> 0),
+// because per-command --max/--limit values are typically non-zero defaults (e.g.
+// drive ls defaults to 20). Without this precedence, a user passing
+// `--max-results 100` would always be silently overridden by the command default.
+// The per-command value is used as a fallback when the global flag is not set.
+//
+// For pageToken, per-command flags take precedence when non-empty (the global
+// default is "", so any per-command value is intentional).
 //
 // Parameters:
 //   - flags: the global RootFlags (carries --max-results and --page-token)
-//   - perCommandMax: the per-command --max/--limit value (0 means not explicitly set)
+//   - perCommandMax: the per-command --max/--limit value (used as fallback)
 //   - perCommandPage: the per-command --page/--cursor value ("" means not set)
 //
 // Returns the resolved (maxResults, pageToken) pair.
@@ -48,11 +56,12 @@ var ServicePaginationParams = map[string]PaginationParamInfo{
 // across multiple pages should omit --results-only.
 func applyPagination(flags *RootFlags, perCommandMax int64, perCommandPage string) (maxResults int64, pageToken string) {
 	// --- max results ---
-	// Per-command flag takes precedence when explicitly set (> 0).
-	if perCommandMax > 0 {
-		maxResults = perCommandMax
-	} else if flags != nil && int64(flags.MaxResults) > 0 {
+	// Global --max-results wins when explicitly set (> 0), since per-command
+	// values are typically compile-time defaults the user did not choose.
+	if flags != nil && int64(flags.MaxResults) > 0 {
 		maxResults = int64(flags.MaxResults)
+	} else if perCommandMax > 0 {
+		maxResults = perCommandMax
 	}
 	// else: maxResults stays 0 (use whatever API default the caller has)
 

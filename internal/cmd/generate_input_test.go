@@ -167,10 +167,13 @@ func TestGenerateInput_IncludesEnumValues(t *testing.T) {
 	}
 }
 
-// TestGenerateInput_IncludesDefaults verifies default values appear in the template.
-func TestGenerateInput_IncludesDefaults(t *testing.T) {
+// TestGenerateInput_TypedDefaults verifies default values are typed, not strings.
+func TestGenerateInput_TypedDefaults(t *testing.T) {
 	type TestCmd struct {
-		Count int `help:"Number of items" default:"10"`
+		Count   int    `help:"Number of items" default:"10"`
+		Enabled bool   `help:"Enable feature" default:"true"`
+		Label   string `help:"Label" default:"hello"`
+		Limit   int64  `help:"Limit" default:"500"`
 	}
 
 	type TestCLI struct {
@@ -193,16 +196,68 @@ func TestGenerateInput_IncludesDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	val, ok := template["count"]
+	// int default should be int, not string
+	countVal, ok := template["count"]
 	if !ok {
 		t.Fatal("expected 'count' key in template")
 	}
-	str, ok := val.(string)
-	if !ok {
-		t.Fatalf("expected string value for default field, got %T", val)
+	// When marshaled to JSON and back, ints become float64 in Go's any.
+	// But in the template map we expect the actual typed value.
+	switch cv := countVal.(type) {
+	case int:
+		if cv != 10 {
+			t.Errorf("expected count=10, got %d", cv)
+		}
+	case int64:
+		if cv != 10 {
+			t.Errorf("expected count=10, got %d", cv)
+		}
+	default:
+		t.Fatalf("expected int for 'count' default, got %T (%v)", countVal, countVal)
 	}
-	if str != "10" {
-		t.Errorf("expected default value '10', got %q", str)
+
+	// bool default should be bool, not string
+	enabledVal, ok := template["enabled"]
+	if !ok {
+		t.Fatal("expected 'enabled' key in template")
+	}
+	boolVal, ok := enabledVal.(bool)
+	if !ok {
+		t.Fatalf("expected bool for 'enabled' default, got %T (%v)", enabledVal, enabledVal)
+	}
+	if !boolVal {
+		t.Error("expected enabled=true")
+	}
+
+	// string default stays string
+	labelVal, ok := template["label"]
+	if !ok {
+		t.Fatal("expected 'label' key in template")
+	}
+	strVal, ok := labelVal.(string)
+	if !ok {
+		t.Fatalf("expected string for 'label' default, got %T (%v)", labelVal, labelVal)
+	}
+	if strVal != "hello" {
+		t.Errorf("expected label='hello', got %q", strVal)
+	}
+
+	// int64 default should be int64, not string
+	limitVal, ok := template["limit"]
+	if !ok {
+		t.Fatal("expected 'limit' key in template")
+	}
+	switch lv := limitVal.(type) {
+	case int64:
+		if lv != 500 {
+			t.Errorf("expected limit=500, got %d", lv)
+		}
+	case int:
+		if lv != 500 {
+			t.Errorf("expected limit=500, got %d", lv)
+		}
+	default:
+		t.Fatalf("expected int64 for 'limit' default, got %T (%v)", limitVal, limitVal)
 	}
 }
 
