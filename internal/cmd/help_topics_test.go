@@ -87,6 +87,80 @@ func TestHelpTopics_UnknownTopic(t *testing.T) {
 	}
 }
 
+func TestHelpTopics_FuzzyMatch(t *testing.T) {
+	tests := []struct {
+		input       string
+		wantSuggest string
+	}{
+		{"auht", "auth"},            // typo: transposed letters
+		{"autth", "auth"},           // typo: extra letter
+		{"aut", "auth"},             // truncated
+		{"agen", "agent"},           // truncated
+		{"outpu", "output"},         // truncated
+		{"erors", "errors"},         // missing letter
+		{"pagnation", "pagination"}, // missing letter
+		{"agent-auth", "auth"},      // common prefix stripping
+		{"agent-output", "output"},  // common prefix stripping
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			ctx := outfmt.WithMode(context.Background(), outfmt.Mode{})
+			cmd := &AgentHelpCmd{Topic: tc.input}
+			err := cmd.Run(ctx)
+			if err == nil {
+				t.Fatal("expected error for unknown topic, got nil")
+			}
+			if !strings.Contains(err.Error(), "Did you mean") {
+				t.Errorf("expected 'Did you mean' suggestion for %q, got: %v", tc.input, err)
+			}
+			if !strings.Contains(err.Error(), tc.wantSuggest) {
+				t.Errorf("expected suggestion %q for input %q, got: %v", tc.wantSuggest, tc.input, err)
+			}
+		})
+	}
+}
+
+func TestHelpTopics_FuzzyMatch_NoSuggestionForDistantInput(t *testing.T) {
+	ctx := outfmt.WithMode(context.Background(), outfmt.Mode{})
+	cmd := &AgentHelpCmd{Topic: "zzzzzzz"}
+	err := cmd.Run(ctx)
+	if err == nil {
+		t.Fatal("expected error for unknown topic, got nil")
+	}
+	if strings.Contains(err.Error(), "Did you mean") {
+		t.Errorf("should NOT suggest for very distant input, got: %v", err)
+	}
+	// Should still list available topics
+	if !strings.Contains(err.Error(), "Available topics:") {
+		t.Errorf("should list available topics, got: %v", err)
+	}
+}
+
+func TestLevenshtein(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want int
+	}{
+		{"", "", 0},
+		{"a", "", 1},
+		{"", "b", 1},
+		{"auth", "auth", 0},
+		{"auth", "auht", 2},  // swap
+		{"auth", "aut", 1},   // deletion
+		{"auth", "autth", 1}, // insertion
+		{"kitten", "sitting", 3},
+	}
+	for _, tc := range tests {
+		t.Run(tc.a+"_"+tc.b, func(t *testing.T) {
+			got := levenshtein(tc.a, tc.b)
+			if got != tc.want {
+				t.Errorf("levenshtein(%q, %q) = %d, want %d", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestHelpTopics_JSON_TopicList(t *testing.T) {
 	ctx := outfmt.WithMode(context.Background(), outfmt.Mode{JSON: true})
 	ctx = outfmt.WithJSONTransform(ctx, outfmt.JSONTransform{})

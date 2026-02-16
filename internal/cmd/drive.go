@@ -179,10 +179,12 @@ func (c *DriveSearchCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	call := svc.Files.List().
 		Q(buildDriveSearchQuery(query, c.RawQuery)).
-		PageSize(c.Max).
-		PageToken(c.Page).
+		PageSize(effectiveMax).
+		PageToken(effectivePage).
 		OrderBy("modifiedTime desc")
 	call = driveFilesListCallWithDriveSupport(call, c.AllDrives)
 
@@ -893,15 +895,17 @@ func (c *DrivePermissionsCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	call := svc.Permissions.List(fileID).
 		SupportsAllDrives(true).
 		Fields("nextPageToken, permissions(id, type, role, emailAddress, domain)").
 		Context(ctx)
-	if c.Max > 0 {
-		call = call.PageSize(c.Max)
+	if effectiveMax > 0 {
+		call = call.PageSize(effectiveMax)
 	}
-	if strings.TrimSpace(c.Page) != "" {
-		call = call.PageToken(c.Page)
+	if strings.TrimSpace(effectivePage) != "" {
+		call = call.PageToken(effectivePage)
 	}
 
 	resp, err := call.Do()

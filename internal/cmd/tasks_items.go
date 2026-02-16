@@ -56,9 +56,11 @@ func (c *TasksListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*tasks.Task, string, error) {
 		call := svc.Tasks.List(tasklistID).
-			MaxResults(c.Max).
+			MaxResults(effectiveMax).
 			ShowCompleted(c.ShowCompleted).
 			ShowDeleted(c.ShowDeleted).
 			ShowHidden(c.ShowHidden).
@@ -92,14 +94,14 @@ func (c *TasksListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var items []*tasks.Task
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		items = all
 	} else {
 		var err error
-		items, nextPageToken, err = fetch(c.Page)
+		items, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

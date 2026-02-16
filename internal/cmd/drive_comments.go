@@ -47,18 +47,20 @@ func (c *DriveCommentsListCmd) Run(ctx context.Context, flags *RootFlags) error 
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*drive.Comment, string, error) {
 		var call *drive.CommentsListCall
 		if c.IncludeQuoted {
 			call = svc.Comments.List(fileID).
 				IncludeDeleted(false).
-				PageSize(c.Max).
+				PageSize(effectiveMax).
 				Fields("nextPageToken", "comments(id,author,content,createdTime,modifiedTime,resolved,quotedFileContent,replies)").
 				Context(ctx)
 		} else {
 			call = svc.Comments.List(fileID).
 				IncludeDeleted(false).
-				PageSize(c.Max).
+				PageSize(effectiveMax).
 				Fields("nextPageToken", "comments(id,author,content,createdTime,modifiedTime,resolved,replies)").
 				Context(ctx)
 		}
@@ -76,14 +78,14 @@ func (c *DriveCommentsListCmd) Run(ctx context.Context, flags *RootFlags) error 
 	var comments []*drive.Comment
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		comments = all
 	} else {
 		var err error
-		comments, nextPageToken, err = fetch(c.Page)
+		comments, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

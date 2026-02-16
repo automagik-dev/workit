@@ -48,11 +48,13 @@ func (c *CalendarSearchCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 	from, to := timeRange.FormatRFC3339()
 
+	effectiveMax, _ := applyPagination(flags, c.Max, "")
+
 	call := svc.Events.List(calendarID).
 		Q(query).
 		TimeMin(from).
 		TimeMax(to).
-		MaxResults(c.Max).
+		MaxResults(effectiveMax).
 		SingleEvents(true).
 		OrderBy("startTime")
 

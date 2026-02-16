@@ -43,6 +43,65 @@
 - If we squash, add `Co-authored-by:` for the PR author when appropriate; leave a PR comment with what landed + SHAs.
 - New contributor: thank in `CHANGELOG.md` (and update README contributors list if present).
 
+## Agent UX Features
+
+### Field Discovery (`--select ""`)
+
+Pass an explicit empty string to `--select` to list available JSON fields without making an API call:
+
+```
+gog drive ls --json --select ""
+```
+
+- Output goes to **stderr** (stdout stays clean).
+- Exit code **0** -- no API call is made.
+- A usage hint is printed: `gog drive ls --json --select "name,id,size"`.
+- Works for every command that supports `--json` output.
+
+### Input Templates (`--generate-input` / `--gen-input`)
+
+Print a JSON template showing all flags for any command:
+
+```
+gog gmail send --generate-input
+```
+
+- Required fields are prefixed with `(required)` in the value.
+- Types, defaults, and enum values are included.
+- Exit code **0** -- the command is not executed.
+- Excludes Kong built-ins (`--help`, `--version`) and hidden flags.
+- Includes both global `RootFlags` and command-specific flags.
+
+### Global Pagination (`--max-results`, `--page-token`)
+
+Control pagination across all services with global flags:
+
+```
+gog drive ls --max-results 5 --json
+gog drive ls --max-results 5 --page-token TOKEN --json
+```
+
+- Maps to the correct API parameter per service (`pageSize` or `maxResults`).
+- **Precedence:** per-command `--max`/`--limit` overrides `--max-results` when both are provided.
+- `--all` overrides `--max-results` (fetches all pages).
+- `--results-only` strips `nextPageToken` from output; avoid it when paginating across multiple pages.
+
+### Help Topics (`gog agent help <topic>`)
+
+Concept-level documentation for agent integration:
+
+```
+gog agent help topics          # list all topics
+gog agent help auth            # authentication guide
+gog agent help output          # output modes, --json, --select, exit codes
+gog agent help agent           # zero-shot patterns, recommended flags
+gog agent help pagination      # pagination control
+gog agent help errors          # error handling, exit codes, retry guidance
+```
+
+- JSON output with `--json` flag.
+- Unknown topics suggest the closest match.
+
 ## Security & Configuration Tips
 
 - Never commit OAuth client credential JSON files or tokens.

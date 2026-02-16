@@ -43,8 +43,10 @@ func (c *ClassroomGuardiansListCmd) Run(ctx context.Context, flags *RootFlags) e
 		return wrapClassroomError(err)
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*classroom.Guardian, string, error) {
-		call := svc.UserProfiles.Guardians.List(studentID).PageSize(c.Max).Context(ctx)
+		call := svc.UserProfiles.Guardians.List(studentID).PageSize(effectiveMax).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -61,14 +63,14 @@ func (c *ClassroomGuardiansListCmd) Run(ctx context.Context, flags *RootFlags) e
 	var guardians []*classroom.Guardian
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		guardians = all
 	} else {
 		var err error
-		guardians, nextPageToken, err = fetch(c.Page)
+		guardians, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
@@ -223,8 +225,10 @@ func (c *ClassroomGuardianInvitesListCmd) Run(ctx context.Context, flags *RootFl
 		return wrapClassroomError(err)
 	}
 
+	effectiveMaxInv, effectivePageInv := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*classroom.GuardianInvitation, string, error) {
-		call := svc.UserProfiles.GuardianInvitations.List(studentID).PageSize(c.Max).Context(ctx)
+		call := svc.UserProfiles.GuardianInvitations.List(studentID).PageSize(effectiveMaxInv).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -248,14 +252,14 @@ func (c *ClassroomGuardianInvitesListCmd) Run(ctx context.Context, flags *RootFl
 	var invitations []*classroom.GuardianInvitation
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePageInv, fetch)
 		if err != nil {
 			return err
 		}
 		invitations = all
 	} else {
 		var err error
-		invitations, nextPageToken, err = fetch(c.Page)
+		invitations, nextPageToken, err = fetch(effectivePageInv)
 		if err != nil {
 			return err
 		}

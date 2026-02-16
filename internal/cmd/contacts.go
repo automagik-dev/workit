@@ -42,9 +42,11 @@ func (c *ContactsSearchCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, _ := applyPagination(flags, c.Max, "")
+
 	resp, err := svc.People.SearchContacts().
 		Query(query).
-		PageSize(c.Max).
+		PageSize(effectiveMax).
 		ReadMask(contactsReadMask).
 		Do()
 	if err != nil {

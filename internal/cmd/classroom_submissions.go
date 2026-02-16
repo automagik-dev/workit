@@ -53,8 +53,10 @@ func (c *ClassroomSubmissionsListCmd) Run(ctx context.Context, flags *RootFlags)
 		return wrapClassroomError(err)
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*classroom.StudentSubmission, string, error) {
-		call := svc.Courses.CourseWork.StudentSubmissions.List(courseID, courseworkID).PageSize(c.Max).Context(ctx)
+		call := svc.Courses.CourseWork.StudentSubmissions.List(courseID, courseworkID).PageSize(effectiveMax).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -89,14 +91,14 @@ func (c *ClassroomSubmissionsListCmd) Run(ctx context.Context, flags *RootFlags)
 	var submissions []*classroom.StudentSubmission
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		submissions = all
 	} else {
 		var err error
-		submissions, nextPageToken, err = fetch(c.Page)
+		submissions, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

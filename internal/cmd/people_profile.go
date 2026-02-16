@@ -89,6 +89,8 @@ func (c *PeopleSearchCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return wrapPeopleAPIError(err)
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*people.Person, string, error) {
 		ctxTimeout, cancel := context.WithTimeout(ctx, directoryRequestTimeout)
 		defer cancel()
@@ -97,7 +99,7 @@ func (c *PeopleSearchCmd) Run(ctx context.Context, flags *RootFlags) error {
 			Query(query).
 			Sources("DIRECTORY_SOURCE_TYPE_DOMAIN_CONTACT", "DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE").
 			ReadMask(directoryReadMask).
-			PageSize(c.Max).
+			PageSize(effectiveMax).
 			Context(ctxTimeout)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -112,14 +114,14 @@ func (c *PeopleSearchCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var peopleList []*people.Person
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		peopleList = all
 	} else {
 		var err error
-		peopleList, nextPageToken, err = fetch(c.Page)
+		peopleList, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

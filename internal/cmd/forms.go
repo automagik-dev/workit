@@ -296,8 +296,10 @@ func (c *FormsResponsesListCmd) Run(ctx context.Context, flags *RootFlags) error
 		return err
 	}
 
-	call := svc.Forms.Responses.List(formID).PageSize(int64(c.Max)).Context(ctx)
-	if page := strings.TrimSpace(c.Page); page != "" {
+	effectiveMax, effectivePage := applyPagination(flags, int64(c.Max), c.Page)
+
+	call := svc.Forms.Responses.List(formID).PageSize(effectiveMax).Context(ctx)
+	if page := strings.TrimSpace(effectivePage); page != "" {
 		call = call.PageToken(page)
 	}
 	if filter := strings.TrimSpace(c.Filter); filter != "" {

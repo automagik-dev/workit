@@ -86,8 +86,7 @@ func (c *AgentHelpCmd) Run(ctx context.Context) error {
 	// Look up specific topic.
 	t := findHelpTopic(topic)
 	if t == nil {
-		return fmt.Errorf("unknown help topic %q. Available topics: %s",
-			topic, strings.Join(availableTopicNames(), ", "))
+		return unknownTopicError(topic)
 	}
 
 	return c.showTopic(ctx, t)
@@ -138,6 +137,82 @@ func (c *AgentHelpCmd) showTopic(ctx context.Context, t *helpTopic) error {
 	fmt.Fprintln(os.Stdout, t.Content)
 
 	return nil
+}
+
+// unknownTopicError returns an error for an unknown help topic, suggesting
+// the closest match if one is found within an edit distance of 3.
+func unknownTopicError(input string) error {
+	names := availableTopicNames()
+	input = strings.ToLower(strings.TrimSpace(input))
+
+	// Strip common prefixes users might type (e.g., "agent-auth" -> "auth").
+	stripped := input
+	if after, ok := strings.CutPrefix(stripped, "agent-"); ok {
+		stripped = after
+	}
+
+	bestName := ""
+	bestDist := 4 // threshold: only suggest if distance <= 3
+
+	for _, name := range names {
+		// Check exact match on stripped prefix.
+		if stripped == name {
+			bestName = name
+			bestDist = 0
+			break
+		}
+		// Check substring match.
+		if strings.Contains(name, stripped) || strings.Contains(stripped, name) {
+			d := levenshtein(stripped, name)
+			if d < bestDist {
+				bestDist = d
+				bestName = name
+			}
+			continue
+		}
+		// Check edit distance.
+		d := levenshtein(stripped, name)
+		if d < bestDist {
+			bestDist = d
+			bestName = name
+		}
+	}
+
+	msg := fmt.Sprintf("unknown help topic %q", input)
+	if bestName != "" && bestDist <= 3 {
+		msg += fmt.Sprintf(". Did you mean %q?", bestName)
+	}
+	msg += fmt.Sprintf("\nAvailable topics: %s", strings.Join(names, ", "))
+	return fmt.Errorf("%s", msg)
+}
+
+// levenshtein computes the Levenshtein edit distance between two strings.
+func levenshtein(a, b string) int {
+	if len(a) == 0 {
+		return len(b)
+	}
+	if len(b) == 0 {
+		return len(a)
+	}
+
+	prev := make([]int, len(b)+1)
+	curr := make([]int, len(b)+1)
+
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		curr[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			curr[j] = min(curr[j-1]+1, min(prev[j]+1, prev[j-1]+cost))
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(b)]
 }
 
 // ---------------------------------------------------------------------------

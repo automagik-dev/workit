@@ -53,8 +53,10 @@ func (c *CalendarCalendarsCmd) Run(ctx context.Context, flags *RootFlags) error 
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*calendar.CalendarListEntry, string, error) {
-		call := svc.CalendarList.List().MaxResults(c.Max)
+		call := svc.CalendarList.List().MaxResults(effectiveMax)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -68,14 +70,14 @@ func (c *CalendarCalendarsCmd) Run(ctx context.Context, flags *RootFlags) error 
 	var items []*calendar.CalendarListEntry
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		items = all
 	} else {
 		var err error
-		items, nextPageToken, err = fetch(c.Page)
+		items, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
@@ -135,8 +137,10 @@ func (c *CalendarAclCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMaxAcl, effectivePageAcl := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*calendar.AclRule, string, error) {
-		call := svc.Acl.List(calendarID).MaxResults(c.Max)
+		call := svc.Acl.List(calendarID).MaxResults(effectiveMaxAcl)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -150,14 +154,14 @@ func (c *CalendarAclCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var items []*calendar.AclRule
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePageAcl, fetch)
 		if err != nil {
 			return err
 		}
 		items = all
 	} else {
 		var err error
-		items, nextPageToken, err = fetch(c.Page)
+		items, nextPageToken, err = fetch(effectivePageAcl)
 		if err != nil {
 			return err
 		}
@@ -257,10 +261,12 @@ func (c *CalendarEventsCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	from, to := timeRange.FormatRFC3339()
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	if c.All {
-		return listAllCalendarsEvents(ctx, svc, from, to, c.Max, c.Page, c.AllPages, c.FailEmpty, c.Query, c.PrivatePropFilter, c.SharedPropFilter, c.Fields, c.Weekday)
+		return listAllCalendarsEvents(ctx, svc, from, to, effectiveMax, effectivePage, c.AllPages, c.FailEmpty, c.Query, c.PrivatePropFilter, c.SharedPropFilter, c.Fields, c.Weekday)
 	}
-	return listCalendarEvents(ctx, svc, calendarID, from, to, c.Max, c.Page, c.AllPages, c.FailEmpty, c.Query, c.PrivatePropFilter, c.SharedPropFilter, c.Fields, c.Weekday)
+	return listCalendarEvents(ctx, svc, calendarID, from, to, effectiveMax, effectivePage, c.AllPages, c.FailEmpty, c.Query, c.PrivatePropFilter, c.SharedPropFilter, c.Fields, c.Weekday)
 }
 
 type CalendarEventCmd struct {

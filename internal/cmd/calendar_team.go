@@ -78,6 +78,8 @@ func (c *CalendarTeamCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return nil
 	}
 
+	c.Max, _ = applyPagination(flags, c.Max, "")
+
 	if c.FreeBusy {
 		return c.runFreeBusy(ctx, calSvc, memberEmails, tr)
 	}

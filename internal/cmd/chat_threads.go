@@ -44,9 +44,11 @@ func (c *ChatThreadsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*chat.Message, string, error) {
 		call := svc.Spaces.Messages.List(space).
-			PageSize(c.Max).
+			PageSize(effectiveMax).
 			OrderBy("createTime desc").
 			Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
@@ -62,14 +64,14 @@ func (c *ChatThreadsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var messages []*chat.Message
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		messages = all
 	} else {
 		var err error
-		messages, nextPageToken, err = fetch(c.Page)
+		messages, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

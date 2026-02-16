@@ -42,6 +42,8 @@ func (c *ContactsDirectoryListCmd) Run(ctx context.Context, flags *RootFlags) er
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*people.Person, string, error) {
 		ctxTimeout, cancel := context.WithTimeout(ctx, directoryRequestTimeout)
 		defer cancel()
@@ -49,7 +51,7 @@ func (c *ContactsDirectoryListCmd) Run(ctx context.Context, flags *RootFlags) er
 		call := svc.People.ListDirectoryPeople().
 			Sources("DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE").
 			ReadMask(directoryReadMask).
-			PageSize(c.Max).
+			PageSize(effectiveMax).
 			Context(ctxTimeout)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -65,14 +67,14 @@ func (c *ContactsDirectoryListCmd) Run(ctx context.Context, flags *RootFlags) er
 	var peopleList []*people.Person
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		peopleList = all
 	} else {
 		var err error
-		peopleList, nextPageToken, err = fetch(c.Page)
+		peopleList, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
@@ -149,6 +151,8 @@ func (c *ContactsDirectorySearchCmd) Run(ctx context.Context, flags *RootFlags) 
 		return err
 	}
 
+	effectiveMaxSearch, effectivePageSearch := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*people.Person, string, error) {
 		ctxTimeout, cancel := context.WithTimeout(ctx, directoryRequestTimeout)
 		defer cancel()
@@ -157,7 +161,7 @@ func (c *ContactsDirectorySearchCmd) Run(ctx context.Context, flags *RootFlags) 
 			Query(query).
 			Sources("DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE").
 			ReadMask(directoryReadMask).
-			PageSize(c.Max).
+			PageSize(effectiveMaxSearch).
 			Context(ctxTimeout)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -172,14 +176,14 @@ func (c *ContactsDirectorySearchCmd) Run(ctx context.Context, flags *RootFlags) 
 	var peopleList []*people.Person
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePageSearch, fetch)
 		if err != nil {
 			return err
 		}
 		peopleList = all
 	} else {
 		var err error
-		peopleList, nextPageToken, err = fetch(c.Page)
+		peopleList, nextPageToken, err = fetch(effectivePageSearch)
 		if err != nil {
 			return err
 		}
@@ -260,10 +264,12 @@ func (c *ContactsOtherListCmd) Run(ctx context.Context, flags *RootFlags) error 
 		return err
 	}
 
+	effectiveMaxOther, effectivePageOther := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*people.Person, string, error) {
 		call := svc.OtherContacts.List().
 			ReadMask(contactsReadMask).
-			PageSize(c.Max).
+			PageSize(effectiveMaxOther).
 			Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -278,14 +284,14 @@ func (c *ContactsOtherListCmd) Run(ctx context.Context, flags *RootFlags) error 
 	var contacts []*people.Person
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePageOther, fetch)
 		if err != nil {
 			return err
 		}
 		contacts = all
 	} else {
 		var err error
-		contacts, nextPageToken, err = fetch(c.Page)
+		contacts, nextPageToken, err = fetch(effectivePageOther)
 		if err != nil {
 			return err
 		}
@@ -362,10 +368,12 @@ func (c *ContactsOtherSearchCmd) Run(ctx context.Context, flags *RootFlags) erro
 		return err
 	}
 
+	effectiveMaxOtherSearch, _ := applyPagination(flags, c.Max, "")
+
 	resp, err := svc.OtherContacts.Search().
 		Query(query).
 		ReadMask(contactsReadMask).
-		PageSize(c.Max).
+		PageSize(effectiveMaxOtherSearch).
 		Do()
 	if err != nil {
 		return err

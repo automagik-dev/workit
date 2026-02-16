@@ -35,6 +35,8 @@ func (c *CalendarUsersCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return googleapi.WrapAPIEnablementError(err, "people")
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*people.Person, string, error) {
 		ctxTimeout, cancel := context.WithTimeout(ctx, calendarUsersRequestTimeout)
 		defer cancel()
@@ -42,7 +44,7 @@ func (c *CalendarUsersCmd) Run(ctx context.Context, flags *RootFlags) error {
 		call := svc.People.ListDirectoryPeople().
 			Sources("DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE").
 			ReadMask("names,emailAddresses").
-			PageSize(c.Max).
+			PageSize(effectiveMax).
 			Context(ctxTimeout)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -57,14 +59,14 @@ func (c *CalendarUsersCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var peopleList []*people.Person
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		peopleList = all
 	} else {
 		var err error
-		peopleList, nextPageToken, err = fetch(c.Page)
+		peopleList, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
