@@ -108,10 +108,12 @@ func (c *DriveLsCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	q := buildDriveListQuery(folderID, c.Query)
 
+	maxResults, pageToken := applyPagination(flags, c.Max, c.Page)
+
 	call := svc.Files.List().
 		Q(q).
-		PageSize(c.Max).
-		PageToken(c.Page).
+		PageSize(maxResults).
+		PageToken(pageToken).
 		OrderBy("modifiedTime desc")
 	call = driveFilesListCallWithDriveSupport(call, c.AllDrives)
 

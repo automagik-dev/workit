@@ -38,6 +38,9 @@ type RootFlags struct {
 	ResultsOnly    bool   `name:"results-only" help:"In JSON mode, emit only the primary result (drops envelope fields like nextPageToken)"`
 	Select         string `name:"select" aliases:"pick,project" help:"In JSON mode, select comma-separated fields (best-effort; supports dot paths). Desire path: use --fields for most commands."`
 	JQ             string `name:"jq" help:"Apply jq expression to JSON output"`
+	MaxResults     int    `name:"max-results" help:"Maximum number of results to return (maps to pageSize/maxResults per service)" default:"0"`
+	PageToken      string `name:"page-token" help:"Page token for pagination (maps to pageToken per service)"`
+	GenerateInput  bool   `name:"generate-input" help:"Print JSON input template for the command and exit" aliases:"gen-input"`
 	DryRun         bool   `help:"Do not make changes; print intended actions and exit successfully" aliases:"noop,preview,dryrun" short:"n"`
 	Force          bool   `help:"Skip confirmations for destructive commands" aliases:"yes,assume-yes" short:"y"`
 	ReadOnly       bool   `name:"read-only" help:"Hide write commands and request read-only OAuth scopes" default:"${read_only}"`
@@ -280,7 +283,8 @@ func isCalendarEventsCommand(args []string) bool {
 
 func globalFlagTakesValue(flag string) bool {
 	switch flag {
-	case "--color", "--account", "--acct", "--client", "--enable-commands", "--command-tier", "--select", "--pick", "--project", "--jq", "-a":
+	case "--color", "--account", "--acct", "--client", "--enable-commands", "--command-tier", "--select", "--pick", "--project", "--jq", "-a",
+		"--max-results", "--page-token":
 		return true
 	default:
 		return false
