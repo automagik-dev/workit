@@ -481,12 +481,12 @@ type AuthAddCmd struct {
 	Email string `arg:"" name:"email" help:"Email"`
 
 	// Manual/remote auth.
-	Manual  bool   `name:"manual" help:"Browserless auth flow (paste redirect URL)"`
-	Remote  bool   `name:"remote" help:"Remote/server-friendly manual flow (print URL, then exchange code)"`
-	Step    int    `name:"step" help:"Remote auth step: 1=print URL, 2=exchange code"`
-	AuthURL string `name:"auth-url" help:"Redirect URL from browser (manual flow; required for --remote --step 2)"`
-	AuthCode string `name:"auth-code" hidden:"" help:"UNSAFE: Authorization code from browser (manual flow; skips state check; not valid with --remote)"`
-	Timeout time.Duration `name:"timeout" help:"Authorization timeout (manual flows default to 5m)"`
+	Manual   bool          `name:"manual" help:"Browserless auth flow (paste redirect URL)"`
+	Remote   bool          `name:"remote" help:"Remote/server-friendly manual flow (print URL, then exchange code)"`
+	Step     int           `name:"step" help:"Remote auth step: 1=print URL, 2=exchange code"`
+	AuthURL  string        `name:"auth-url" help:"Redirect URL from browser (manual flow; required for --remote --step 2)"`
+	AuthCode string        `name:"auth-code" hidden:"" help:"UNSAFE: Authorization code from browser (manual flow; skips state check; not valid with --remote)"`
+	Timeout  time.Duration `name:"timeout" help:"Authorization timeout (manual flows default to 5m)"`
 
 	// Headless auth.
 	Headless       bool          `name:"headless" help:"Headless auth flow for agents (outputs URL, polls callback server)"`
@@ -707,13 +707,13 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 		return err
 	}
 
-		// Output the auth info
-		if outfmt.IsJSON(ctx) {
-			if err := outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-				"auth_url":   info.AuthURL,
-				"state":      info.State,
-				"poll_url":   info.PollURL,
-				"expires_in": info.ExpiresIn,
+	// Output the auth info
+	if outfmt.IsJSON(ctx) {
+		if err := outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"auth_url":   info.AuthURL,
+			"state":      info.State,
+			"poll_url":   info.PollURL,
+			"expires_in": info.ExpiresIn,
 		}); err != nil {
 			return err
 		}
@@ -780,12 +780,12 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 		return err
 	}
 
-		if outfmt.IsJSON(ctx) {
-			return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-				"stored":   true,
-				"email":    authorizedEmail,
-				"services": serviceNames,
-				"client":   client,
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"stored":   true,
+			"email":    authorizedEmail,
+			"services": serviceNames,
+			"client":   client,
 		})
 	}
 	u.Out().Printf("email\t%s", authorizedEmail)
@@ -833,12 +833,12 @@ func (c *AuthPollCmd) Run(ctx context.Context) error {
 		return c.storeToken(ctx, refreshToken)
 	}
 
-		// Just output the refresh token
-		if outfmt.IsJSON(ctx) {
-			return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-				"refresh_token": refreshToken,
-			})
-		}
+	// Just output the refresh token
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"refresh_token": refreshToken,
+		})
+	}
 	u.Out().Printf("refresh_token\t%s", refreshToken)
 	return nil
 }

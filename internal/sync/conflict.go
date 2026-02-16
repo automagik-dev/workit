@@ -31,16 +31,16 @@ func NewConflictResolver(db *DB, configID int64, strategy ConflictStrategy) *Con
 
 // ConflictInfo contains information about a detected conflict.
 type ConflictInfo struct {
-	LocalPath       string
-	DriveID         string
-	LocalMD5        string
-	RemoteMD5       string
-	LocalMtime      time.Time
-	RemoteMtime     time.Time
-	LastSyncMD5     string
-	LastSyncMtime   time.Time
-	LocalModified   bool
-	RemoteModified  bool
+	LocalPath      string
+	DriveID        string
+	LocalMD5       string
+	RemoteMD5      string
+	LocalMtime     time.Time
+	RemoteMtime    time.Time
+	LastSyncMD5    string
+	LastSyncMtime  time.Time
+	LocalModified  bool
+	RemoteModified bool
 }
 
 // DetectConflict checks if a file has a conflict.
@@ -90,10 +90,10 @@ func (r *ConflictResolver) DetectConflict(ctx context.Context, item *SyncItem, l
 
 // ResolveResult contains the result of conflict resolution.
 type ResolveResult struct {
-	Action       string // "rename", "local-wins", "remote-wins"
-	RenamedPath  string // For rename strategy, the new path
-	UploadLocal  bool   // True if local file should be uploaded
-	DownloadRemote bool // True if remote file should be downloaded
+	Action         string // "rename", "local-wins", "remote-wins"
+	RenamedPath    string // For rename strategy, the new path
+	UploadLocal    bool   // True if local file should be uploaded
+	DownloadRemote bool   // True if remote file should be downloaded
 }
 
 // Resolve resolves a conflict according to the configured strategy.
@@ -115,10 +115,10 @@ func (r *ConflictResolver) Resolve(ctx context.Context, conflict *ConflictInfo, 
 
 		// Log the conflict
 		_ = r.db.AddLogEntry(r.configID, "conflict", conflict.LocalPath, map[string]any{
-			"strategy":     "rename",
-			"renamed_to":   renamedPath,
-			"local_md5":    conflict.LocalMD5,
-			"remote_md5":   conflict.RemoteMD5,
+			"strategy":   "rename",
+			"renamed_to": renamedPath,
+			"local_md5":  conflict.LocalMD5,
+			"remote_md5": conflict.RemoteMD5,
 		})
 
 	case ConflictLocalWins:

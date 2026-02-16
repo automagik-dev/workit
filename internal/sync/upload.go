@@ -16,7 +16,7 @@ import (
 type Uploader struct {
 	service    *drive.Service
 	rootFolder string
-	driveID    string // For shared drives
+	driveID    string            // For shared drives
 	folderIDs  map[string]string // Maps relative paths to Drive folder IDs
 }
 

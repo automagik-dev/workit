@@ -41,8 +41,8 @@ func LogFilePath() (string, error) {
 
 // DaemonStatus represents the status of the daemon.
 type DaemonStatus struct {
-	Running bool  `json:"running"`
-	PID     int   `json:"pid,omitempty"`
+	Running bool   `json:"running"`
+	PID     int    `json:"pid,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
 
