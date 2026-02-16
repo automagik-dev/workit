@@ -139,7 +139,7 @@ func (c *DocsHeaderCmd) runSet(ctx context.Context, flags *RootFlags, u *ui.UI, 
 }
 
 func (c *DocsHeaderCmd) createAndSetHeader(ctx context.Context, svc *docs.Service, u *ui.UI, id string) error {
-	var requests []*docs.Request
+	requests := make([]*docs.Request, 0, 1)
 
 	// Step 1: Create a default header.
 	requests = append(requests, &docs.Request{

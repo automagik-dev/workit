@@ -7,7 +7,17 @@ import (
 	"time"
 )
 
-var errBase = errors.New("base")
+var (
+	errBase                = errors.New("base")
+	errNotUsedPeople       = errors.New("accessNotConfigured: People API has not been used in project 12345")
+	errDisabledClassroom   = errors.New("classroom api: it is disabled")
+	errRandom              = errors.New("some random error")
+	errUnusedProject       = errors.New("API has not been used in project")
+	errSomething           = errors.New("something")
+	errAccessNotConfigured = errors.New("accessNotConfigured: API not enabled")
+	errPeopleNotUsed       = errors.New("people API has not been used in project")
+	errSomeAPIDisabled     = errors.New("some API: it is disabled for this project")
+)
 
 func TestErrors_IsHelpers(t *testing.T) {
 	if !IsAuthRequiredError(&AuthRequiredError{Service: "gmail", Email: "a@b.com", Cause: errBase}) {
@@ -89,41 +99,48 @@ func TestWrapAPIEnablementError_NilError(t *testing.T) {
 }
 
 func TestWrapAPIEnablementError_HasNotBeenUsed(t *testing.T) {
-	err := errors.New("accessNotConfigured: People API has not been used in project 12345")
+	err := errNotUsedPeople
 	wrapped := WrapAPIEnablementError(err, "people")
-	if wrapped == err {
+
+	if !errors.Is(wrapped, err) {
 		t.Fatal("expected error to be wrapped")
 	}
+
 	msg := wrapped.Error()
 	if !strings.Contains(msg, "people API is not enabled") {
 		t.Errorf("expected enablement message, got %q", msg)
 	}
+
 	if !strings.Contains(msg, "people.googleapis.com") {
 		t.Errorf("expected console URL, got %q", msg)
 	}
 }
 
 func TestWrapAPIEnablementError_IsDisabled(t *testing.T) {
-	err := errors.New("Classroom API: it is disabled")
+	err := errDisabledClassroom
 	wrapped := WrapAPIEnablementError(err, "classroom")
-	if wrapped == err {
+
+	if !errors.Is(wrapped, err) {
 		t.Fatal("expected error to be wrapped")
 	}
+
 	if !strings.Contains(wrapped.Error(), "classroom.googleapis.com") {
 		t.Errorf("expected console URL, got %q", wrapped.Error())
 	}
 }
 
 func TestWrapAPIEnablementError_Passthrough(t *testing.T) {
-	err := errors.New("some random error")
+	err := errRandom
 	got := WrapAPIEnablementError(err, "drive")
-	if got != err {
-		t.Fatalf("expected original error, got %v", got)
+
+	if !errors.Is(got, err) {
+		t.Fatalf("expected original error to be preserved, got %v", got)
 	}
 }
 
 func TestWrapAPIEnablementError_UnknownService(t *testing.T) {
-	err := errors.New("API has not been used in project")
+	err := errUnusedProject
+
 	wrapped := WrapAPIEnablementError(err, "unknownservice")
 	if !strings.Contains(wrapped.Error(), "check the Google Cloud Console") {
 		t.Errorf("expected fallback message, got %q", wrapped.Error())
@@ -149,10 +166,10 @@ func TestIsAPINotEnabledError(t *testing.T) {
 		want bool
 	}{
 		{"nil", nil, false},
-		{"random error", errors.New("something"), false},
-		{"accessNotConfigured", errors.New("accessNotConfigured: API not enabled"), true},
-		{"has not been used", errors.New("People API has not been used in project"), true},
-		{"it is disabled", errors.New("some API: it is disabled for this project"), true},
+		{"random error", errSomething, false},
+		{"accessNotConfigured", errAccessNotConfigured, true},
+		{"has not been used", errPeopleNotUsed, true},
+		{"it is disabled", errSomeAPIDisabled, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

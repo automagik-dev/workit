@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -20,7 +22,16 @@ jobs:
       - name: Test
         run: go test ./...
       - name: Lint
-        run: make lint
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            LINT_BASE="origin/${{ github.base_ref }}"
+          else
+            LINT_BASE="${{ github.event.before }}"
+            if [ -z "${LINT_BASE}" ] || [ "${LINT_BASE}" = "0000000000000000000000000000000000000000" ]; then
+              LINT_BASE="$(git merge-base HEAD origin/main)"
+            fi
+          fi
+          make lint LINT_NEW_FROM="${LINT_BASE}"
 
   worker:
     runs-on: ubuntu-latest

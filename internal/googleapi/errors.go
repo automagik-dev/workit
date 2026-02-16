@@ -146,7 +146,9 @@ func IsAPINotEnabledError(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	msg := err.Error()
+
 	return strings.Contains(msg, "accessNotConfigured") ||
 		strings.Contains(msg, "has not been used") ||
 		strings.Contains(msg, "it is disabled") ||
@@ -160,13 +162,16 @@ func WrapAPIEnablementError(err error, serviceName string) error {
 	if err == nil {
 		return nil
 	}
+
 	if !IsAPINotEnabledError(err) {
 		return err
 	}
+
 	link, ok := APIEnablementLinks[serviceName]
 	if !ok {
 		return fmt.Errorf("%s API is not enabled; check the Google Cloud Console to enable it (%w)", serviceName, err)
 	}
+
 	return fmt.Errorf("%s API is not enabled; enable it at: %s (%w)", serviceName, link, err)
 }
 

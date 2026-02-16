@@ -97,6 +97,7 @@ func optionsForAccountScopes(ctx context.Context, serviceLabel string, email str
 	if err != nil {
 		return nil, err
 	}
+
 	return []option.ClientOption{option.WithHTTPClient(c)}, nil
 }
 

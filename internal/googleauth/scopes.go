@@ -1,10 +1,13 @@
 package googleauth
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 )
+
+var ErrUnknownCommand = errors.New("unknown command")
 
 // CommandServiceMap maps CLI command names to their required Google API service.
 // Used for dynamic scope filtering when --enable-commands is specified.
@@ -41,14 +44,17 @@ func ScopesForCommands(commands []string) ([]string, error) {
 		if cmd == "" {
 			continue
 		}
+
 		svc, ok := CommandServiceMap[cmd]
 		if !ok {
-			return nil, fmt.Errorf("unknown command %q (known: %s)", cmd, knownCommandNames())
+			return nil, fmt.Errorf("%w %q (known: %s)", ErrUnknownCommand, cmd, knownCommandNames())
 		}
+
 		scopes, err := Scopes(svc)
 		if err != nil {
 			return nil, fmt.Errorf("scopes for %q: %w", cmd, err)
 		}
+
 		for _, s := range scopes {
 			if !seen[s] {
 				seen[s] = true
@@ -58,6 +64,7 @@ func ScopesForCommands(commands []string) ([]string, error) {
 	}
 
 	sort.Strings(result)
+
 	return result, nil
 }
 
@@ -71,6 +78,7 @@ func AllScopes() []string {
 		if err != nil {
 			continue
 		}
+
 		for _, s := range scopes {
 			if !seen[s] {
 				seen[s] = true
@@ -80,6 +88,7 @@ func AllScopes() []string {
 	}
 
 	sort.Strings(result)
+
 	return result
 }
 
@@ -89,6 +98,8 @@ func knownCommandNames() string {
 	for k := range CommandServiceMap {
 		names = append(names, k)
 	}
+
 	sort.Strings(names)
+
 	return strings.Join(names, ", ")
 }

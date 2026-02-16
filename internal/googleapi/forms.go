@@ -35,5 +35,6 @@ func HTTPClientForService(ctx context.Context, service googleauth.Service, email
 	if err != nil {
 		return nil, fmt.Errorf("resolve scopes for %s: %w", service, err)
 	}
+
 	return httpClientForScopes(ctx, string(service), email, scopes)
 }

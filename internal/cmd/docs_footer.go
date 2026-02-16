@@ -139,7 +139,7 @@ func (c *DocsFooterCmd) runSet(ctx context.Context, flags *RootFlags, u *ui.UI, 
 }
 
 func (c *DocsFooterCmd) createAndSetFooter(ctx context.Context, svc *docs.Service, u *ui.UI, id string) error {
-	var requests []*docs.Request
+	requests := make([]*docs.Request, 0, 1)
 
 	// Step 1: Create a default footer.
 	requests = append(requests, &docs.Request{

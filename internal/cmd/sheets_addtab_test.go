@@ -276,8 +276,7 @@ func TestSheetsAddTabCmd_Text(t *testing.T) {
 		if uiErr != nil {
 			t.Fatalf("ui.New: %v", uiErr)
 		}
-		_ = ctx
-		ctx2 := ui.WithUI(context.Background(), u2)
+		ctx2 := ui.WithUI(ctx, u2)
 		ctx2 = outfmt.WithMode(ctx2, outfmt.Mode{})
 
 		cmd := &SheetsAddTabCmd{}
