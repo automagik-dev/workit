@@ -117,6 +117,21 @@ func Execute(args []string) (err error) {
 		}
 	}()
 
+	// Pre-parse: check for --generate-input BEFORE full parsing so that
+	// commands with required positional arguments don't fail.  We scan the
+	// raw args, strip the flag, extract command tokens, and resolve the
+	// command node directly from the parser model.
+	if hasGenerateInput(args) {
+		stripped := stripGenerateInputFlag(args)
+		cmdTokens := extractCommandTokens(stripped)
+		node, findErr := findCommandNode(parser.Model.Node, cmdTokens)
+		if findErr != nil {
+			_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(findErr))
+			return findErr
+		}
+		return printGenerateInputFromNode(node)
+	}
+
 	kctx, err := parser.Parse(args)
 	if err != nil {
 		parsedErr := wrapParseError(err)
@@ -390,4 +405,57 @@ func newUsageError(err error) error {
 		return nil
 	}
 	return &ExitError{Code: 2, Err: err}
+}
+
+// generateInputFlags lists the flag names that trigger generate-input mode.
+var generateInputFlags = map[string]bool{
+	"--generate-input": true,
+	"--gen-input":      true,
+}
+
+// hasGenerateInput returns true if the raw argument slice contains
+// --generate-input or its alias --gen-input.
+func hasGenerateInput(args []string) bool {
+	for _, a := range args {
+		if a == "--" {
+			return false
+		}
+		if generateInputFlags[a] {
+			return true
+		}
+	}
+	return false
+}
+
+// stripGenerateInputFlag returns a copy of args with --generate-input / --gen-input removed.
+func stripGenerateInputFlag(args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if generateInputFlags[a] {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+// extractCommandTokens pulls non-flag tokens from args (the command path).
+// It skips flags and their values to isolate just the subcommand names.
+func extractCommandTokens(args []string) []string {
+	tokens := make([]string, 0, 4)
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			break
+		}
+		if strings.HasPrefix(a, "-") {
+			// Skip flags that take a value argument.
+			if globalFlagTakesValue(a) && i+1 < len(args) {
+				i++
+			}
+			continue
+		}
+		tokens = append(tokens, a)
+	}
+	return tokens
 }

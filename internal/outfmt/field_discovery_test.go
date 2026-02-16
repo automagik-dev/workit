@@ -145,6 +145,34 @@ func TestFieldDiscovery_NonStruct(t *testing.T) {
 	}
 }
 
+func TestFieldDiscovery_MapStringAny(t *testing.T) {
+	m := map[string]any{
+		"id":   "abc",
+		"name": "test",
+		"size": 42,
+	}
+	got := DiscoverFields(m)
+	want := []string{"id", "name", "size"}
+
+	if len(got) != len(want) {
+		t.Fatalf("expected %d fields, got %d: %v", len(want), len(got), got)
+	}
+
+	for i, f := range want {
+		if got[i] != f {
+			t.Errorf("field[%d]: expected %q, got %q", i, f, got[i])
+		}
+	}
+}
+
+func TestFieldDiscovery_EmptyMap(t *testing.T) {
+	m := map[string]any{}
+	got := DiscoverFields(m)
+	if len(got) != 0 {
+		t.Fatalf("expected 0 fields for empty map, got %d: %v", len(got), got)
+	}
+}
+
 type sampleSliceResult struct {
 	Files         []sampleFlat `json:"files"`
 	NextPageToken string       `json:"nextPageToken"`

@@ -92,9 +92,12 @@ func JSONTransformFromContext(ctx context.Context) (JSONTransform, bool) {
 func WriteJSON(ctx context.Context, w io.Writer, v any) error {
 	if t, ok := JSONTransformFromContext(ctx); ok {
 		// Field discovery: --select was explicitly set to "" (empty).
+		// Print available fields and return immediately so stdout is not
+		// polluted with the normal JSON payload.
 		if IsFieldDiscovery("", t.SelectExplicit) && len(t.Select) == 0 && t.FieldDiscoveryWriter != nil {
 			fields := DiscoverFields(v)
 			PrintFieldDiscovery(t.FieldDiscoveryWriter, fields, "")
+			return nil
 		}
 
 		if t.ResultsOnly || len(t.Select) > 0 {

@@ -154,7 +154,8 @@ type fieldDiscoverySample struct {
 
 func TestWriteJSON_FieldDiscovery(t *testing.T) {
 	// When SelectExplicit is true and Select is empty, WriteJSON should write
-	// field names to the FieldDiscoveryWriter instead of just passing data through.
+	// field names to the FieldDiscoveryWriter and return immediately without
+	// encoding the payload to stdout.
 	var stderrBuf bytes.Buffer
 	ctx := WithJSONTransform(context.Background(), JSONTransform{
 		SelectExplicit:       true,
@@ -182,6 +183,11 @@ func TestWriteJSON_FieldDiscovery(t *testing.T) {
 
 	if !bytes.Contains(stderrBuf.Bytes(), []byte("name")) {
 		t.Fatalf("expected 'name' in discovered fields, got %q", output)
+	}
+
+	// Stdout must be empty -- field discovery should not write the JSON payload.
+	if stdoutBuf.Len() > 0 {
+		t.Fatalf("expected no stdout output during field discovery, got %q", stdoutBuf.String())
 	}
 }
 

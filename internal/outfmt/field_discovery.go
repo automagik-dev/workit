@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -20,6 +21,20 @@ func DiscoverFields(v any) []string {
 	// Dereference pointer.
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
+	}
+
+	// Handle map types (e.g. map[string]any envelopes emitted by many commands).
+	if t.Kind() == reflect.Map {
+		val := reflect.ValueOf(v)
+		for val.Kind() == reflect.Ptr {
+			val = val.Elem()
+		}
+		keys := make([]string, 0, val.Len())
+		for _, k := range val.MapKeys() {
+			keys = append(keys, fmt.Sprintf("%v", k.Interface()))
+		}
+		sort.Strings(keys)
+		return keys
 	}
 
 	if t.Kind() != reflect.Struct {

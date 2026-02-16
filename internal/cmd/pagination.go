@@ -35,11 +35,15 @@ var ServicePaginationParams = map[string]PaginationParamInfo{
 
 // applyPagination resolves the effective maxResults and pageToken.
 //
-// For maxResults, the global --max-results flag takes priority when set (> 0),
-// because per-command --max/--limit values are typically non-zero defaults (e.g.
-// drive ls defaults to 20). Without this precedence, a user passing
-// `--max-results 100` would always be silently overridden by the command default.
-// The per-command value is used as a fallback when the global flag is not set.
+// Precedence for maxResults (intentional design):
+//
+//  1. global --max-results (when > 0) -- explicitly typed by the user
+//  2. per-command --max/--limit default  -- compile-time default the user did not choose
+//
+// We cannot distinguish "user explicitly set per-command --max 5" from
+// "per-command default is 5" because Kong stores only the resolved value.
+// Therefore the global flag always wins when set; this is correct because a
+// user who types `--max-results 100` intends to override all commands.
 //
 // For pageToken, per-command flags take precedence when non-empty (the global
 // default is "", so any per-command value is intentional).
