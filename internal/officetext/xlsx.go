@@ -124,7 +124,11 @@ func parseWorksheet(data []byte, sharedStrings []string) [][]string {
 	inRow := false
 	inCell := false
 	inValue := false
+	inInlineStr := false // inside <is> element for inline strings
+	inInlineT := false   // inside <t> element within <is>
 	cellType := ""
+
+	var inlineText strings.Builder
 
 	for {
 		tok, tokenErr := decoder.Token()
@@ -157,13 +161,34 @@ func parseWorksheet(data []byte, sharedStrings []string) [][]string {
 				if inCell {
 					inValue = true
 				}
+			case "is":
+				if inCell && cellType == "inlineStr" {
+					inInlineStr = true
+
+					inlineText.Reset()
+				}
+			case "t":
+				if inInlineStr {
+					inInlineT = true
+				}
 			}
 		case xml.EndElement:
 			switch t.Name.Local {
 			case "v":
 				inValue = false
+			case "t":
+				if inInlineT {
+					inInlineT = false
+				}
+			case "is":
+				if inInlineStr {
+					currentRow = append(currentRow, inlineText.String())
+					inInlineStr = false
+				}
 			case "c":
 				inCell = false
+				inInlineStr = false
+				inInlineT = false
 			case "row":
 				if inRow && len(currentRow) > 0 {
 					rows = append(rows, currentRow)
@@ -172,7 +197,9 @@ func parseWorksheet(data []byte, sharedStrings []string) [][]string {
 				inRow = false
 			}
 		case xml.CharData:
-			if inValue {
+			if inInlineT {
+				inlineText.Write(t)
+			} else if inValue {
 				val := string(t)
 
 				if cellType == "s" {

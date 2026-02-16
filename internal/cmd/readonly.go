@@ -59,6 +59,41 @@ var writeDesirePaths = map[string]bool{
 	"upload": true,
 }
 
+// nestedWriteVerbs is the comprehensive set of verbs that indicate a write
+// operation when they appear as a nested (depth >= 3) subcommand.
+// This covers verbs found in actual subcommands (e.g. chat messages send,
+// docs comments reply, gmail delegates remove) plus defensive entries for
+// plausible future write verbs.
+var nestedWriteVerbs = map[string]bool{
+	// Core CRUD verbs
+	"send": true, "create": true, "delete": true, "update": true,
+	"post": true, "add": true, "remove": true,
+	// Mutation verbs found in the codebase
+	"modify": true, "reply": true, "resolve": true, "verify": true,
+	"set": true, "unset": true,
+	"start": true, "stop": true, "renew": true, "serve": true,
+	"turn-in": true,
+	// Movement / structural verbs
+	"move": true, "copy": true, "rename": true, "transfer": true,
+	// Sharing / access verbs
+	"share": true, "unshare": true,
+	// State-change verbs
+	"archive": true, "unarchive": true,
+	"publish": true, "unpublish": true,
+	"submit": true, "accept": true, "decline": true,
+	"join": true, "leave": true,
+	// Data manipulation verbs
+	"clear": true, "append": true, "prepend": true,
+	"write": true, "insert": true,
+	"format": true, "find-replace": true,
+	// Task-specific verbs
+	"done": true, "undo": true,
+	// Drive verbs
+	"upload": true, "mkdir": true, "trash": true, "untrash": true,
+	// Other mutating verbs
+	"batch": true, "run": true, "import": true,
+}
+
 func enforceReadOnly(kctx *kong.Context, readOnly bool) error {
 	if !readOnly {
 		return nil
@@ -88,8 +123,7 @@ func enforceReadOnly(kctx *kong.Context, readOnly bool) error {
 		// Handle nested write commands (e.g., chat messages send).
 		if len(cmd) >= 3 {
 			nestedCmd := strings.ToLower(cmd[2])
-			if nestedCmd == "send" || nestedCmd == "create" || nestedCmd == "delete" ||
-				nestedCmd == "update" || nestedCmd == "post" || nestedCmd == "add" {
+			if nestedWriteVerbs[nestedCmd] {
 				return usagef("command %q %q %q is unavailable in read-only mode", topCmd, subCmd, nestedCmd)
 			}
 		}

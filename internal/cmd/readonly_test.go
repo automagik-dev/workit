@@ -63,6 +63,34 @@ type readonlyTestCLI struct {
 			Send struct{} `cmd:"" name:"send"`
 		} `cmd:"" name:"dm"`
 	} `cmd:"" name:"chat"`
+	Gmail2 struct {
+		Delegates struct {
+			List   struct{} `cmd:"" name:"list"`
+			Remove struct{} `cmd:"" name:"remove"`
+			Add    struct{} `cmd:"" name:"add"`
+		} `cmd:"" name:"delegates"`
+		Drafts struct {
+			List   struct{} `cmd:"" name:"list"`
+			Send   struct{} `cmd:"" name:"send"`
+			Create struct{} `cmd:"" name:"create"`
+		} `cmd:"" name:"drafts"`
+	} `cmd:"" name:"gmail2"`
+	Docs2 struct {
+		Comments struct {
+			List    struct{} `cmd:"" name:"list"`
+			Reply   struct{} `cmd:"" name:"reply"`
+			Resolve struct{} `cmd:"" name:"resolve"`
+			Delete  struct{} `cmd:"" name:"delete"`
+		} `cmd:"" name:"comments"`
+	} `cmd:"" name:"docs2"`
+	Drive2 struct {
+		Comments struct {
+			List   struct{} `cmd:"" name:"list"`
+			Reply  struct{} `cmd:"" name:"reply"`
+			Create struct{} `cmd:"" name:"create"`
+			Update struct{} `cmd:"" name:"update"`
+		} `cmd:"" name:"comments"`
+	} `cmd:"" name:"drive2"`
 	Docs struct {
 		Get         struct{} `cmd:"" name:"get"`
 		Create      struct{} `cmd:"" name:"create"`
@@ -226,6 +254,21 @@ func TestEnforceReadOnly_NestedWriteCommands(t *testing.T) {
 		{"chat spaces list", false},
 		{"chat spaces create", true},
 		{"chat dm send", true},
+		// Extended nested verbs
+		{"gmail2 delegates remove", true},
+		{"gmail2 delegates add", true},
+		{"gmail2 delegates list", false},
+		{"gmail2 drafts send", true},
+		{"gmail2 drafts create", true},
+		{"gmail2 drafts list", false},
+		{"docs2 comments reply", true},
+		{"docs2 comments resolve", true},
+		{"docs2 comments delete", true},
+		{"docs2 comments list", false},
+		{"drive2 comments reply", true},
+		{"drive2 comments create", true},
+		{"drive2 comments update", true},
+		{"drive2 comments list", false},
 	}
 
 	for _, tt := range tests {

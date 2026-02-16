@@ -463,6 +463,57 @@ func TestDocxEmptyDocument(t *testing.T) {
 	}
 }
 
+func TestXlsxInlineStrings(t *testing.T) {
+	// XLSX with inline strings (t="inlineStr" + <is><t>...</t></is>)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "inline_str.xlsx")
+
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+
+	f, _ := w.Create("xl/worksheets/sheet1.xml")
+	_, _ = f.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr"><is><t>Inline Hello</t></is></c>
+      <c r="B1" t="inlineStr"><is><t>Inline World</t></is></c>
+    </row>
+    <row r="2">
+      <c r="A2"><v>42</v></c>
+      <c r="B2" t="inlineStr"><is><t>Mixed Row</t></is></c>
+    </row>
+  </sheetData>
+</worksheet>`))
+
+	_ = w.Close()
+	_ = os.WriteFile(path, buf.Bytes(), 0o644)
+
+	file, _ := os.Open(path)
+	defer file.Close()
+
+	text, err := ExtractText(file, "inline_str.xlsx")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(text, "Inline Hello") {
+		t.Errorf("expected 'Inline Hello', got: %q", text)
+	}
+
+	if !strings.Contains(text, "Inline World") {
+		t.Errorf("expected 'Inline World', got: %q", text)
+	}
+
+	if !strings.Contains(text, "42") {
+		t.Errorf("expected '42', got: %q", text)
+	}
+
+	if !strings.Contains(text, "Mixed Row") {
+		t.Errorf("expected 'Mixed Row', got: %q", text)
+	}
+}
+
 func TestXlsxNoSharedStrings(t *testing.T) {
 	// XLSX with only inline values, no shared strings
 	dir := t.TempDir()
