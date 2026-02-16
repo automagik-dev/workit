@@ -62,15 +62,15 @@ func ResolveFileInput(value string) (string, error) {
 	return string(data), nil
 }
 
-// readSecureFile implements the 6-step security chain:
-//  1. filepath.Abs — resolve to absolute path
-//  2. filepath.Clean — normalize
-//  3. strings.HasPrefix — must be within CWD
-//  4. os.Lstat — check WITHOUT following symlinks
-//  5. If symlink: EvalSymlinks -> re-check target in CWD
-//  6. os.ReadFile — safe to read
+// readSecureFile implements the security chain:
+//  1. filepath.Abs + filepath.Clean — resolve to absolute, normalized path
+//  2. CWD prefix check on raw path — catches obvious ../../../ traversals
+//  3. filepath.EvalSymlinks — resolve ALL symlinks (including intermediate dirs)
+//  4. CWD prefix re-check on resolved path — catches symlink escapes
+//  5. Sensitive file pattern checks on both raw and resolved paths
+//  6. Size check + os.ReadFile on resolved path
 func readSecureFile(path string) ([]byte, error) {
-	// Step 1: resolve to absolute path
+	// Step 1: resolve to absolute path and normalize
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("get working directory: %w", err)
@@ -81,16 +81,40 @@ func readSecureFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("resolve absolute path: %w", err)
 	}
 
-	// Step 2: normalize
 	cleaned := filepath.Clean(absPath)
 	cwdClean := filepath.Clean(cwd)
 
-	// Step 3: validate within CWD subtree
+	// Step 2: CWD check on raw path (catches obvious ../../../ etc)
 	if !isWithinDir(cleaned, cwdClean) {
 		return nil, fmt.Errorf("%w: %s", errPathEscapesCWD, path)
 	}
 
-	// Check sensitive file patterns before any I/O
+	// Step 3: Resolve ALL symlinks in the full path (including intermediate
+	// directory components), then re-check CWD containment on the resolved path.
+	// This prevents attacks where a parent directory is a symlink pointing
+	// outside CWD (e.g., safe-linkdir -> /etc).
+	resolved, err := filepath.EvalSymlinks(cleaned)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("resolve path: %w", err)
+		}
+		// File doesn't exist; will fail at ReadFile with a clear error.
+		resolved = cleaned
+	} else {
+		resolved = filepath.Clean(resolved)
+
+		// Step 4: CWD check on the fully resolved path
+		if !isWithinDir(resolved, cwdClean) {
+			return nil, fmt.Errorf("%w: %s", errSymlinkEscape, path)
+		}
+
+		// Check sensitive patterns on the resolved path
+		if isSensitiveFile(resolved, cwdClean) {
+			return nil, fmt.Errorf("%w: %s", errSensitiveFile, path)
+		}
+	}
+
+	// Check sensitive file patterns on the original (pre-symlink) path
 	if isSensitiveFile(cleaned, cwdClean) {
 		relPath, relErr := filepath.Rel(cwdClean, cleaned)
 		if relErr != nil {
@@ -100,44 +124,18 @@ func readSecureFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %s", errSensitiveFile, relPath)
 	}
 
-	// Step 4: Lstat (no symlink follow)
-	info, err := os.Lstat(cleaned)
+	// Step 5: Stat the resolved path for size check
+	info, err := os.Stat(resolved)
 	if err != nil {
-		return nil, fmt.Errorf("lstat: %w", err)
+		return nil, fmt.Errorf("stat: %w", err)
 	}
 
-	// Step 5: if symlink, evaluate and re-check
-	if info.Mode()&os.ModeSymlink != 0 {
-		target, evalErr := filepath.EvalSymlinks(cleaned)
-		if evalErr != nil {
-			return nil, fmt.Errorf("resolve symlink: %w", evalErr)
-		}
-
-		target = filepath.Clean(target)
-
-		if !isWithinDir(target, cwdClean) {
-			return nil, fmt.Errorf("%w: %s", errSymlinkEscape, target)
-		}
-
-		// Re-check sensitive pattern on the resolved target
-		if isSensitiveFile(target, cwdClean) {
-			return nil, fmt.Errorf("%w: %s", errSensitiveFile, path)
-		}
-
-		// Stat the target to get size
-		info, err = os.Stat(target)
-		if err != nil {
-			return nil, fmt.Errorf("stat symlink target: %w", err)
-		}
-	}
-
-	// Check file size
 	if info.Size() > maxFileSize {
 		return nil, fmt.Errorf("%w (%d bytes > %d bytes)", errFileTooLarge, info.Size(), maxFileSize)
 	}
 
-	// Step 6: read the file
-	data, err := os.ReadFile(cleaned)
+	// Step 6: read the resolved file
+	data, err := os.ReadFile(resolved)
 	if err != nil {
 		return nil, fmt.Errorf("read file: %w", err)
 	}
@@ -168,7 +166,6 @@ func isSensitiveFile(absPath, cwdPath string) bool {
 	// Normalize for case-insensitive matching
 	lower := strings.ToLower(relPath)
 	base := filepath.Base(lower)
-	dir := filepath.Dir(lower)
 
 	// .env and .env.*
 	if base == ".env" || strings.HasPrefix(base, ".env.") {
@@ -181,10 +178,6 @@ func isSensitiveFile(absPath, cwdPath string) bool {
 		if part == ".ssh" || part == ".aws" || part == ".gcloud" {
 			return true
 		}
-	}
-	// Also check direct dir
-	if dir == ".ssh" || dir == ".aws" || dir == ".gcloud" {
-		return true
 	}
 
 	// *credentials*, *secret*, *token* in the basename

@@ -8,7 +8,6 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
-	"github.com/steipete/gogcli/internal/input"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -261,12 +260,8 @@ func (c *DocsCommentsAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
 
 	// Resolve file:// prefix on content argument before further processing.
-	if c.Content != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Content)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve content: %w", resolveErr)
-		}
-		c.Content = resolved
+	if err := resolveFileFlag(&c.Content, "content"); err != nil {
+		return err
 	}
 
 	docID := normalizeGoogleID(strings.TrimSpace(c.DocID))
@@ -336,12 +331,8 @@ func (c *DocsCommentsReplyCmd) Run(ctx context.Context, flags *RootFlags) error 
 	u := ui.FromContext(ctx)
 
 	// Resolve file:// prefix on content argument before further processing.
-	if c.Content != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Content)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve content: %w", resolveErr)
-		}
-		c.Content = resolved
+	if err := resolveFileFlag(&c.Content, "content"); err != nil {
+		return err
 	}
 
 	docID := normalizeGoogleID(strings.TrimSpace(c.DocID))

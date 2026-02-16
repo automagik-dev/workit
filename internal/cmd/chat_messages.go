@@ -8,7 +8,6 @@ import (
 
 	"google.golang.org/api/chat/v1"
 
-	"github.com/steipete/gogcli/internal/input"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -175,12 +174,8 @@ func (c *ChatMessagesSendCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	// Resolve file:// prefix on --text before further processing.
-	if c.Text != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Text)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve text: %w", resolveErr)
-		}
-		c.Text = resolved
+	if resolveErr := resolveFileFlag(&c.Text, "text"); resolveErr != nil {
+		return resolveErr
 	}
 
 	text := strings.TrimSpace(c.Text)

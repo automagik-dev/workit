@@ -1,6 +1,7 @@
 package outfmt
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -21,7 +22,7 @@ func ApplyJQ(jsonBytes []byte, expression string) ([]byte, error) {
 	}
 
 	iter := query.Run(input)
-	var results []byte
+	var buf bytes.Buffer
 
 	for {
 		v, ok := iter.Next()
@@ -38,11 +39,12 @@ func ApplyJQ(jsonBytes []byte, expression string) ([]byte, error) {
 			return nil, fmt.Errorf("marshal jq result: %w", err)
 		}
 
-		if len(results) > 0 {
-			results = append(results, '\n')
+		if buf.Len() > 0 {
+			buf.WriteByte('\n')
 		}
-		results = append(results, b...)
+
+		buf.Write(b)
 	}
 
-	return results, nil
+	return buf.Bytes(), nil
 }

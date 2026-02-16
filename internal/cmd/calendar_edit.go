@@ -9,7 +9,6 @@ import (
 	"github.com/alecthomas/kong"
 	"google.golang.org/api/calendar/v3"
 
-	"github.com/steipete/gogcli/internal/input"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -60,12 +59,8 @@ func (c *CalendarCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	// Resolve file:// prefix on --description before further processing.
-	if c.Description != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Description)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve description: %w", resolveErr)
-		}
-		c.Description = resolved
+	if err := resolveFileFlag(&c.Description, "description"); err != nil {
+		return err
 	}
 
 	eventType, err := c.resolveCreateEventType()
@@ -369,12 +364,8 @@ func (c *CalendarUpdateCmd) Run(ctx context.Context, kctx *kong.Context, flags *
 	}
 
 	// Resolve file:// prefix on --description before further processing.
-	if c.Description != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Description)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve description: %w", resolveErr)
-		}
-		c.Description = resolved
+	if err := resolveFileFlag(&c.Description, "description"); err != nil {
+		return err
 	}
 
 	scope := strings.TrimSpace(strings.ToLower(c.Scope))

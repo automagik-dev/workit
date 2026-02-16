@@ -15,7 +15,6 @@ import (
 	gapi "google.golang.org/api/googleapi"
 
 	"github.com/steipete/gogcli/internal/googleapi"
-	"github.com/steipete/gogcli/internal/input"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -353,12 +352,8 @@ func (c *DocsUpdateCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	// Resolve file:// prefix on --content before further processing.
-	if c.Content != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Content)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve content: %w", resolveErr)
-		}
-		c.Content = resolved
+	if resolveErr := resolveFileFlag(&c.Content, "content"); resolveErr != nil {
+		return resolveErr
 	}
 
 	var content string
@@ -650,12 +645,8 @@ func (c *DocsWriteCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	// Resolve file:// prefix on content argument before further processing.
-	if c.Content != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Content)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve content: %w", resolveErr)
-		}
-		c.Content = resolved
+	if resolveErr := resolveFileFlag(&c.Content, "content"); resolveErr != nil {
+		return resolveErr
 	}
 
 	content, err := resolveContentInput(c.Content, c.File)
@@ -806,12 +797,8 @@ func (c *DocsInsertCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	// Resolve file:// prefix on content argument before further processing.
-	if c.Content != "" {
-		resolved, resolveErr := input.ResolveFileInput(c.Content)
-		if resolveErr != nil {
-			return fmt.Errorf("resolve content: %w", resolveErr)
-		}
-		c.Content = resolved
+	if resolveErr := resolveFileFlag(&c.Content, "content"); resolveErr != nil {
+		return resolveErr
 	}
 
 	content, err := resolveContentInput(c.Content, c.File)

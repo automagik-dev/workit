@@ -306,6 +306,35 @@ func TestResolveFileInput_FileNotFound(t *testing.T) {
 	}
 }
 
+func TestResolveFileInput_IntermediateSymlinkEscape(t *testing.T) {
+	// A parent directory is a symlink pointing outside CWD.
+	// filepath.Clean/Abs don't resolve intermediate symlinks,
+	// so the raw path passes CWD check but the real target is outside.
+	outsideDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outsideDir, "data.txt"), []byte("outside-data"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tmp := helperChdirTemp(t)
+
+	// Create a symlink directory inside CWD that points outside
+	if err := os.Symlink(outsideDir, filepath.Join(tmp, "safe-linkdir")); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := ResolveFileInput("file://safe-linkdir/data.txt")
+	if err == nil {
+		t.Fatal("expected error for intermediate symlink escape, got nil")
+	}
+
+	// Should be blocked by symlink escape or CWD containment
+	errMsg := err.Error()
+	if !strings.Contains(errMsg, "symlink target escapes working directory") &&
+		!strings.Contains(errMsg, "escapes working directory") {
+		t.Fatalf("expected symlink/CWD escape error, got: %v", err)
+	}
+}
+
 func TestResolveFileInput_NonSensitiveFileAllowed(t *testing.T) {
 	// Ensure files that look somewhat like sensitive names but are not actually
 	// in the sensitive pattern list are allowed.
