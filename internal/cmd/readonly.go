@@ -7,23 +7,32 @@ import (
 )
 
 // writeCommands maps service -> subcommand names that are write operations.
+// Both canonical names (e.g. "move", "copy", "delete") and aliases
+// (e.g. "mv", "cp", "rm") are listed so that enforceReadOnly blocks
+// whichever name Kong resolves.
 var writeCommands = map[string]map[string]bool{
 	"gmail": {
 		"send": true, "delete": true, "trash": true, "untrash": true,
 		"modify": true, "batch": true,
 	},
 	"drive": {
-		"upload": true, "mkdir": true, "mv": true, "rm": true,
-		"cp": true, "share": true,
+		"upload": true, "mkdir": true,
+		"mv": true, "move": true, "rename": true,
+		"rm": true, "delete": true,
+		"cp": true, "copy": true,
+		"share": true, "unshare": true,
 	},
 	"calendar": {
 		"create": true, "update": true, "delete": true,
 	},
 	"docs": {
 		"create": true, "update": true, "write": true, "insert": true,
+		"delete": true, "copy": true, "find-replace": true,
 	},
 	"slides": {
-		"create": true,
+		"create": true, "copy": true,
+		"add-slide": true, "delete-slide": true,
+		"update-notes": true, "replace-slide": true,
 	},
 	"sheets": {
 		"update": true, "append": true, "create": true, "clear": true,
@@ -79,7 +88,8 @@ func enforceReadOnly(kctx *kong.Context, readOnly bool) error {
 		// Handle nested write commands (e.g., chat messages send).
 		if len(cmd) >= 3 {
 			nestedCmd := strings.ToLower(cmd[2])
-			if nestedCmd == "send" || nestedCmd == "create" || nestedCmd == "delete" || nestedCmd == "update" || nestedCmd == "post" {
+			if nestedCmd == "send" || nestedCmd == "create" || nestedCmd == "delete" ||
+				nestedCmd == "update" || nestedCmd == "post" || nestedCmd == "add" {
 				return usagef("command %q %q %q is unavailable in read-only mode", topCmd, subCmd, nestedCmd)
 			}
 		}

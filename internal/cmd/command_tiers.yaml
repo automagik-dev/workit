@@ -21,11 +21,16 @@ drive:
   get: core
   cat: core
   mkdir: extended
-  mv: extended
-  rm: extended
-  cp: extended
+  move: extended
+  delete: extended
+  copy: extended
+  rename: extended
   share: extended
+  unshare: extended
   permissions: complete
+  url: complete
+  comments: complete
+  drives: complete
 calendar:
   ls: core
   get: core

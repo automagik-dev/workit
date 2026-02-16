@@ -13,6 +13,12 @@ import (
 	"github.com/steipete/gogcli/internal/ui"
 )
 
+const (
+	// maxCatSize is the maximum file size (100 MB) that drive cat will read.
+	// Files larger than this are truncated with a warning on stderr.
+	maxCatSize int64 = 100 << 20
+)
+
 // DriveCatCmd outputs the text content of a Drive file to stdout.
 // For Google Docs native formats (Docs/Sheets/Slides), it exports to plain text.
 // For DOCX/XLSX/PPTX, it extracts text using the officetext package.
@@ -61,9 +67,13 @@ func (c *DriveCatCmd) Run(ctx context.Context, flags *RootFlags) error {
 		}
 		defer resp.Body.Close()
 
-		body, readErr := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxCatSize+1))
 		if readErr != nil {
 			return fmt.Errorf("read export: %w", readErr)
+		}
+		if int64(len(body)) > maxCatSize {
+			u.Err().Printf("warning: exported content truncated at %d MB", maxCatSize>>20)
+			body = body[:maxCatSize]
 		}
 		content = string(body)
 	} else {
@@ -74,9 +84,13 @@ func (c *DriveCatCmd) Run(ctx context.Context, flags *RootFlags) error {
 		}
 		defer resp.Body.Close()
 
-		body, readErr := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxCatSize+1))
 		if readErr != nil {
 			return fmt.Errorf("read download: %w", readErr)
+		}
+		if int64(len(body)) > maxCatSize {
+			u.Err().Printf("warning: file %s truncated at %d MB", meta.Name, maxCatSize>>20)
+			body = body[:maxCatSize]
 		}
 
 		// Try Office text extraction if applicable.

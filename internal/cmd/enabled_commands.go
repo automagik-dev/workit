@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/alecthomas/kong"
 	"gopkg.in/yaml.v3"
@@ -65,13 +66,24 @@ func parseEnabledCommands(value string) map[string]bool {
 	return out
 }
 
+var (
+	cachedTiers    map[string]map[string]string
+	cachedTiersErr error
+	tiersOnce      sync.Once
+)
+
 // parseCommandTiers parses the embedded YAML into the tiers map.
+// The result is cached after the first call via sync.Once.
 func parseCommandTiers() (map[string]map[string]string, error) {
-	var tiers map[string]map[string]string
-	if err := yaml.Unmarshal(commandTiersYAML, &tiers); err != nil {
-		return nil, fmt.Errorf("parse command tiers: %w", err)
-	}
-	return tiers, nil
+	tiersOnce.Do(func() {
+		var tiers map[string]map[string]string
+		if err := yaml.Unmarshal(commandTiersYAML, &tiers); err != nil {
+			cachedTiersErr = fmt.Errorf("parse command tiers: %w", err)
+			return
+		}
+		cachedTiers = tiers
+	})
+	return cachedTiers, cachedTiersErr
 }
 
 func enforceCommandTier(kctx *kong.Context, tier string) error {

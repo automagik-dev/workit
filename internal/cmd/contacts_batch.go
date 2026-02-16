@@ -44,15 +44,25 @@ type batchCreateResult struct {
 }
 
 const (
-	batchCreateChunkSize = 200 // People API limit per batch create request.
-	batchDeleteChunkSize = 500 // People API limit per batch delete request.
+	batchCreateChunkSize = 200      // People API limit per batch create request.
+	batchDeleteChunkSize = 500      // People API limit per batch delete request.
+	maxBatchInputSize    = 10 << 20 // 10 MB max for batch JSON input.
 	statusError          = "error"
 )
 
 // parseContactInputs reads and validates JSON contact input from a reader.
+// Input is limited to maxBatchInputSize to prevent OOM on large payloads.
 func parseContactInputs(r io.Reader) ([]ContactInput, error) {
+	lr := io.LimitReader(r, maxBatchInputSize+1)
+	data, err := io.ReadAll(lr)
+	if err != nil {
+		return nil, fmt.Errorf("read contacts input: %w", err)
+	}
+	if int64(len(data)) > maxBatchInputSize {
+		return nil, fmt.Errorf("contacts input too large (max %d MB)", maxBatchInputSize>>20)
+	}
 	var contacts []ContactInput
-	if err := json.NewDecoder(r).Decode(&contacts); err != nil {
+	if err := json.Unmarshal(data, &contacts); err != nil {
 		return nil, fmt.Errorf("parse contacts JSON: %w", err)
 	}
 	if len(contacts) == 0 {
@@ -62,9 +72,18 @@ func parseContactInputs(r io.Reader) ([]ContactInput, error) {
 }
 
 // parseResourceNames reads JSON array of resource name strings from a reader.
+// Input is limited to maxBatchInputSize to prevent OOM on large payloads.
 func parseResourceNames(r io.Reader) ([]string, error) {
+	lr := io.LimitReader(r, maxBatchInputSize+1)
+	data, err := io.ReadAll(lr)
+	if err != nil {
+		return nil, fmt.Errorf("read resource names input: %w", err)
+	}
+	if int64(len(data)) > maxBatchInputSize {
+		return nil, fmt.Errorf("resource names input too large (max %d MB)", maxBatchInputSize>>20)
+	}
 	var names []string
-	if err := json.NewDecoder(r).Decode(&names); err != nil {
+	if err := json.Unmarshal(data, &names); err != nil {
 		return nil, fmt.Errorf("parse resource names: %w", err)
 	}
 	return names, nil
@@ -159,14 +178,20 @@ func (c *ContactsBatchCreateCmd) Run(ctx context.Context, flags *RootFlags) erro
 		// Map results from batch response.
 		for j := range chunk {
 			r := batchCreateResult{Index: i + j, Status: "created"}
-			if resp != nil && j < len(resp.CreatedPeople) && resp.CreatedPeople[j] != nil {
-				if resp.CreatedPeople[j].Person != nil {
-					r.Name = resp.CreatedPeople[j].Person.ResourceName
-				}
-				if resp.CreatedPeople[j].Status != nil && resp.CreatedPeople[j].Status.Code != 0 {
-					r.Status = statusError
-					r.Error = resp.CreatedPeople[j].Status.Message
-				}
+			if resp == nil || j >= len(resp.CreatedPeople) || resp.CreatedPeople[j] == nil {
+				// Response entry missing for this contact -- cannot confirm creation.
+				r.Status = statusError
+				r.Error = "no response entry from API"
+				results = append(results, r)
+				continue
+			}
+			cp := resp.CreatedPeople[j]
+			if cp.Person != nil {
+				r.Name = cp.Person.ResourceName
+			}
+			if cp.Status != nil && cp.Status.Code != 0 {
+				r.Status = statusError
+				r.Error = cp.Status.Message
 			}
 			results = append(results, r)
 		}

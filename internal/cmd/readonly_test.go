@@ -22,6 +22,12 @@ type readonlyTestCLI struct {
 		Upload   struct{} `cmd:"" name:"upload"`
 		Mkdir    struct{} `cmd:"" name:"mkdir"`
 		Rm       struct{} `cmd:"" name:"rm"`
+		Delete   struct{} `cmd:"" name:"delete"`
+		Move     struct{} `cmd:"" name:"move"`
+		Copy     struct{} `cmd:"" name:"copy"`
+		Rename   struct{} `cmd:"" name:"rename"`
+		Share    struct{} `cmd:"" name:"share"`
+		Unshare  struct{} `cmd:"" name:"unshare"`
 		Search   struct{} `cmd:"" name:"search"`
 		Download struct{} `cmd:"" name:"download"`
 	} `cmd:"" name:"drive"`
@@ -46,13 +52,43 @@ type readonlyTestCLI struct {
 	} `cmd:"" name:"tasks"`
 	Chat struct {
 		Spaces struct {
-			List struct{} `cmd:"" name:"list"`
+			List   struct{} `cmd:"" name:"list"`
+			Create struct{} `cmd:"" name:"create"`
 		} `cmd:"" name:"spaces"`
 		Messages struct {
 			List struct{} `cmd:"" name:"list"`
 			Send struct{} `cmd:"" name:"send"`
 		} `cmd:"" name:"messages"`
+		DM struct {
+			Send struct{} `cmd:"" name:"send"`
+		} `cmd:"" name:"dm"`
 	} `cmd:"" name:"chat"`
+	Docs struct {
+		Get         struct{} `cmd:"" name:"get"`
+		Create      struct{} `cmd:"" name:"create"`
+		Write       struct{} `cmd:"" name:"write"`
+		Insert      struct{} `cmd:"" name:"insert"`
+		Delete      struct{} `cmd:"" name:"delete"`
+		Update      struct{} `cmd:"" name:"update"`
+		Copy        struct{} `cmd:"" name:"copy"`
+		FindReplace struct{} `cmd:"" name:"find-replace"`
+	} `cmd:"" name:"docs"`
+	Slides struct {
+		Get         struct{} `cmd:"" name:"get"`
+		Create      struct{} `cmd:"" name:"create"`
+		Copy        struct{} `cmd:"" name:"copy"`
+		AddSlide    struct{} `cmd:"" name:"add-slide"`
+		DeleteSlide struct{} `cmd:"" name:"delete-slide"`
+	} `cmd:"" name:"slides"`
+	Sheets struct {
+		Get    struct{} `cmd:"" name:"get"`
+		Update struct{} `cmd:"" name:"update"`
+		Append struct{} `cmd:"" name:"append"`
+		Create struct{} `cmd:"" name:"create"`
+		Clear  struct{} `cmd:"" name:"clear"`
+		Format struct{} `cmd:"" name:"format"`
+		Copy   struct{} `cmd:"" name:"copy"`
+	} `cmd:"" name:"sheets"`
 	Send   struct{} `cmd:"" name:"send"`
 	Search struct{} `cmd:"" name:"search"`
 	Upload struct{} `cmd:"" name:"upload"`
@@ -82,28 +118,62 @@ func TestEnforceReadOnly_BlocksWriteCommands(t *testing.T) {
 		{"gmail delete", true},
 		{"gmail trash", true},
 		{"gmail get", false},
+		// Drive: canonical names
 		{"drive upload", true},
 		{"drive ls", false},
 		{"drive mkdir", true},
 		{"drive rm", true},
+		{"drive delete", true},
+		{"drive move", true},
+		{"drive copy", true},
+		{"drive rename", true},
+		{"drive share", true},
+		{"drive unshare", true},
 		{"drive search", false},
 		{"drive download", false},
+		// Calendar
 		{"calendar create", true},
 		{"calendar ls", false},
 		{"calendar update", true},
 		{"calendar delete", true},
+		// Contacts
 		{"contacts create", true},
 		{"contacts list", false},
 		{"contacts search", false},
 		{"contacts delete", true},
 		{"contacts batch", true},
+		// Tasks
 		{"tasks add", true},
 		{"tasks list", false},
 		{"tasks done", true},
 		{"tasks delete", true},
-		{"send", true},    // top-level desire path
-		{"search", false}, // top-level read desire path
-		{"upload", true},  // top-level desire path
+		// Docs
+		{"docs create", true},
+		{"docs write", true},
+		{"docs insert", true},
+		{"docs delete", true},
+		{"docs update", true},
+		{"docs copy", true},
+		{"docs find-replace", true},
+		{"docs get", false},
+		// Slides
+		{"slides create", true},
+		{"slides copy", true},
+		{"slides add-slide", true},
+		{"slides delete-slide", true},
+		{"slides get", false},
+		// Sheets
+		{"sheets update", true},
+		{"sheets append", true},
+		{"sheets create", true},
+		{"sheets clear", true},
+		{"sheets format", true},
+		{"sheets copy", true},
+		{"sheets get", false},
+		// Top-level desire paths
+		{"send", true},
+		{"search", false},
+		{"upload", true},
 	}
 
 	for _, tt := range tests {
@@ -154,6 +224,8 @@ func TestEnforceReadOnly_NestedWriteCommands(t *testing.T) {
 		{"chat messages send", true},
 		{"chat messages list", false},
 		{"chat spaces list", false},
+		{"chat spaces create", true},
+		{"chat dm send", true},
 	}
 
 	for _, tt := range tests {

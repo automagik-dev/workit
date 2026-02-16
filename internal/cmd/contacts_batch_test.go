@@ -35,6 +35,19 @@ func TestContactsBatchCreate_ParsesJSONInput(t *testing.T) {
 	}
 }
 
+func TestContactsBatchCreate_LimitedReader(t *testing.T) {
+	// Test that parseContactInputs enforces the size limit.
+	// Create input larger than maxBatchInputSize.
+	big := strings.Repeat(`[{"givenName":"A","familyName":"B"}]`, maxBatchInputSize/35+1)
+	_, err := parseContactInputs(strings.NewReader(big))
+	if err == nil {
+		t.Fatal("expected error for oversized input")
+	}
+	if !strings.Contains(err.Error(), "too large") {
+		t.Fatalf("expected 'too large' error, got: %v", err)
+	}
+}
+
 func TestContactsBatchCreate_EmptyInputError(t *testing.T) {
 	_, err := parseContactInputs(bytes.NewReader([]byte("[]")))
 	if err == nil {
