@@ -15,6 +15,14 @@ CRED_FILE="$CONFIG_DIR/credentials.env"
 echo "🔧 gog-cli Credentials Setup"
 echo ""
 
+# Load local env file if present (kept out of git via .gitignore).
+if [ -f ".env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . ".env"
+    set +a
+fi
+
 # Create config directory
 mkdir -p "$CONFIG_DIR"
 chmod 700 "$CONFIG_DIR"
@@ -30,23 +38,29 @@ if [ -f "$CRED_FILE" ]; then
     fi
 fi
 
-# Prompt for credentials or use defaults
-echo "Enter OAuth credentials (or press Enter for Namastex defaults):"
+# Prompt for credentials (defaults come from environment variables, not hardcoded).
+echo "Enter OAuth credentials (press Enter to use current environment values):"
 echo ""
 
-read -p "Client ID [namastex-default]: " CLIENT_ID
+read -p "Client ID [${GOG_CLIENT_ID:-}]: " CLIENT_ID
 if [ -z "$CLIENT_ID" ]; then
-    CLIENT_ID="151804783833-b818q8mtv5tmc2i640cg4h6uq3nm6uj2.apps.googleusercontent.com"
+    CLIENT_ID="${GOG_CLIENT_ID:-}"
 fi
 
-read -p "Client Secret [namastex-default]: " CLIENT_SECRET
+read -p "Client Secret [${GOG_CLIENT_SECRET:-}]: " CLIENT_SECRET
 if [ -z "$CLIENT_SECRET" ]; then
-    CLIENT_SECRET="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"
+    CLIENT_SECRET="${GOG_CLIENT_SECRET:-}"
 fi
 
-read -p "Callback Server [https://gogoauth.namastex.io]: " CALLBACK_SERVER
+read -p "Callback Server [${GOG_CALLBACK_SERVER:-https://gogoauth.namastex.io}]: " CALLBACK_SERVER
 if [ -z "$CALLBACK_SERVER" ]; then
-    CALLBACK_SERVER="https://gogoauth.namastex.io"
+    CALLBACK_SERVER="${GOG_CALLBACK_SERVER:-https://gogoauth.namastex.io}"
+fi
+
+if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+    echo "ERROR: Missing OAuth client credentials."
+    echo "Set GOG_CLIENT_ID and GOG_CLIENT_SECRET in the environment (or in a local .env file)."
+    exit 1
 fi
 
 # Write credentials file
