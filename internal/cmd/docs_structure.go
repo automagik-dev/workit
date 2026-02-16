@@ -22,6 +22,11 @@ type DocElement struct {
 	ContentSummary string `json:"contentSummary,omitempty"`
 }
 
+const (
+	docElementTypeParagraph = "paragraph"
+	docElementTypeUnknown   = "unknown"
+)
+
 // DocsStructureCmd inspects the element tree of a Google Doc.
 type DocsStructureCmd struct {
 	DocID string `arg:"" name:"docId" help:"Document ID or URL"`
@@ -102,7 +107,7 @@ func classifyStructuralElement(el *docs.StructuralElement) DocElement {
 
 	switch {
 	case el.Paragraph != nil:
-		elem.Type = "paragraph"
+		elem.Type = docElementTypeParagraph
 		if el.Paragraph.ParagraphStyle != nil {
 			elem.Style = el.Paragraph.ParagraphStyle.NamedStyleType
 		}
@@ -121,7 +126,7 @@ func classifyStructuralElement(el *docs.StructuralElement) DocElement {
 		elem.Type = "tableOfContents"
 
 	default:
-		elem.Type = "unknown"
+		elem.Type = docElementTypeUnknown
 	}
 
 	return elem
@@ -129,21 +134,31 @@ func classifyStructuralElement(el *docs.StructuralElement) DocElement {
 
 // paragraphContentSummary extracts the first ~80 characters of text from a paragraph.
 func paragraphContentSummary(p *docs.Paragraph) string {
-	var buf strings.Builder
+	const maxSummaryRunes = 80
+
+	summaryRunes := make([]rune, 0, maxSummaryRunes)
+	truncated := false
+
 	for _, pe := range p.Elements {
 		if pe.TextRun == nil {
 			continue
 		}
-		text := pe.TextRun.Content
-		buf.WriteString(text)
-		if buf.Len() > 80 {
+
+		for _, r := range pe.TextRun.Content {
+			if len(summaryRunes) >= maxSummaryRunes {
+				truncated = true
+				break
+			}
+			summaryRunes = append(summaryRunes, r)
+		}
+		if truncated {
 			break
 		}
 	}
 
-	summary := strings.TrimRight(buf.String(), "\n")
-	if len(summary) > 80 {
-		summary = summary[:80] + "..."
+	summary := strings.TrimRight(string(summaryRunes), "\n")
+	if truncated {
+		summary += "..."
 	}
 	return summary
 }

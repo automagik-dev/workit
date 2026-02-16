@@ -62,8 +62,10 @@ func TestDriveCheckPublicCmd_PublicFile_JSON(t *testing.T) {
 	})
 
 	var parsed struct {
-		Public     bool              `json:"public"`
-		Permission *drive.Permission `json:"permission"`
+		Public           bool              `json:"public"`
+		DomainShared     bool              `json:"domain_shared"`
+		Permission       *drive.Permission `json:"permission"`
+		DomainPermission *drive.Permission `json:"domain_permission"`
 	}
 	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
 		t.Fatalf("json parse: %v\nout=%q", err, out)
@@ -79,6 +81,12 @@ func TestDriveCheckPublicCmd_PublicFile_JSON(t *testing.T) {
 	}
 	if parsed.Permission.Role != "reader" {
 		t.Fatalf("expected permission role=reader, got %q", parsed.Permission.Role)
+	}
+	if parsed.DomainShared {
+		t.Fatalf("expected domain_shared=false, got true")
+	}
+	if parsed.DomainPermission != nil {
+		t.Fatalf("expected domain_permission to be nil, got %+v", parsed.DomainPermission)
 	}
 }
 
@@ -127,8 +135,10 @@ func TestDriveCheckPublicCmd_PrivateFile_JSON(t *testing.T) {
 	})
 
 	var parsed struct {
-		Public     bool              `json:"public"`
-		Permission *drive.Permission `json:"permission"`
+		Public           bool              `json:"public"`
+		DomainShared     bool              `json:"domain_shared"`
+		Permission       *drive.Permission `json:"permission"`
+		DomainPermission *drive.Permission `json:"domain_permission"`
 	}
 	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
 		t.Fatalf("json parse: %v\nout=%q", err, out)
@@ -138,6 +148,12 @@ func TestDriveCheckPublicCmd_PrivateFile_JSON(t *testing.T) {
 	}
 	if parsed.Permission != nil {
 		t.Fatalf("expected permission to be nil for private file, got %+v", parsed.Permission)
+	}
+	if parsed.DomainShared {
+		t.Fatalf("expected domain_shared=false, got true")
+	}
+	if parsed.DomainPermission != nil {
+		t.Fatalf("expected domain_permission to be nil, got %+v", parsed.DomainPermission)
 	}
 }
 
@@ -186,20 +202,28 @@ func TestDriveCheckPublicCmd_DomainShared_JSON(t *testing.T) {
 	})
 
 	var parsed struct {
-		Public     bool              `json:"public"`
-		Permission *drive.Permission `json:"permission"`
+		Public           bool              `json:"public"`
+		DomainShared     bool              `json:"domain_shared"`
+		Permission       *drive.Permission `json:"permission"`
+		DomainPermission *drive.Permission `json:"domain_permission"`
 	}
 	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
 		t.Fatalf("json parse: %v\nout=%q", err, out)
 	}
-	if !parsed.Public {
-		t.Fatalf("expected public=true for domain-shared file, got false")
+	if parsed.Public {
+		t.Fatalf("expected public=false for domain-shared file, got true")
 	}
-	if parsed.Permission == nil {
-		t.Fatalf("expected permission to be set for domain-shared file")
+	if !parsed.DomainShared {
+		t.Fatalf("expected domain_shared=true for domain-shared file, got false")
 	}
-	if parsed.Permission.Type != "domain" {
-		t.Fatalf("expected permission type=domain, got %q", parsed.Permission.Type)
+	if parsed.Permission != nil {
+		t.Fatalf("expected permission to be nil for domain-shared file, got %+v", parsed.Permission)
+	}
+	if parsed.DomainPermission == nil {
+		t.Fatalf("expected domain_permission to be set for domain-shared file")
+	}
+	if parsed.DomainPermission.Type != "domain" {
+		t.Fatalf("expected domain_permission type=domain, got %q", parsed.DomainPermission.Type)
 	}
 }
 
@@ -282,7 +306,8 @@ func TestDriveCheckPublicCmd_PaginatedPermissions_JSON(t *testing.T) {
 		if r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/files/filepag/permissions") {
 			w.Header().Set("Content-Type", "application/json")
 			pageToken := r.URL.Query().Get("pageToken")
-			if pageToken == "" {
+			switch pageToken {
+			case "":
 				// First page: only user permissions, with a nextPageToken.
 				_ = json.NewEncoder(w).Encode(map[string]any{
 					"permissions": []map[string]any{
@@ -290,14 +315,14 @@ func TestDriveCheckPublicCmd_PaginatedPermissions_JSON(t *testing.T) {
 					},
 					"nextPageToken": "page2",
 				})
-			} else if pageToken == "page2" {
+			case "page2":
 				// Second page: contains an "anyone" permission.
 				_ = json.NewEncoder(w).Encode(map[string]any{
 					"permissions": []map[string]any{
 						{"id": "perm2", "type": "anyone", "role": "reader"},
 					},
 				})
-			} else {
+			default:
 				http.NotFound(w, r)
 			}
 			return
@@ -332,8 +357,10 @@ func TestDriveCheckPublicCmd_PaginatedPermissions_JSON(t *testing.T) {
 	})
 
 	var parsed struct {
-		Public     bool              `json:"public"`
-		Permission *drive.Permission `json:"permission"`
+		Public           bool              `json:"public"`
+		DomainShared     bool              `json:"domain_shared"`
+		Permission       *drive.Permission `json:"permission"`
+		DomainPermission *drive.Permission `json:"domain_permission"`
 	}
 	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
 		t.Fatalf("json parse: %v\nout=%q", err, out)
@@ -346,6 +373,12 @@ func TestDriveCheckPublicCmd_PaginatedPermissions_JSON(t *testing.T) {
 	}
 	if parsed.Permission.Type != "anyone" {
 		t.Fatalf("expected permission type=anyone, got %q", parsed.Permission.Type)
+	}
+	if parsed.DomainShared {
+		t.Fatalf("expected domain_shared=false, got true")
+	}
+	if parsed.DomainPermission != nil {
+		t.Fatalf("expected domain_permission to be nil, got %+v", parsed.DomainPermission)
 	}
 }
 

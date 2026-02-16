@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -246,4 +247,47 @@ func TestSheetsBatchUpdateCmd_Text(t *testing.T) {
 			t.Fatalf("batch-update text: %v", err)
 		}
 	})
+}
+
+func TestSheetsBatchUpdateCmd_NoFileTTYStdin(t *testing.T) {
+	origNew := newSheetsService
+	t.Cleanup(func() { newSheetsService = origNew })
+	errUnexpectedCall := errors.New("unexpected sheets service call")
+
+	newSheetsService = func(context.Context, string) (*sheets.Service, error) {
+		t.Fatal("should not call Sheets API when no input is provided")
+		return nil, errUnexpectedCall
+	}
+
+	oldStdin := os.Stdin
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatalf("open os.DevNull: %v", err)
+	}
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		_ = devNull.Close()
+	})
+	os.Stdin = devNull
+
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		t.Fatalf("stdin stat: %v", err)
+	}
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		t.Skip("os.DevNull is not a character device on this platform")
+	}
+
+	flags := &RootFlags{Account: "a@b.com"}
+	u, uiErr := ui.New(ui.Options{Stdout: io.Discard, Stderr: io.Discard, Color: "never"})
+	if uiErr != nil {
+		t.Fatalf("ui.New: %v", uiErr)
+	}
+	ctx := ui.WithUI(context.Background(), u)
+
+	cmd := &SheetsBatchUpdateCmd{}
+	runErr := runKong(t, cmd, []string{"s1"}, ctx, flags)
+	if runErr == nil || !strings.Contains(runErr.Error(), "no input provided") {
+		t.Fatalf("expected no-input error, got: %v", runErr)
+	}
 }

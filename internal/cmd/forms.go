@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alecthomas/kong"
 	formsapi "google.golang.org/api/forms/v1"
 
 	"github.com/steipete/gogcli/internal/googleapi"
@@ -33,22 +34,29 @@ type formsPublishSettingsResult struct {
 	} `json:"publishSettings"`
 }
 
-// formsHTTPClient holds the authenticated *http.Client for raw Forms API calls.
-// Set by FormsPublishCmd.Run before calling formsSetPublishSettings.
-var formsHTTPClient *http.Client
-
 // formsSetPublishSettings calls the Forms setPublishSettings endpoint.
 // The Go client's PublishSettings struct has no typed data fields in this API
 // version, so we issue a raw HTTP call through an authenticated HTTP client.
 // This variable is injectable for testing.
 var formsSetPublishSettings = defaultFormsSetPublishSettings
 
-func defaultFormsSetPublishSettings(ctx context.Context, svc *formsapi.Service, formID string, publishAsTemplate, requireAuth bool) (*formsPublishSettingsResult, error) {
+func defaultFormsSetPublishSettings(
+	ctx context.Context,
+	svc *formsapi.Service,
+	httpClient *http.Client,
+	formID string,
+	publishAsTemplate, requireAuth *bool,
+) (*formsPublishSettingsResult, error) {
+	publishSettings := map[string]any{}
+	if publishAsTemplate != nil {
+		publishSettings["isPublishedAsTemplate"] = *publishAsTemplate
+	}
+	if requireAuth != nil {
+		publishSettings["requiresLogin"] = *requireAuth
+	}
+
 	body := map[string]any{
-		"publishSettings": map[string]any{
-			"isPublishedAsTemplate": publishAsTemplate,
-			"requiresLogin":         requireAuth,
-		},
+		"publishSettings": publishSettings,
 	}
 	data, err := json.Marshal(body)
 	if err != nil {
@@ -62,11 +70,6 @@ func defaultFormsSetPublishSettings(ctx context.Context, svc *formsapi.Service, 
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	// Use the authenticated HTTP client stored in formsHTTPClient (set by
-	// FormsPublishCmd.Run before calling this function). Falls back to
-	// http.DefaultClient only in tests where formsSetPublishSettings is
-	// overridden anyway.
-	httpClient := formsHTTPClient
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
@@ -200,7 +203,7 @@ type FormsPublishCmd struct {
 	RequireAuthentication bool   `name:"require-authentication" help:"Require authentication to view/submit"`
 }
 
-func (c *FormsPublishCmd) Run(ctx context.Context, flags *RootFlags) error {
+func (c *FormsPublishCmd) Run(ctx context.Context, kctx *kong.Context, flags *RootFlags) error {
 	account, err := requireAccount(flags)
 	if err != nil {
 		return err
@@ -210,11 +213,29 @@ func (c *FormsPublishCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty formId")
 	}
 
-	if dryRunErr := dryRunExit(ctx, flags, "forms.publish", map[string]any{
-		"form_id":                formID,
-		"publish_as_template":    c.PublishAsTemplate,
-		"require_authentication": c.RequireAuthentication,
-	}); dryRunErr != nil {
+	request := map[string]any{
+		"form_id": formID,
+	}
+
+	var publishAsTemplate *bool
+	if flagProvided(kctx, "publish-as-template") {
+		value := c.PublishAsTemplate
+		publishAsTemplate = &value
+		request["publish_as_template"] = value
+	}
+
+	var requireAuth *bool
+	if flagProvided(kctx, "require-authentication") {
+		value := c.RequireAuthentication
+		requireAuth = &value
+		request["require_authentication"] = value
+	}
+
+	if publishAsTemplate == nil && requireAuth == nil {
+		return usage("no publish settings provided (set --publish-as-template and/or --require-authentication)")
+	}
+
+	if dryRunErr := dryRunExit(ctx, flags, "forms.publish", request); dryRunErr != nil {
 		return dryRunErr
 	}
 
@@ -228,9 +249,8 @@ func (c *FormsPublishCmd) Run(ctx context.Context, flags *RootFlags) error {
 	if err != nil {
 		return fmt.Errorf("forms http client: %w", err)
 	}
-	formsHTTPClient = httpClient
 
-	result, err := formsSetPublishSettings(ctx, svc, formID, c.PublishAsTemplate, c.RequireAuthentication)
+	result, err := formsSetPublishSettings(ctx, svc, httpClient, formID, publishAsTemplate, requireAuth)
 	if err != nil {
 		return err
 	}

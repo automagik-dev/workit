@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"google.golang.org/api/docs/v1"
 	"google.golang.org/api/option"
@@ -191,6 +192,46 @@ func TestExtractDocStructure_ContentSummaryTruncation(t *testing.T) {
 	}
 	if !strings.HasSuffix(elements[0].ContentSummary, "...") {
 		t.Errorf("truncated content summary should end with '...', got %q", elements[0].ContentSummary)
+	}
+}
+
+func TestExtractDocStructure_ContentSummaryTruncation_UTF8Safe(t *testing.T) {
+	longText := strings.Repeat("界", 100) + "\n"
+	doc := &docs.Document{
+		Body: &docs.Body{
+			Content: []*docs.StructuralElement{
+				{
+					StartIndex: 0,
+					EndIndex:   201,
+					Paragraph: &docs.Paragraph{
+						ParagraphStyle: &docs.ParagraphStyle{
+							NamedStyleType: "NORMAL_TEXT",
+						},
+						Elements: []*docs.ParagraphElement{
+							{TextRun: &docs.TextRun{Content: longText}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	elements := extractDocStructure(doc)
+	if len(elements) != 1 {
+		t.Fatalf("expected 1 element, got %d", len(elements))
+	}
+
+	summary := elements[0].ContentSummary
+	if !utf8.ValidString(summary) {
+		t.Fatalf("summary must be valid UTF-8, got %q", summary)
+	}
+	if !strings.HasSuffix(summary, "...") {
+		t.Fatalf("summary should end with ellipsis when truncated, got %q", summary)
+	}
+
+	trimmed := strings.TrimSuffix(summary, "...")
+	if got := len([]rune(trimmed)); got != 80 {
+		t.Fatalf("expected 80 runes before ellipsis, got %d (%q)", got, trimmed)
 	}
 }
 

@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"google.golang.org/api/drive/v3"
+
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -32,6 +34,9 @@ func (c *DriveCheckPublicCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	pageToken := ""
+	var publicPermission *drive.Permission
+	var domainPermission *drive.Permission
+
 	for {
 		call := svc.Permissions.List(fileID).
 			SupportsAllDrives(true).
@@ -46,20 +51,20 @@ func (c *DriveCheckPublicCmd) Run(ctx context.Context, flags *RootFlags) error {
 			return err
 		}
 
-		// Check if any permission grants public or domain-wide access.
+		// Track internet-public and domain-wide permissions separately.
 		for _, p := range resp.Permissions {
-			if p.Type == "anyone" || p.Type == "domain" {
-				if outfmt.IsJSON(ctx) {
-					return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-						"public":     true,
-						"permission": p,
-					})
+			if p == nil {
+				continue
+			}
+			switch p.Type {
+			case driveShareToAnyone:
+				if publicPermission == nil {
+					publicPermission = p
 				}
-				return writeResult(ctx, u,
-					kv("public", true),
-					kv("type", p.Type),
-					kv("role", p.Role),
-				)
+			case driveShareToDomain:
+				if domainPermission == nil {
+					domainPermission = p
+				}
 			}
 		}
 
@@ -69,13 +74,40 @@ func (c *DriveCheckPublicCmd) Run(ctx context.Context, flags *RootFlags) error {
 		pageToken = resp.NextPageToken
 	}
 
-	// No public permissions found.
 	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-			"public": false,
-		})
+		payload := map[string]any{
+			"public":        publicPermission != nil,
+			"domain_shared": domainPermission != nil,
+		}
+		if publicPermission != nil {
+			payload["permission"] = publicPermission
+		}
+		if domainPermission != nil {
+			payload["domain_permission"] = domainPermission
+		}
+		return outfmt.WriteJSON(ctx, os.Stdout, payload)
 	}
+
+	if publicPermission != nil {
+		return writeResult(ctx, u,
+			kv("public", true),
+			kv("domain_shared", domainPermission != nil),
+			kv("type", publicPermission.Type),
+			kv("role", publicPermission.Role),
+		)
+	}
+	if domainPermission != nil {
+		return writeResult(ctx, u,
+			kv("public", false),
+			kv("domain_shared", true),
+			kv("type", domainPermission.Type),
+			kv("role", domainPermission.Role),
+			kv("domain", domainPermission.Domain),
+		)
+	}
+
 	return writeResult(ctx, u,
 		kv("public", false),
+		kv("domain_shared", false),
 	)
 }
