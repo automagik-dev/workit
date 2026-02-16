@@ -335,6 +335,90 @@ func TestResolveFileInput_IntermediateSymlinkEscape(t *testing.T) {
 	}
 }
 
+func TestResolveFileInput_SymlinkedCWDAllowsValidFiles(t *testing.T) {
+	// Simulate running from a symlinked working directory (common in worktree
+	// setups). The real directory is "realdir" and we chdir into a symlink
+	// pointing to it. Files inside should still be accessible.
+	parentDir := t.TempDir()
+
+	realDir := filepath.Join(parentDir, "realdir")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	content := "hello from symlinked cwd"
+	if err := os.WriteFile(filepath.Join(realDir, "test.txt"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a symlink to the real directory
+	linkDir := filepath.Join(parentDir, "linkdir")
+	if err := os.Symlink(realDir, linkDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Save original CWD and chdir into the symlinked directory
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.Chdir(linkDir); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+
+	// This should succeed: the file is within the real CWD even though we
+	// entered through a symlink.
+	val, err := ResolveFileInput("file://test.txt")
+	if err != nil {
+		t.Fatalf("unexpected error for file in symlinked CWD: %v", err)
+	}
+
+	if val != content {
+		t.Fatalf("expected %q, got %q", content, val)
+	}
+}
+
+func TestResolveFileInput_SensitivePatternInPathComponent(t *testing.T) {
+	// Paths like "safe/secret/config.txt" should be blocked because "secret"
+	// is a path component matching the sensitive pattern, even though the
+	// basename "config.txt" is not sensitive.
+	tests := []struct {
+		name     string
+		filename string
+	}{
+		{"secret dir component", "safe/secret/config.txt"},
+		{"credentials dir component", "data/credentials/app.json"},
+		{"token dir component", "cache/token/refresh.dat"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmp := helperChdirTemp(t)
+
+			dir := filepath.Dir(tt.filename)
+			if err := os.MkdirAll(filepath.Join(tmp, dir), 0o755); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := os.WriteFile(filepath.Join(tmp, tt.filename), []byte("data"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			_, err := ResolveFileInput("file://" + tt.filename)
+			if err == nil {
+				t.Fatalf("expected error for sensitive path %q, got nil", tt.filename)
+			}
+
+			if !strings.Contains(err.Error(), "access to sensitive file blocked") {
+				t.Fatalf("expected 'access to sensitive file blocked' error for %q, got: %v", tt.filename, err)
+			}
+		})
+	}
+}
+
 func TestResolveFileInput_NonSensitiveFileAllowed(t *testing.T) {
 	// Ensure files that look somewhat like sensitive names but are not actually
 	// in the sensitive pattern list are allowed.

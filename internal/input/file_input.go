@@ -76,13 +76,22 @@ func readSecureFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("get working directory: %w", err)
 	}
 
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, fmt.Errorf("resolve absolute path: %w", err)
+	cwdClean := filepath.Clean(cwd)
+	// Resolve symlinks in CWD itself so that symlinked working directories
+	// (common in worktree setups) don't cause false containment failures.
+	if cwdResolved, evalErr := filepath.EvalSymlinks(cwdClean); evalErr == nil {
+		cwdClean = cwdResolved
 	}
 
-	cleaned := filepath.Clean(absPath)
-	cwdClean := filepath.Clean(cwd)
+	// Compute the absolute path. filepath.Abs uses os.Getwd() internally,
+	// which may return the symlinked CWD. For relative paths, re-derive
+	// the absolute path using the resolved CWD so containment checks work.
+	var cleaned string
+	if filepath.IsAbs(path) {
+		cleaned = filepath.Clean(path)
+	} else {
+		cleaned = filepath.Clean(filepath.Join(cwdClean, path))
+	}
 
 	// Step 2: CWD check on raw path (catches obvious ../../../ etc)
 	if !isWithinDir(cleaned, cwdClean) {
@@ -180,11 +189,14 @@ func isSensitiveFile(absPath, cwdPath string) bool {
 		}
 	}
 
-	// *credentials*, *secret*, *token* in the basename
-	if strings.Contains(base, "credentials") ||
-		strings.Contains(base, "secret") ||
-		strings.Contains(base, "token") {
-		return true
+	// *credentials*, *secret*, *token* — check both the basename and each
+	// path component so that paths like "safe/secret/config.txt" are caught.
+	for _, part := range parts {
+		if strings.Contains(part, "credentials") ||
+			strings.Contains(part, "secret") ||
+			strings.Contains(part, "token") {
+			return true
+		}
 	}
 
 	// Certificate/key file extensions
