@@ -41,6 +41,10 @@ bin/
 # Node (optional dev scripts)
 node_modules/
 
+# Local environment secrets (never commit)
+.env
+.env.*
+
 # OpenClaw agent files (local state, not for repo)
 memory/
 .openclaw/
