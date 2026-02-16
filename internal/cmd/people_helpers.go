@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
-)
 
-const peopleAPIEnableURL = "https://console.developers.google.com/apis/api/people.googleapis.com/overview"
+	"github.com/steipete/gogcli/internal/googleapi"
+)
 
 const peopleMeResource = "people/me"
 
@@ -24,12 +23,5 @@ func normalizePeopleResource(raw string) string {
 }
 
 func wrapPeopleAPIError(err error) error {
-	if err == nil {
-		return nil
-	}
-	if strings.Contains(err.Error(), "accessNotConfigured") ||
-		strings.Contains(err.Error(), "People API has not been used") {
-		return fmt.Errorf("people API is not enabled; enable it at: %s (%w)", peopleAPIEnableURL, err)
-	}
-	return err
+	return googleapi.WrapAPIEnablementError(err, "people")
 }

@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/api/classroom/v1"
 
+	"github.com/steipete/gogcli/internal/googleapi"
 	"github.com/steipete/gogcli/internal/timeparse"
 )
 
@@ -16,11 +17,11 @@ func wrapClassroomError(err error) error {
 	if err == nil {
 		return nil
 	}
-	errStr := err.Error()
-	if strings.Contains(errStr, "accessNotConfigured") ||
-		strings.Contains(errStr, "Classroom API has not been used") {
-		return fmt.Errorf("classroom API is not enabled; enable it at: https://console.developers.google.com/apis/api/classroom.googleapis.com/overview (%w)", err)
+	// Check for API not enabled first (centralized)
+	if googleapi.IsAPINotEnabledError(err) {
+		return googleapi.WrapAPIEnablementError(err, "classroom")
 	}
+	errStr := err.Error()
 	if strings.Contains(errStr, "insufficientPermissions") ||
 		strings.Contains(errStr, "insufficient authentication scopes") {
 		return fmt.Errorf("insufficient permissions for Classroom API; re-authenticate with: gog auth add <account> --services classroom\n\nOriginal error: %w", err)

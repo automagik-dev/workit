@@ -34,6 +34,10 @@ type DocsCmd struct {
 	Delete      DocsDeleteCmd      `cmd:"" name:"delete" help:"Delete text range from document"`
 	FindReplace DocsFindReplaceCmd `cmd:"" name:"find-replace" help:"Find and replace text in document"`
 	Update      DocsUpdateCmd      `cmd:"" name:"update" help:"Update content in a Google Doc"`
+	Structure   DocsStructureCmd   `cmd:"" name:"structure" help:"Inspect document structure (element tree)"`
+	Header      DocsHeaderCmd      `cmd:"" name:"header" help:"Get or set the default document header"`
+	Footer      DocsFooterCmd      `cmd:"" name:"footer" help:"Get or set the default document footer"`
+	Generate    DocsGenerateCmd    `cmd:"" name:"generate" help:"Generate a doc from a template with placeholder substitution"`
 }
 type DocsExportCmd struct {
 	DocID  string         `arg:"" name:"docId" help:"Doc ID"`

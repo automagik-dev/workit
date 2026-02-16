@@ -133,11 +133,10 @@ func (c *GroupsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 // wrapCloudIdentityError provides helpful error messages for common Cloud Identity API issues.
 func wrapCloudIdentityError(err error, account string) error {
-	errStr := err.Error()
-	if strings.Contains(errStr, "accessNotConfigured") ||
-		strings.Contains(errStr, "Cloud Identity API has not been used") {
-		return errfmt.NewUserFacingError("Cloud Identity API is not enabled; enable it at: https://console.developers.google.com/apis/api/cloudidentity.googleapis.com/overview", err)
+	if googleapi.IsAPINotEnabledError(err) {
+		return errfmt.NewUserFacingError(googleapi.WrapAPIEnablementError(err, "cloudidentity").Error(), err)
 	}
+	errStr := err.Error()
 	if strings.Contains(errStr, "insufficientPermissions") ||
 		strings.Contains(errStr, "insufficient authentication scopes") {
 		return errfmt.NewUserFacingError("Insufficient permissions for Cloud Identity API; re-authenticate with the cloud-identity.groups.readonly scope: gog auth add <account> --services groups", err)

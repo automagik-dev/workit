@@ -24,16 +24,18 @@ func cleanRange(r string) string {
 }
 
 type SheetsCmd struct {
-	Get      SheetsGetCmd      `cmd:"" name:"get" aliases:"read,show" help:"Get values from a range"`
-	Update   SheetsUpdateCmd   `cmd:"" name:"update" aliases:"edit,set" help:"Update values in a range"`
-	Append   SheetsAppendCmd   `cmd:"" name:"append" aliases:"add" help:"Append values to a range"`
-	Clear    SheetsClearCmd    `cmd:"" name:"clear" help:"Clear values in a range"`
-	Format   SheetsFormatCmd   `cmd:"" name:"format" help:"Apply cell formatting to a range"`
-	Notes    SheetsNotesCmd    `cmd:"" name:"notes" help:"Get cell notes from a range"`
-	Metadata SheetsMetadataCmd `cmd:"" name:"metadata" aliases:"info" help:"Get spreadsheet metadata"`
-	Create   SheetsCreateCmd   `cmd:"" name:"create" aliases:"new" help:"Create a new spreadsheet"`
-	Copy     SheetsCopyCmd     `cmd:"" name:"copy" aliases:"cp,duplicate" help:"Copy a Google Sheet"`
-	Export   SheetsExportCmd   `cmd:"" name:"export" aliases:"download,dl" help:"Export a Google Sheet (pdf|xlsx|csv) via Drive"`
+	Get         SheetsGetCmd         `cmd:"" name:"get" aliases:"read,show" help:"Get values from a range"`
+	Update      SheetsUpdateCmd      `cmd:"" name:"update" aliases:"edit,set" help:"Update values in a range"`
+	Append      SheetsAppendCmd      `cmd:"" name:"append" aliases:"add" help:"Append values to a range"`
+	Clear       SheetsClearCmd       `cmd:"" name:"clear" help:"Clear values in a range"`
+	Format      SheetsFormatCmd      `cmd:"" name:"format" help:"Apply cell formatting to a range"`
+	Notes       SheetsNotesCmd       `cmd:"" name:"notes" help:"Get cell notes from a range"`
+	Metadata    SheetsMetadataCmd    `cmd:"" name:"metadata" aliases:"info" help:"Get spreadsheet metadata"`
+	Create      SheetsCreateCmd      `cmd:"" name:"create" aliases:"new" help:"Create a new spreadsheet"`
+	Copy        SheetsCopyCmd        `cmd:"" name:"copy" aliases:"cp,duplicate" help:"Copy a Google Sheet"`
+	Export      SheetsExportCmd      `cmd:"" name:"export" aliases:"download,dl" help:"Export a Google Sheet (pdf|xlsx|csv) via Drive"`
+	AddTab      SheetsAddTabCmd      `cmd:"" name:"add-tab" help:"Add a new tab (worksheet) to a spreadsheet"`
+	BatchUpdate SheetsBatchUpdateCmd `cmd:"" name:"batch-update" help:"Send raw batchUpdate request to Sheets API"`
 }
 
 type SheetsExportCmd struct {
@@ -522,5 +524,82 @@ func (c *SheetsCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u.Out().Printf("Created spreadsheet: %s", resp.Properties.Title)
 	u.Out().Printf("ID: %s", resp.SpreadsheetId)
 	u.Out().Printf("URL: %s", resp.SpreadsheetUrl)
+	return nil
+}
+
+type SheetsAddTabCmd struct {
+	SpreadsheetID string `arg:"" help:"Spreadsheet ID or URL"`
+	TabName       string `arg:"" help:"Name for the new tab"`
+	Index         int    `name:"index" short:"i" help:"Position index for the new tab (0-based)" default:"-1"`
+}
+
+func (c *SheetsAddTabCmd) Run(ctx context.Context, flags *RootFlags) error {
+	u := ui.FromContext(ctx)
+
+	spreadsheetID := normalizeGoogleID(strings.TrimSpace(c.SpreadsheetID))
+	tabName := strings.TrimSpace(c.TabName)
+	if spreadsheetID == "" {
+		return usage("empty spreadsheetId")
+	}
+	if tabName == "" {
+		return usage("empty tab name")
+	}
+
+	if err := dryRunExit(ctx, flags, "sheets.add-tab", map[string]any{
+		"spreadsheet_id": spreadsheetID,
+		"tab_name":       tabName,
+		"index":          c.Index,
+	}); err != nil {
+		return err
+	}
+
+	account, err := requireAccount(flags)
+	if err != nil {
+		return err
+	}
+
+	svc, err := newSheetsService(ctx, account)
+	if err != nil {
+		return err
+	}
+
+	props := &sheets.SheetProperties{
+		Title: tabName,
+	}
+	if c.Index >= 0 {
+		props.Index = int64(c.Index)
+		props.ForceSendFields = []string{"Index"}
+	}
+
+	req := &sheets.BatchUpdateSpreadsheetRequest{
+		Requests: []*sheets.Request{
+			{AddSheet: &sheets.AddSheetRequest{
+				Properties: props,
+			}},
+		},
+	}
+
+	resp, err := svc.Spreadsheets.BatchUpdate(spreadsheetID, req).Do()
+	if err != nil {
+		return err
+	}
+
+	// Extract the new sheet properties from the response
+	if len(resp.Replies) == 0 || resp.Replies[0].AddSheet == nil {
+		return fmt.Errorf("unexpected response: no AddSheet reply")
+	}
+
+	newProps := resp.Replies[0].AddSheet.Properties
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"spreadsheetId": spreadsheetID,
+			"sheetId":       newProps.SheetId,
+			"title":         newProps.Title,
+			"index":         newProps.Index,
+		})
+	}
+
+	u.Out().Printf("Added tab %q (ID %d) to spreadsheet %s", newProps.Title, newProps.SheetId, spreadsheetID)
 	return nil
 }

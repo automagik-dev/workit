@@ -93,7 +93,17 @@ func optionsForAccount(ctx context.Context, service googleauth.Service, email st
 }
 
 func optionsForAccountScopes(ctx context.Context, serviceLabel string, email string, scopes []string) ([]option.ClientOption, error) {
-	slog.Debug("creating client options with custom scopes", "serviceLabel", serviceLabel, "email", email)
+	c, err := httpClientForScopes(ctx, serviceLabel, email, scopes)
+	if err != nil {
+		return nil, err
+	}
+	return []option.ClientOption{option.WithHTTPClient(c)}, nil
+}
+
+// httpClientForScopes builds an authenticated *http.Client with OAuth retry
+// transport for the given service label and scopes.
+func httpClientForScopes(ctx context.Context, serviceLabel string, email string, scopes []string) (*http.Client, error) {
+	slog.Debug("creating HTTP client with custom scopes", "serviceLabel", serviceLabel, "email", email)
 
 	var creds config.ClientCredentials
 
@@ -133,9 +143,9 @@ func optionsForAccountScopes(ctx context.Context, serviceLabel string, email str
 		Timeout:   defaultHTTPTimeout,
 	}
 
-	slog.Debug("client options with custom scopes created successfully", "serviceLabel", serviceLabel, "email", email)
+	slog.Debug("HTTP client with custom scopes created successfully", "serviceLabel", serviceLabel, "email", email)
 
-	return []option.ClientOption{option.WithHTTPClient(c)}, nil
+	return c, nil
 }
 
 func newBaseTransport() *http.Transport {
