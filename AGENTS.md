@@ -48,6 +48,17 @@
 - Never commit OAuth client credential JSON files or tokens.
 - Prefer OS keychain backends; use `GOG_KEYRING_BACKEND=file` + `GOG_KEYRING_PASSWORD` only for headless environments.
 
+### file:// Input Security
+
+Text-content flags (`--body`, `--content`, `--description`, `--text`) support `file://` and `fileb://` prefixes to read content from files. Security constraints:
+
+- **CWD-scoped:** files must reside within the current working directory subtree. Paths like `../../etc/passwd` are rejected.
+- **Symlink validation:** symlinks are allowed only if their resolved target is also within the CWD subtree. Symlinks pointing outside CWD are rejected.
+- **Sensitive file rejection (case-insensitive):** `.env`, `.env.*`, `.ssh/*`, `.aws/*`, `.gcloud/*`, `*credentials*`, `*secret*`, `*token*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa`, `id_ed25519`, `id_dsa`.
+- **Size limit:** 10 MB maximum.
+- **Prefixes:** `file://` reads UTF-8 text; `fileb://` reads binary and returns base64-encoded content. No prefix means literal passthrough.
+- **Coexistence:** `file://` coexists with dedicated `--body-file` / `--content-file` flags. They are independent mechanisms; neither is deprecated.
+
 
 ## ⚠️ Worktree Policy (MANDATORY)
 

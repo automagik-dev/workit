@@ -15,6 +15,7 @@ import (
 	gapi "google.golang.org/api/googleapi"
 
 	"github.com/steipete/gogcli/internal/googleapi"
+	"github.com/steipete/gogcli/internal/input"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -351,6 +352,15 @@ func (c *DocsUpdateCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty docId")
 	}
 
+	// Resolve file:// prefix on --content before further processing.
+	if c.Content != "" {
+		resolved, resolveErr := input.ResolveFileInput(c.Content)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve content: %w", resolveErr)
+		}
+		c.Content = resolved
+	}
+
 	var content string
 	switch {
 	case c.ContentFile != "":
@@ -639,6 +649,15 @@ func (c *DocsWriteCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty docId")
 	}
 
+	// Resolve file:// prefix on content argument before further processing.
+	if c.Content != "" {
+		resolved, resolveErr := input.ResolveFileInput(c.Content)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve content: %w", resolveErr)
+		}
+		c.Content = resolved
+	}
+
 	content, err := resolveContentInput(c.Content, c.File)
 	if err != nil {
 		return err
@@ -784,6 +803,15 @@ func (c *DocsInsertCmd) Run(ctx context.Context, flags *RootFlags) error {
 	docID := strings.TrimSpace(c.DocID)
 	if docID == "" {
 		return usage("empty docId")
+	}
+
+	// Resolve file:// prefix on content argument before further processing.
+	if c.Content != "" {
+		resolved, resolveErr := input.ResolveFileInput(c.Content)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve content: %w", resolveErr)
+		}
+		c.Content = resolved
 	}
 
 	content, err := resolveContentInput(c.Content, c.File)

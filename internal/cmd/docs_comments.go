@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
+	"github.com/steipete/gogcli/internal/input"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -258,6 +259,16 @@ type DocsCommentsAddCmd struct {
 
 func (c *DocsCommentsAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
+
+	// Resolve file:// prefix on content argument before further processing.
+	if c.Content != "" {
+		resolved, resolveErr := input.ResolveFileInput(c.Content)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve content: %w", resolveErr)
+		}
+		c.Content = resolved
+	}
+
 	docID := normalizeGoogleID(strings.TrimSpace(c.DocID))
 	content := strings.TrimSpace(c.Content)
 	quoted := strings.TrimSpace(c.Quoted)
@@ -323,6 +334,16 @@ type DocsCommentsReplyCmd struct {
 
 func (c *DocsCommentsReplyCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
+
+	// Resolve file:// prefix on content argument before further processing.
+	if c.Content != "" {
+		resolved, resolveErr := input.ResolveFileInput(c.Content)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve content: %w", resolveErr)
+		}
+		c.Content = resolved
+	}
+
 	docID := normalizeGoogleID(strings.TrimSpace(c.DocID))
 	commentID := strings.TrimSpace(c.CommentID)
 	content := strings.TrimSpace(c.Content)

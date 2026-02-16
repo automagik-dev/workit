@@ -12,6 +12,7 @@ import (
 	"google.golang.org/api/gmail/v1"
 
 	"github.com/steipete/gogcli/internal/config"
+	"github.com/steipete/gogcli/internal/input"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/tracking"
 	"github.com/steipete/gogcli/internal/ui"
@@ -67,6 +68,15 @@ func (c *GmailSendCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	replyToMessageID := normalizeGmailMessageID(c.ReplyToMessageID)
 	threadID := normalizeGmailThreadID(c.ThreadID)
+
+	// Resolve file:// prefix on --body before further processing.
+	if c.Body != "" {
+		resolved, resolveErr := input.ResolveFileInput(c.Body)
+		if resolveErr != nil {
+			return fmt.Errorf("resolve body: %w", resolveErr)
+		}
+		c.Body = resolved
+	}
 
 	body, err := resolveBodyInput(c.Body, c.BodyFile)
 	if err != nil {
