@@ -18,6 +18,7 @@ import (
 type DocsHeaderCmd struct {
 	DocID string `arg:"" name:"docId" help:"Document ID or URL"`
 	Set   string `name:"set" help:"Text to set as the header (creates or replaces)"`
+	Clear bool   `name:"clear" help:"Clear the existing header text"`
 }
 
 func (c *DocsHeaderCmd) Run(ctx context.Context, flags *RootFlags) error {
@@ -33,6 +34,10 @@ func (c *DocsHeaderCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 	id = normalizeGoogleID(id)
 
+	if c.Clear {
+		c.Set = ""
+		return c.runSet(ctx, flags, u, account, id)
+	}
 	if c.Set != "" {
 		return c.runSet(ctx, flags, u, account, id)
 	}
@@ -164,21 +169,23 @@ func (c *DocsHeaderCmd) createAndSetHeader(ctx context.Context, svc *docs.Servic
 		return errors.New("failed to get new header ID from API response")
 	}
 
-	// Step 2: Insert text into the new header.
-	_, err = svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
-		Requests: []*docs.Request{
-			{
-				InsertText: &docs.InsertTextRequest{
-					Text: c.Set,
-					EndOfSegmentLocation: &docs.EndOfSegmentLocation{
-						SegmentId: newHeaderID,
+	// Step 2: Insert text into the new header (skip if clearing).
+	if c.Set != "" {
+		_, err = svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
+			Requests: []*docs.Request{
+				{
+					InsertText: &docs.InsertTextRequest{
+						Text: c.Set,
+						EndOfSegmentLocation: &docs.EndOfSegmentLocation{
+							SegmentId: newHeaderID,
+						},
 					},
 				},
 			},
-		},
-	}).Context(ctx).Do()
-	if err != nil {
-		return fmt.Errorf("inserting header text: %w", err)
+		}).Context(ctx).Do()
+		if err != nil {
+			return fmt.Errorf("inserting header text: %w", err)
+		}
 	}
 
 	if outfmt.IsJSON(ctx) {
@@ -216,21 +223,30 @@ func (c *DocsHeaderCmd) updateExistingHeader(ctx context.Context, svc *docs.Serv
 		}
 	}
 
-	// Insert new text.
-	requests = append(requests, &docs.Request{
-		InsertText: &docs.InsertTextRequest{
-			Text: c.Set,
-			EndOfSegmentLocation: &docs.EndOfSegmentLocation{
-				SegmentId: headerID,
+	// Insert new text (skip if clearing).
+	if c.Set != "" {
+		requests = append(requests, &docs.Request{
+			InsertText: &docs.InsertTextRequest{
+				Text: c.Set,
+				EndOfSegmentLocation: &docs.EndOfSegmentLocation{
+					SegmentId: headerID,
+				},
 			},
-		},
-	})
+		})
+	}
 
-	_, err := svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
-		Requests: requests,
-	}).Context(ctx).Do()
-	if err != nil {
-		return fmt.Errorf("updating header: %w", err)
+	if len(requests) > 0 {
+		_, err := svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
+			Requests: requests,
+		}).Context(ctx).Do()
+		if err != nil {
+			return fmt.Errorf("updating header: %w", err)
+		}
+	}
+
+	action := "updated"
+	if c.Clear {
+		action = "cleared"
 	}
 
 	if outfmt.IsJSON(ctx) {
@@ -239,7 +255,7 @@ func (c *DocsHeaderCmd) updateExistingHeader(ctx context.Context, svc *docs.Serv
 			"docId":    id,
 			"headerId": headerID,
 			"text":     c.Set,
-			"action":   "updated",
+			"action":   action,
 		})
 	}
 

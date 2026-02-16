@@ -18,6 +18,7 @@ import (
 type DocsFooterCmd struct {
 	DocID string `arg:"" name:"docId" help:"Document ID or URL"`
 	Set   string `name:"set" help:"Text to set as the footer (creates or replaces)"`
+	Clear bool   `name:"clear" help:"Clear the existing footer text"`
 }
 
 func (c *DocsFooterCmd) Run(ctx context.Context, flags *RootFlags) error {
@@ -33,6 +34,10 @@ func (c *DocsFooterCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 	id = normalizeGoogleID(id)
 
+	if c.Clear {
+		c.Set = ""
+		return c.runSet(ctx, flags, u, account, id)
+	}
 	if c.Set != "" {
 		return c.runSet(ctx, flags, u, account, id)
 	}
@@ -164,21 +169,23 @@ func (c *DocsFooterCmd) createAndSetFooter(ctx context.Context, svc *docs.Servic
 		return errors.New("failed to get new footer ID from API response")
 	}
 
-	// Step 2: Insert text into the new footer.
-	_, err = svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
-		Requests: []*docs.Request{
-			{
-				InsertText: &docs.InsertTextRequest{
-					Text: c.Set,
-					EndOfSegmentLocation: &docs.EndOfSegmentLocation{
-						SegmentId: newFooterID,
+	// Step 2: Insert text into the new footer (skip if clearing).
+	if c.Set != "" {
+		_, err = svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
+			Requests: []*docs.Request{
+				{
+					InsertText: &docs.InsertTextRequest{
+						Text: c.Set,
+						EndOfSegmentLocation: &docs.EndOfSegmentLocation{
+							SegmentId: newFooterID,
+						},
 					},
 				},
 			},
-		},
-	}).Context(ctx).Do()
-	if err != nil {
-		return fmt.Errorf("inserting footer text: %w", err)
+		}).Context(ctx).Do()
+		if err != nil {
+			return fmt.Errorf("inserting footer text: %w", err)
+		}
 	}
 
 	if outfmt.IsJSON(ctx) {
@@ -216,21 +223,30 @@ func (c *DocsFooterCmd) updateExistingFooter(ctx context.Context, svc *docs.Serv
 		}
 	}
 
-	// Insert new text.
-	requests = append(requests, &docs.Request{
-		InsertText: &docs.InsertTextRequest{
-			Text: c.Set,
-			EndOfSegmentLocation: &docs.EndOfSegmentLocation{
-				SegmentId: footerID,
+	// Insert new text (skip if clearing).
+	if c.Set != "" {
+		requests = append(requests, &docs.Request{
+			InsertText: &docs.InsertTextRequest{
+				Text: c.Set,
+				EndOfSegmentLocation: &docs.EndOfSegmentLocation{
+					SegmentId: footerID,
+				},
 			},
-		},
-	})
+		})
+	}
 
-	_, err := svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
-		Requests: requests,
-	}).Context(ctx).Do()
-	if err != nil {
-		return fmt.Errorf("updating footer: %w", err)
+	if len(requests) > 0 {
+		_, err := svc.Documents.BatchUpdate(id, &docs.BatchUpdateDocumentRequest{
+			Requests: requests,
+		}).Context(ctx).Do()
+		if err != nil {
+			return fmt.Errorf("updating footer: %w", err)
+		}
+	}
+
+	action := "updated"
+	if c.Clear {
+		action = "cleared"
 	}
 
 	if outfmt.IsJSON(ctx) {
@@ -239,7 +255,7 @@ func (c *DocsFooterCmd) updateExistingFooter(ctx context.Context, svc *docs.Serv
 			"docId":    id,
 			"footerId": footerID,
 			"text":     c.Set,
-			"action":   "updated",
+			"action":   action,
 		})
 	}
 

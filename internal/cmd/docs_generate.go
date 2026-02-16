@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -96,15 +97,22 @@ func (c *DocsGenerateCmd) Run(ctx context.Context, flags *RootFlags) error {
 			return err
 		}
 
+		// Sort keys for deterministic replacement order.
+		keys := make([]string, 0, len(data))
+		for key := range data {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+
 		var requests []*docs.Request
-		for key, value := range data {
+		for _, key := range keys {
 			requests = append(requests, &docs.Request{
 				ReplaceAllText: &docs.ReplaceAllTextRequest{
 					ContainsText: &docs.SubstringMatchCriteria{
 						Text:      "{{" + key + "}}",
 						MatchCase: true,
 					},
-					ReplaceText: docsGenerateReplaceValue(value),
+					ReplaceText: docsGenerateReplaceValue(data[key]),
 				},
 			})
 		}
