@@ -147,7 +147,7 @@ func StartManageServer(ctx context.Context, opts ManageServerOptions) error {
 	}()
 
 	port := ln.Addr().(*net.TCPAddr).Port
-	url := fmt.Sprintf("http://127.0.0.1:%d", port)
+	url := fmt.Sprintf("http://localhost:%d", port)
 
 	fmt.Fprintln(os.Stderr, "Opening accounts manager in browser...")
 	fmt.Fprintln(os.Stderr, "If the browser doesn't open, visit:", url)
@@ -246,7 +246,7 @@ func (ms *ManageServer) handleAuthStart(w http.ResponseWriter, r *http.Request) 
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/oauth2/callback", port)
+	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", port)
 
 	cfg := oauth2.Config{
 		ClientID:     creds.ClientID,
@@ -291,7 +291,7 @@ func (ms *ManageServer) handleAuthUpgrade(w http.ResponseWriter, r *http.Request
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/oauth2/callback", port)
+	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", port)
 
 	cfg := oauth2.Config{
 		ClientID:     creds.ClientID,
@@ -356,7 +356,7 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/oauth2/callback", port)
+	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", port)
 
 	cfg := oauth2.Config{
 		ClientID:     creds.ClientID,
