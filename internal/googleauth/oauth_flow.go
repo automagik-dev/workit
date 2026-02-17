@@ -36,6 +36,11 @@ type ManualAuthURLResult struct {
 	StateReused bool
 }
 
+// DefaultLocalAuthPort is the fixed port for the local OAuth callback server.
+// Using a fixed port ensures the redirect URI matches what's registered in the
+// Google Cloud Console for Web application OAuth clients.
+const DefaultLocalAuthPort = 8085
+
 // postSuccessDisplaySeconds is the number of seconds the success page remains
 // visible before the local OAuth server shuts down.
 const postSuccessDisplaySeconds = 30
@@ -111,15 +116,14 @@ func authorizeServer(ctx context.Context, opts AuthorizeOptions, creds config.Cl
 		return "", err
 	}
 
-	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", fmt.Sprintf("localhost:%d", DefaultLocalAuthPort))
 	if err != nil {
-		return "", fmt.Errorf("listen for callback: %w", err)
+		return "", fmt.Errorf("listen for callback on port %d: %w (is another process using this port?)", DefaultLocalAuthPort, err)
 	}
 
 	defer func() { _ = ln.Close() }()
 
-	port := ln.Addr().(*net.TCPAddr).Port
-	redirectURI := fmt.Sprintf("http://127.0.0.1:%d/oauth2/callback", port)
+	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", DefaultLocalAuthPort)
 
 	cfg := oauth2.Config{
 		ClientID:     creds.ClientID,

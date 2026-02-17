@@ -40,7 +40,7 @@ type HeadlessOptions struct {
 }
 
 // CallbackServerURL returns the callback server URL from the provided sources,
-// in order of precedence: override > env var > build-time default.
+// in order of precedence: override > env var > config file > build-time default.
 func CallbackServerURL(override string) (string, error) {
 	if strings.TrimSpace(override) != "" {
 		return strings.TrimSpace(override), nil
@@ -48,6 +48,11 @@ func CallbackServerURL(override string) (string, error) {
 
 	if envURL := os.Getenv("GOG_CALLBACK_SERVER"); strings.TrimSpace(envURL) != "" {
 		return strings.TrimSpace(envURL), nil
+	}
+
+	// Check config file
+	if cfg, cfgErr := config.ReadConfig(); cfgErr == nil && strings.TrimSpace(cfg.CallbackServer) != "" {
+		return strings.TrimSpace(cfg.CallbackServer), nil
 	}
 
 	if strings.TrimSpace(config.DefaultCallbackServer) != "" {

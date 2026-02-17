@@ -12,6 +12,8 @@ import (
 type File struct {
 	KeyringBackend  string            `json:"keyring_backend,omitempty"`
 	DefaultTimezone string            `json:"default_timezone,omitempty"`
+	CallbackServer  string            `json:"callback_server,omitempty"`
+	AuthMode        string            `json:"auth_mode,omitempty"`
 	AccountAliases  map[string]string `json:"account_aliases,omitempty"`
 	AccountClients  map[string]string `json:"account_clients,omitempty"`
 	ClientDomains   map[string]string `json:"client_domains,omitempty"`

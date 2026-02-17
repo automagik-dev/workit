@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -29,6 +30,7 @@ func main() {
 	clientID := flag.String("client-id", "", "OAuth client ID")
 	clientSecret := flag.String("client-secret", "", "OAuth client secret")
 	redirectURL := flag.String("redirect-url", "", "OAuth redirect URL (defaults to http://localhost:{port}/callback)")
+	credentialsFile := flag.String("credentials-file", "", "Path to OAuth credentials JSON file (gog format)")
 	ttl := flag.Duration("ttl", DefaultTTL, "Token time-to-live")
 	flag.Parse()
 
@@ -43,12 +45,27 @@ func main() {
 		*redirectURL = os.Getenv("GOG_REDIRECT_URL")
 	}
 
+	// Load credentials from file if specified (fills empty client ID/secret)
+	if *credentialsFile != "" {
+		creds, err := loadCredentialsFile(*credentialsFile)
+		if err != nil {
+			log.Fatalf("Failed to load credentials from %s: %v", *credentialsFile, err)
+		}
+		if *clientID == "" {
+			*clientID = creds.clientID
+		}
+		if *clientSecret == "" {
+			*clientSecret = creds.clientSecret
+		}
+		log.Printf("Loaded credentials from %s", *credentialsFile)
+	}
+
 	// Validate required configuration
 	if *clientID == "" {
-		log.Fatal("OAuth client ID is required (--client-id or GOG_CLIENT_ID)")
+		log.Fatal("OAuth client ID is required (--client-id, GOG_CLIENT_ID, or --credentials-file)")
 	}
 	if *clientSecret == "" {
-		log.Fatal("OAuth client secret is required (--client-secret or GOG_CLIENT_SECRET)")
+		log.Fatal("OAuth client secret is required (--client-secret, GOG_CLIENT_SECRET, or --credentials-file)")
 	}
 
 	// Default redirect URL if not specified
@@ -98,4 +115,42 @@ func main() {
 
 	<-done
 	log.Println("Server stopped")
+}
+
+type oauthCredentials struct {
+	clientID     string
+	clientSecret string
+}
+
+type credentialsFileFormat struct {
+	Installed *struct {
+		ClientID     string `json:"client_id"`
+		ClientSecret string `json:"client_secret"`
+	} `json:"installed"`
+	Web *struct {
+		ClientID     string `json:"client_id"`
+		ClientSecret string `json:"client_secret"`
+	} `json:"web"`
+}
+
+func loadCredentialsFile(path string) (oauthCredentials, error) {
+	data, err := os.ReadFile(path) //nolint:gosec // credentials file path from flag
+	if err != nil {
+		return oauthCredentials{}, fmt.Errorf("read file: %w", err)
+	}
+
+	var f credentialsFileFormat
+	if err := json.Unmarshal(data, &f); err != nil {
+		return oauthCredentials{}, fmt.Errorf("parse JSON: %w", err)
+	}
+
+	if f.Web != nil && f.Web.ClientID != "" {
+		return oauthCredentials{clientID: f.Web.ClientID, clientSecret: f.Web.ClientSecret}, nil
+	}
+
+	if f.Installed != nil && f.Installed.ClientID != "" {
+		return oauthCredentials{clientID: f.Installed.ClientID, clientSecret: f.Installed.ClientSecret}, nil
+	}
+
+	return oauthCredentials{}, fmt.Errorf("no client credentials found in file")
 }
