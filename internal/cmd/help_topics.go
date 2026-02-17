@@ -183,7 +183,7 @@ func unknownTopicError(input string) error {
 		msg += fmt.Sprintf(". Did you mean %q?", bestName)
 	}
 	msg += fmt.Sprintf("\nAvailable topics: %s", strings.Join(names, ", "))
-	return fmt.Errorf("%s", msg)
+	return usagef("%s", msg)
 }
 
 // levenshtein computes the Levenshtein edit distance between two strings.

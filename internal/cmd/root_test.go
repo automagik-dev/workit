@@ -305,6 +305,42 @@ func TestGenerateInput_RespectsEnableCommands(t *testing.T) {
 	}
 }
 
+func TestHasGenerateInput_EqualsForm(t *testing.T) {
+	if !hasGenerateInput([]string{"drive", "ls", "--generate-input=true"}) {
+		t.Fatal("expected --generate-input=true to be recognized")
+	}
+	if !hasGenerateInput([]string{"--gen-input=1", "gmail", "send"}) {
+		t.Fatal("expected --gen-input=1 to be recognized")
+	}
+	// The bare forms should still work.
+	if !hasGenerateInput([]string{"drive", "--generate-input"}) {
+		t.Fatal("expected bare --generate-input to still be recognized")
+	}
+	// After --, the flag should be ignored.
+	if hasGenerateInput([]string{"drive", "--", "--generate-input=true"}) {
+		t.Fatal("expected --generate-input=true after -- to be ignored")
+	}
+}
+
+func TestStripGenerateInputFlag_EqualsForm(t *testing.T) {
+	got := stripGenerateInputFlag([]string{"drive", "--generate-input=true", "ls"})
+	want := []string{"drive", "ls"}
+	if len(got) != len(want) {
+		t.Fatalf("stripGenerateInputFlag equals form: got %v, want %v", got, want)
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			t.Fatalf("stripGenerateInputFlag equals form[%d]: got %q, want %q", i, got[i], want[i])
+		}
+	}
+
+	// Also verify the bare form still works.
+	got2 := stripGenerateInputFlag([]string{"drive", "--gen-input", "ls"})
+	if len(got2) != len(want) {
+		t.Fatalf("stripGenerateInputFlag bare form: got %v, want %v", got2, want)
+	}
+}
+
 func TestNewUsageError(t *testing.T) {
 	if newUsageError(nil) != nil {
 		t.Fatalf("expected nil for nil error")

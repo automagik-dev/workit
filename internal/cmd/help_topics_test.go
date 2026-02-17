@@ -87,6 +87,19 @@ func TestHelpTopics_UnknownTopic(t *testing.T) {
 	}
 }
 
+func TestHelpTopics_UnknownTopic_ExitCode2(t *testing.T) {
+	ctx := outfmt.WithMode(context.Background(), outfmt.Mode{})
+
+	cmd := &AgentHelpCmd{Topic: "nonexistent"}
+	err := cmd.Run(ctx)
+	if err == nil {
+		t.Fatal("expected error for unknown topic, got nil")
+	}
+	if code := ExitCode(err); code != 2 {
+		t.Fatalf("expected exit code 2 for unknown help topic, got %d", code)
+	}
+}
+
 func TestHelpTopics_FuzzyMatch(t *testing.T) {
 	tests := []struct {
 		input       string

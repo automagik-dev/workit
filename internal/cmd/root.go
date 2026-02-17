@@ -429,7 +429,8 @@ var generateInputFlags = map[string]bool{
 }
 
 // hasGenerateInput returns true if the raw argument slice contains
-// --generate-input or its alias --gen-input.
+// --generate-input or its alias --gen-input.  It also recognises the
+// --flag=value form (e.g. --generate-input=true).
 func hasGenerateInput(args []string) bool {
 	for _, a := range args {
 		if a == "--" {
@@ -438,15 +439,25 @@ func hasGenerateInput(args []string) bool {
 		if generateInputFlags[a] {
 			return true
 		}
+		// Support --flag=value form (e.g. --generate-input=true).
+		if idx := strings.IndexByte(a, '='); idx > 0 {
+			if generateInputFlags[a[:idx]] {
+				return true
+			}
+		}
 	}
 	return false
 }
 
 // stripGenerateInputFlag returns a copy of args with --generate-input / --gen-input removed.
+// It also strips the --flag=value form (e.g. --generate-input=true).
 func stripGenerateInputFlag(args []string) []string {
 	out := make([]string, 0, len(args))
 	for _, a := range args {
 		if generateInputFlags[a] {
+			continue
+		}
+		if idx := strings.IndexByte(a, '='); idx > 0 && generateInputFlags[a[:idx]] {
 			continue
 		}
 		out = append(out, a)
