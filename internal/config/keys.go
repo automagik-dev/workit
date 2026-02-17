@@ -12,6 +12,8 @@ type Key string
 const (
 	KeyTimezone       Key = "timezone"
 	KeyKeyringBackend Key = "keyring_backend"
+	KeyCallbackServer Key = "callback_server"
+	KeyAuthMode       Key = "auth_mode"
 )
 
 type KeySpec struct {
@@ -25,6 +27,15 @@ type KeySpec struct {
 var keyOrder = []Key{
 	KeyTimezone,
 	KeyKeyringBackend,
+	KeyCallbackServer,
+	KeyAuthMode,
+}
+
+var validAuthModes = map[string]bool{
+	"auto":     true,
+	"browser":  true,
+	"headless": true,
+	"manual":   true,
 }
 
 var keySpecs = map[Key]KeySpec{
@@ -63,12 +74,52 @@ var keySpecs = map[Key]KeySpec{
 			return "(not set, using auto)"
 		},
 	},
+	KeyCallbackServer: {
+		Key: KeyCallbackServer,
+		Get: func(cfg File) string {
+			return cfg.CallbackServer
+		},
+		Set: func(cfg *File, value string) error {
+			if !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") {
+				return fmt.Errorf("%w: %q must start with http:// or https://", errInvalidCallbackURL, value)
+			}
+			cfg.CallbackServer = value
+			return nil
+		},
+		Unset: func(cfg *File) {
+			cfg.CallbackServer = ""
+		},
+		EmptyHint: func() string {
+			return "(not set)"
+		},
+	},
+	KeyAuthMode: {
+		Key: KeyAuthMode,
+		Get: func(cfg File) string {
+			return cfg.AuthMode
+		},
+		Set: func(cfg *File, value string) error {
+			if !validAuthModes[value] {
+				return fmt.Errorf("%w: %q must be one of auto, browser, headless, manual", errInvalidAuthMode, value)
+			}
+			cfg.AuthMode = value
+			return nil
+		},
+		Unset: func(cfg *File) {
+			cfg.AuthMode = ""
+		},
+		EmptyHint: func() string {
+			return "(not set, using auto)"
+		},
+	},
 }
 
 var (
 	errUnknownConfigKey     = errors.New("unknown config key")
 	errConfigKeyCannotSet   = errors.New("config key cannot be set")
 	errConfigKeyCannotUnset = errors.New("config key cannot be unset")
+	errInvalidCallbackURL   = errors.New("invalid callback server URL")
+	errInvalidAuthMode      = errors.New("invalid auth_mode")
 )
 
 func (k Key) String() string {

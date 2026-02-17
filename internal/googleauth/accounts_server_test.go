@@ -453,7 +453,7 @@ func TestManageServer_HandleAuthStart(t *testing.T) {
 		t.Fatalf("expected oauthState set")
 	}
 
-	if redirectURI := parsed.Query().Get("redirect_uri"); !strings.Contains(redirectURI, "127.0.0.1:") {
+	if redirectURI := parsed.Query().Get("redirect_uri"); !strings.Contains(redirectURI, "localhost:") {
 		t.Fatalf("expected redirect uri, got %q", redirectURI)
 	}
 
@@ -860,7 +860,7 @@ func TestStartManageServer_Timeout(t *testing.T) {
 		t.Fatalf("StartManageServer: %v", err)
 	}
 
-	if !strings.Contains(opened, "http://127.0.0.1:") {
+	if !strings.Contains(opened, "http://localhost:") {
 		t.Fatalf("expected browser URL, got %q", opened)
 	}
 }

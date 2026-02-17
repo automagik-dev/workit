@@ -542,11 +542,22 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	manual := c.Manual || c.Remote || authURL != "" || authCode != ""
 
-	if c.Headless {
+	// Resolve auth mode: explicit flags > config > auto-detect
+	resolved := googleauth.ResolveAuthMode(ctx, c.Headless, manual, c.CallbackServer)
+	if resolved.Mode == googleauth.AuthModeHeadless {
 		if manual || c.Step != 0 || c.Timeout != 0 {
 			return usage("cannot combine --headless with manual/remote auth flags")
 		}
+		// Auto-apply force-consent in headless mode (always needs refresh token)
+		c.ForceConsent = true
+		if resolved.CallbackServer != "" {
+			c.CallbackServer = resolved.CallbackServer
+		}
 		return c.runHeadless(ctx, client, services, scopes)
+	}
+	if resolved.Mode == googleauth.AuthModeManual && !manual {
+		// Config or auto resolved to manual; set the flag
+		manual = true
 	}
 
 	if c.Remote {
@@ -974,6 +985,14 @@ func (c *AuthStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
 		}
 	}
 
+	// Read auth-related config values for status output.
+	cfg, _ := config.ReadConfig()
+	authMode := cfg.AuthMode
+	if authMode == "" {
+		authMode = googleauth.AuthModeAuto
+	}
+	callbackServer := cfg.CallbackServer
+
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 			"config": map[string]any{
@@ -984,6 +1003,8 @@ func (c *AuthStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
 				"backend": backendInfo.Value,
 				"source":  backendInfo.Source,
 			},
+			"auth_mode":       authMode,
+			"callback_server": callbackServer,
 			"account": map[string]any{
 				"email":                      account,
 				"client":                     client,
@@ -999,6 +1020,10 @@ func (c *AuthStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u.Out().Printf("config_exists\t%t", configExists)
 	u.Out().Printf("keyring_backend\t%s", backendInfo.Value)
 	u.Out().Printf("keyring_backend_source\t%s", backendInfo.Source)
+	u.Out().Printf("auth_mode\t%s", authMode)
+	if callbackServer != "" {
+		u.Out().Printf("callback_server\t%s", callbackServer)
+	}
 	if account != "" {
 		u.Out().Printf("account\t%s", account)
 		u.Out().Printf("client\t%s", client)
