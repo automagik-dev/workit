@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strings"
 
+	"github.com/alecthomas/kong"
 	formsapi "google.golang.org/api/forms/v1"
 
 	"github.com/steipete/gogcli/internal/googleapi"
@@ -15,9 +20,87 @@ import (
 
 var newFormsService = googleapi.NewForms
 
+// newFormsHTTPClient creates an authenticated HTTP client for raw Forms API
+// calls (e.g. setPublishSettings). Injectable for testing.
+var newFormsHTTPClient = googleapi.NewFormsHTTPClient
+
+// formsPublishSettingsResult is the decoded response from setPublishSettings.
+type formsPublishSettingsResult struct {
+	PublishSettings struct {
+		IsPublished           bool `json:"isPublished"`
+		IsAcceptingResponses  bool `json:"isAcceptingResponses"`
+		IsPublishedAsTemplate bool `json:"isPublishedAsTemplate"`
+		RequiresLogin         bool `json:"requiresLogin"`
+	} `json:"publishSettings"`
+}
+
+// formsSetPublishSettings calls the Forms setPublishSettings endpoint.
+// The Go client's PublishSettings struct has no typed data fields in this API
+// version, so we issue a raw HTTP call through an authenticated HTTP client.
+// This variable is injectable for testing.
+var formsSetPublishSettings = defaultFormsSetPublishSettings
+
+func defaultFormsSetPublishSettings(
+	ctx context.Context,
+	svc *formsapi.Service,
+	httpClient *http.Client,
+	formID string,
+	publishAsTemplate, requireAuth *bool,
+) (*formsPublishSettingsResult, error) {
+	publishSettings := map[string]any{}
+	if publishAsTemplate != nil {
+		publishSettings["isPublishedAsTemplate"] = *publishAsTemplate
+	}
+	if requireAuth != nil {
+		publishSettings["requiresLogin"] = *requireAuth
+	}
+
+	body := map[string]any{
+		"publishSettings": publishSettings,
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("marshal publish settings: %w", err)
+	}
+
+	endpoint := strings.TrimRight(svc.BasePath, "/") + "/v1/forms/" + formID + ":setPublishSettings"
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("set publish settings: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("setPublishSettings returned %d: %s", resp.StatusCode, respBody)
+	}
+
+	var result formsPublishSettingsResult
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("decode publish settings response: %w", err)
+	}
+
+	return &result, nil
+}
+
 type FormsCmd struct {
 	Get       FormsGetCmd       `cmd:"" name:"get" aliases:"info,show" help:"Get a form"`
 	Create    FormsCreateCmd    `cmd:"" name:"create" aliases:"new" help:"Create a form"`
+	Publish   FormsPublishCmd   `cmd:"" name:"publish" help:"Control form publish settings"`
 	Responses FormsResponsesCmd `cmd:"" name:"responses" help:"Form responses"`
 }
 
@@ -111,6 +194,80 @@ func (c *FormsCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
 	u.Out().Printf("created\ttrue")
 	printFormSummary(u, form, formID)
+	return nil
+}
+
+type FormsPublishCmd struct {
+	FormID                string `arg:"" name:"formId" help:"Form ID or URL"`
+	PublishAsTemplate     bool   `name:"publish-as-template" help:"Publish the form as a template"`
+	RequireAuthentication bool   `name:"require-authentication" help:"Require authentication to view/submit"`
+}
+
+func (c *FormsPublishCmd) Run(ctx context.Context, kctx *kong.Context, flags *RootFlags) error {
+	account, err := requireAccount(flags)
+	if err != nil {
+		return err
+	}
+	formID := strings.TrimSpace(normalizeGoogleID(c.FormID))
+	if formID == "" {
+		return usage("empty formId")
+	}
+
+	request := map[string]any{
+		"form_id": formID,
+	}
+
+	var publishAsTemplate *bool
+	if flagProvided(kctx, "publish-as-template") {
+		value := c.PublishAsTemplate
+		publishAsTemplate = &value
+		request["publish_as_template"] = value
+	}
+
+	var requireAuth *bool
+	if flagProvided(kctx, "require-authentication") {
+		value := c.RequireAuthentication
+		requireAuth = &value
+		request["require_authentication"] = value
+	}
+
+	if publishAsTemplate == nil && requireAuth == nil {
+		return usage("no publish settings provided (set --publish-as-template and/or --require-authentication)")
+	}
+
+	if dryRunErr := dryRunExit(ctx, flags, "forms.publish", request); dryRunErr != nil {
+		return dryRunErr
+	}
+
+	svc, err := newFormsService(ctx, account)
+	if err != nil {
+		return err
+	}
+
+	// Create an authenticated HTTP client for the raw setPublishSettings call.
+	httpClient, err := newFormsHTTPClient(ctx, account)
+	if err != nil {
+		return fmt.Errorf("forms http client: %w", err)
+	}
+
+	result, err := formsSetPublishSettings(ctx, svc, httpClient, formID, publishAsTemplate, requireAuth)
+	if err != nil {
+		return err
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"form_id":          formID,
+			"publish_settings": result.PublishSettings,
+		})
+	}
+
+	u := ui.FromContext(ctx)
+	u.Out().Printf("form_id\t%s", formID)
+	u.Out().Printf("is_published\t%v", result.PublishSettings.IsPublished)
+	u.Out().Printf("is_accepting_responses\t%v", result.PublishSettings.IsAcceptingResponses)
+	u.Out().Printf("is_published_as_template\t%v", result.PublishSettings.IsPublishedAsTemplate)
+	u.Out().Printf("requires_login\t%v", result.PublishSettings.RequiresLogin)
 	return nil
 }
 

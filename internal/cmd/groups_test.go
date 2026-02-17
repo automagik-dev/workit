@@ -10,7 +10,7 @@ import (
 
 func TestWrapCloudIdentityError(t *testing.T) {
 	err := wrapCloudIdentityError(errors.New("accessNotConfigured: boom"), "user@company.com")
-	if !strings.Contains(err.Error(), "Cloud Identity API is not enabled") {
+	if !strings.Contains(err.Error(), "cloudidentity API is not enabled") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 

@@ -3,7 +3,7 @@ SHELL := /bin/bash
 # `make` should build the binary by default.
 .DEFAULT_GOAL := build
 
-.PHONY: build gog gogcli gog-help gogcli-help help fmt fmt-check lint test ci tools
+.PHONY: build gog gogcli gog-help gogcli-help help fmt fmt-check lint lint-full test ci tools
 .PHONY: worker-ci build-internal
 
 BIN_DIR := $(CURDIR)/bin
@@ -19,6 +19,7 @@ TOOLS_DIR := $(CURDIR)/.tools
 GOFUMPT := $(TOOLS_DIR)/gofumpt
 GOIMPORTS := $(TOOLS_DIR)/goimports
 GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint
+LINT_NEW_FROM ?= origin/main
 
 # Allow passing CLI args as extra "targets":
 #   make gogcli -- --help
@@ -101,6 +102,9 @@ fmt-check: tools
 	@git diff --exit-code -- '*.go' go.mod go.sum
 
 lint: tools
+	@$(GOLANGCI_LINT) run --new-from-rev=$(LINT_NEW_FROM)
+
+lint-full: tools
 	@$(GOLANGCI_LINT) run
 
 pnpm-gate:

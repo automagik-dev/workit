@@ -20,6 +20,11 @@ func TestNormalizeGoogleID(t *testing.T) {
 		{in: "drive.google.com/file/d/SCHEMELESS/view", want: "SCHEMELESS"},
 		{in: "docs.google.com/document/d/SCHEMELESS2/edit", want: "SCHEMELESS2"},
 		{in: "https://example.com/not-a-google-id", want: "https://example.com/not-a-google-id"},
+		// Forms URLs
+		{in: "https://docs.google.com/forms/d/FORMID/edit", want: "FORMID"},
+		{in: "https://docs.google.com/forms/d/e/RESPID/viewform", want: "RESPID"},
+		{in: "https://docs.google.com/forms/d/e/RESPID/viewform?usp=sf_link", want: "RESPID"},
+		{in: "docs.google.com/forms/d/e/SCHEMELESS_RESP/viewform", want: "SCHEMELESS_RESP"},
 	}
 
 	for _, tt := range tests {

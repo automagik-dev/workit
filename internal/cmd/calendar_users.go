@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/api/people/v1"
 
+	"github.com/steipete/gogcli/internal/googleapi"
 	"github.com/steipete/gogcli/internal/outfmt"
 	"github.com/steipete/gogcli/internal/ui"
 )
@@ -31,11 +32,7 @@ func (c *CalendarUsersCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	svc, err := newPeopleDirectoryService(ctx, account)
 	if err != nil {
-		if strings.Contains(err.Error(), "accessNotConfigured") ||
-			strings.Contains(err.Error(), "People API has not been used") {
-			return fmt.Errorf("people API is not enabled; enable it at: https://console.developers.google.com/apis/api/people.googleapis.com/overview (%w)", err)
-		}
-		return err
+		return googleapi.WrapAPIEnablementError(err, "people")
 	}
 
 	fetch := func(pageToken string) ([]*people.Person, string, error) {
@@ -52,11 +49,7 @@ func (c *CalendarUsersCmd) Run(ctx context.Context, flags *RootFlags) error {
 		}
 		resp, err := call.Do()
 		if err != nil {
-			if strings.Contains(err.Error(), "accessNotConfigured") ||
-				strings.Contains(err.Error(), "People API has not been used") {
-				return nil, "", fmt.Errorf("people API is not enabled; enable it at: https://console.developers.google.com/apis/api/people.googleapis.com/overview (%w)", err)
-			}
-			return nil, "", err
+			return nil, "", googleapi.WrapAPIEnablementError(err, "people")
 		}
 		return resp.People, resp.NextPageToken, nil
 	}

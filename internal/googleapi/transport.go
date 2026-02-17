@@ -79,7 +79,12 @@ func (t *RetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			return resp, nil
 		}
 
-		// Rate limit (429)
+		// Only retry transient errors (429 rate-limit and 5xx server errors).
+		if !IsTransientStatusCode(resp.StatusCode) {
+			return resp, nil
+		}
+
+		// Rate limit (429): exponential backoff with Retry-After support.
 		if resp.StatusCode == http.StatusTooManyRequests {
 			if retries429 >= t.MaxRetries429 {
 				return resp, nil // Return the 429 response after max retries
@@ -102,33 +107,26 @@ func (t *RetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			continue
 		}
 
-		// Server error (5xx)
-		if resp.StatusCode >= 500 {
-			if t.CircuitBreaker != nil {
-				t.CircuitBreaker.RecordFailure()
-			}
-
-			if retries5xx >= t.MaxRetries5xx {
-				return resp, nil
-			}
-
-			slog.Debug("server error, retrying",
-				"status", resp.StatusCode,
-				"attempt", retries5xx+1)
-
-			drainAndClose(resp.Body)
-
-			if err := t.sleep(req.Context(), ServerErrorRetryDelay); err != nil {
-				return nil, err
-			}
-
-			retries5xx++
-
-			continue
+		// Server error (5xx): fixed delay retry.
+		if t.CircuitBreaker != nil {
+			t.CircuitBreaker.RecordFailure()
 		}
 
-		// Other errors (4xx except 429): don't retry
-		return resp, nil
+		if retries5xx >= t.MaxRetries5xx {
+			return resp, nil
+		}
+
+		slog.Debug("server error, retrying",
+			"status", resp.StatusCode,
+			"attempt", retries5xx+1)
+
+		drainAndClose(resp.Body)
+
+		if err := t.sleep(req.Context(), ServerErrorRetryDelay); err != nil {
+			return nil, err
+		}
+
+		retries5xx++
 	}
 }
 

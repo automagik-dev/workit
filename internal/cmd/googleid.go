@@ -40,10 +40,19 @@ func normalizeGoogleID(input string) string {
 		// /document/d/<id>/edit
 		// /spreadsheets/d/<id>/edit
 		// /presentation/d/<id>/edit
+		// /forms/d/e/<id>/viewform  (published Forms responder URL)
 		for i := 0; i+1 < len(parts); i++ {
 			if parts[i] == "d" {
-				if id := strings.TrimSpace(parts[i+1]); id != "" {
-					return id
+				next := strings.TrimSpace(parts[i+1])
+				// Forms responder URLs use /d/e/<id>/viewform —
+				// skip the "e" segment and take the actual ID.
+				if next == "e" && i+2 < len(parts) {
+					if id := strings.TrimSpace(parts[i+2]); id != "" {
+						return id
+					}
+				}
+				if next != "" {
+					return next
 				}
 			}
 		}

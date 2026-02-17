@@ -77,6 +77,7 @@ type DriveCmd struct {
 	URL         DriveURLCmd         `cmd:"" name:"url" help:"Print web URLs for files"`
 	Comments    DriveCommentsCmd    `cmd:"" name:"comments" help:"Manage comments on files"`
 	Drives      DriveDrivesCmd      `cmd:"" name:"drives" help:"List shared drives (Team Drives)"`
+	CheckPublic DriveCheckPublicCmd `cmd:"" name:"check-public" help:"Check if a file is publicly accessible"`
 }
 
 type DriveLsCmd struct {

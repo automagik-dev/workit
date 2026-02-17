@@ -3,6 +3,7 @@ package googleapi
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -121,4 +122,66 @@ func IsNotFoundError(err error) bool {
 func IsPermissionDeniedError(err error) bool {
 	var e *PermissionDeniedError
 	return errors.As(err, &e)
+}
+
+// APIEnablementLinks maps service names to their GCP console enablement URLs.
+var APIEnablementLinks = map[string]string{
+	"calendar":      "https://console.developers.google.com/apis/api/calendar-json.googleapis.com/overview",
+	"drive":         "https://console.developers.google.com/apis/api/drive.googleapis.com/overview",
+	"gmail":         "https://console.developers.google.com/apis/api/gmail.googleapis.com/overview",
+	"docs":          "https://console.developers.google.com/apis/api/docs.googleapis.com/overview",
+	"sheets":        "https://console.developers.google.com/apis/api/sheets.googleapis.com/overview",
+	"slides":        "https://console.developers.google.com/apis/api/slides.googleapis.com/overview",
+	"forms":         "https://console.developers.google.com/apis/api/forms.googleapis.com/overview",
+	"tasks":         "https://console.developers.google.com/apis/api/tasks.googleapis.com/overview",
+	"chat":          "https://console.developers.google.com/apis/api/chat.googleapis.com/overview",
+	"people":        "https://console.developers.google.com/apis/api/people.googleapis.com/overview",
+	"classroom":     "https://console.developers.google.com/apis/api/classroom.googleapis.com/overview",
+	"cloudidentity": "https://console.developers.google.com/apis/api/cloudidentity.googleapis.com/overview",
+}
+
+// IsAPINotEnabledError checks whether an error message indicates an API that
+// has not been enabled in the GCP project.
+func IsAPINotEnabledError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := err.Error()
+
+	return strings.Contains(msg, "accessNotConfigured") ||
+		strings.Contains(msg, "has not been used") ||
+		strings.Contains(msg, "it is disabled") ||
+		strings.Contains(msg, "API has not been used")
+}
+
+// WrapAPIEnablementError checks if err is an "API not enabled" error and wraps it
+// with a helpful hint including the GCP console URL. Returns the original error
+// if not applicable.
+func WrapAPIEnablementError(err error, serviceName string) error {
+	if err == nil {
+		return nil
+	}
+
+	if !IsAPINotEnabledError(err) {
+		return err
+	}
+
+	link, ok := APIEnablementLinks[serviceName]
+	if !ok {
+		return fmt.Errorf("%s API is not enabled; check the Google Cloud Console to enable it (%w)", serviceName, err)
+	}
+
+	return fmt.Errorf("%s API is not enabled; enable it at: %s (%w)", serviceName, link, err)
+}
+
+// IsTransientStatusCode returns true if the HTTP status code indicates a transient
+// (retryable) error: 429 (rate limit), 500, 502, 503, 504 (server errors).
+func IsTransientStatusCode(statusCode int) bool {
+	switch statusCode {
+	case 429, 500, 502, 503, 504:
+		return true
+	default:
+		return false
+	}
 }
