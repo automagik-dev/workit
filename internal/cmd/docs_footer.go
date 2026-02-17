@@ -135,6 +135,18 @@ func (c *DocsFooterCmd) runSet(ctx context.Context, flags *RootFlags, u *ui.UI, 
 	}
 
 	if footerID == "" {
+		// --clear on a footerless doc is a no-op.
+		if c.Clear {
+			if outfmt.IsJSON(ctx) {
+				return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+					"action": "no_change",
+					"docId":  id,
+					"note":   "no footer to clear",
+				})
+			}
+			u.Out().Printf("no footer to clear")
+			return nil
+		}
 		// No default footer exists -- create one and insert text.
 		return c.createAndSetFooter(ctx, svc, u, id)
 	}

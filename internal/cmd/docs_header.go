@@ -135,6 +135,18 @@ func (c *DocsHeaderCmd) runSet(ctx context.Context, flags *RootFlags, u *ui.UI, 
 	}
 
 	if headerID == "" {
+		// --clear on a headerless doc is a no-op.
+		if c.Clear {
+			if outfmt.IsJSON(ctx) {
+				return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+					"action": "no_change",
+					"docId":  id,
+					"note":   "no header to clear",
+				})
+			}
+			u.Out().Printf("no header to clear")
+			return nil
+		}
 		// No default header exists -- create one and insert text.
 		return c.createAndSetHeader(ctx, svc, u, id)
 	}
