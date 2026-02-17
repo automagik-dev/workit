@@ -1,10 +1,44 @@
 package cmd
 
 import (
+	_ "embed"
+	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/alecthomas/kong"
+	"gopkg.in/yaml.v3"
 )
+
+//go:embed command_tiers.yaml
+var commandTiersYAML []byte
+
+// tierLevel maps tier names to numeric levels for comparison.
+var tierLevel = map[string]int{
+	"core":     1,
+	"extended": 2,
+	"complete": 3,
+}
+
+// alwaysVisibleCommands are utility commands not subject to tier filtering.
+var alwaysVisibleCommands = map[string]bool{
+	"auth": true, "config": true, "time": true, "agent": true,
+	"schema": true, "sync": true, "version": true, "completion": true,
+	"__complete": true, "exit-codes": true, "open": true,
+	"login": true, "logout": true, "status": true,
+	"me": true, "whoami": true,
+}
+
+// desirePathTier maps top-level desire-path aliases to their effective tier.
+// These bypass the YAML service lookup because kctx.Command() returns "send ..."
+// not "gmail send ..." for desire paths.
+var desirePathTier = map[string]string{
+	"send":     "extended", // gmail send → extended (write op)
+	"upload":   "extended", // drive upload → extended (write op)
+	"ls":       "core",     // drive ls → core
+	"search":   "core",     // gmail search → core
+	"download": "core",     // drive download → core
+}
 
 func enforceEnabledCommands(kctx *kong.Context, enabled string) error {
 	enabled = strings.TrimSpace(enabled)
@@ -39,4 +73,84 @@ func parseEnabledCommands(value string) map[string]bool {
 		out[part] = true
 	}
 	return out
+}
+
+var (
+	cachedTiers    map[string]map[string]string
+	cachedTiersErr error
+	tiersOnce      sync.Once
+)
+
+// parseCommandTiers parses the embedded YAML into the tiers map.
+// The result is cached after the first call via sync.Once.
+func parseCommandTiers() (map[string]map[string]string, error) {
+	tiersOnce.Do(func() {
+		var tiers map[string]map[string]string
+		if err := yaml.Unmarshal(commandTiersYAML, &tiers); err != nil {
+			cachedTiersErr = fmt.Errorf("parse command tiers: %w", err)
+			return
+		}
+		cachedTiers = tiers
+	})
+	return cachedTiers, cachedTiersErr
+}
+
+func enforceCommandTier(kctx *kong.Context, tier string) error {
+	tier = strings.TrimSpace(strings.ToLower(tier))
+	if tier == "" || tier == "complete" {
+		return nil
+	}
+
+	requestedLevel, ok := tierLevel[tier]
+	if !ok {
+		return usagef("invalid command tier %q (expected core|extended|complete)", tier)
+	}
+
+	tiers, err := parseCommandTiers()
+	if err != nil {
+		return err
+	}
+
+	// Get the command path.
+	cmd := strings.Fields(kctx.Command())
+	if len(cmd) == 0 {
+		return nil
+	}
+
+	topCmd := strings.ToLower(cmd[0])
+
+	// Always-visible commands bypass tier check.
+	if alwaysVisibleCommands[topCmd] {
+		return nil
+	}
+
+	// Check desire-path aliases (top-level shortcuts like "send", "upload").
+	if dpTier, ok := desirePathTier[topCmd]; ok {
+		dpLevel := tierLevel[dpTier]
+		if dpLevel > requestedLevel {
+			return usagef("command %q requires tier %q (current: %q)", topCmd, dpTier, tier)
+		}
+		return nil
+	}
+
+	// If we have a subcommand, check its tier.
+	if len(cmd) >= 2 {
+		subCmd := strings.ToLower(cmd[1])
+		if serviceTiers, ok := tiers[topCmd]; ok {
+			if cmdTier, ok := serviceTiers[subCmd]; ok {
+				cmdLevel := tierLevel[cmdTier]
+				if cmdLevel > requestedLevel {
+					return usagef("command %q %q requires tier %q (current: %q)", topCmd, subCmd, cmdTier, tier)
+				}
+				return nil
+			}
+			// Commands not in YAML default to "complete" tier,
+			// so they are hidden in core/extended mode.
+			if requestedLevel < tierLevel["complete"] {
+				return usagef("command %q %q requires tier %q (current: %q)", topCmd, subCmd, "complete", tier)
+			}
+		}
+	}
+
+	return nil
 }

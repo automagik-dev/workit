@@ -64,6 +64,7 @@ type DriveCmd struct {
 	Ls          DriveLsCmd          `cmd:"" name:"ls" help:"List files in a folder (default: root)"`
 	Search      DriveSearchCmd      `cmd:"" name:"search" help:"Full-text search across Drive"`
 	Get         DriveGetCmd         `cmd:"" name:"get" help:"Get file metadata"`
+	Cat         DriveCatCmd         `cmd:"" name:"cat" help:"Output file content as text (extracts text from DOCX/XLSX/PPTX)"`
 	Download    DriveDownloadCmd    `cmd:"" name:"download" help:"Download a file (exports Google Docs formats)"`
 	Copy        DriveCopyCmd        `cmd:"" name:"copy" help:"Copy a file"`
 	Upload      DriveUploadCmd      `cmd:"" name:"upload" help:"Upload a file"`
