@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-@./SOUL.md
-@./ROLE.md
+@../../../agents/gog-cli/SOUL.md
+@../../../agents/gog-cli/ROLE.md
 @./ENVIRONMENT.md
-@./AGENTS.md
+@../../../agents/gog-cli/AGENTS.md
