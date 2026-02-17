@@ -5,11 +5,10 @@ set -euo pipefail
 # gog-cli Local Developer Install
 #
 # Run this AFTER cloning the repo. It builds the binary and optionally
-# installs it to your PATH.
+# installs it to your PATH (~/.local/bin).
 #
 # Usage:
 #   ./install.sh                  # build + install to ~/.local/bin
-#   ./install.sh --system         # build + install to /usr/local/bin
 #   ./install.sh --no-install     # build only (binary at bin/gog)
 #   ./install.sh --force          # overwrite existing install without asking
 #   ./install.sh --help           # show usage
@@ -44,9 +43,6 @@ REQUIRED_GO_MINOR=21
 
 for arg in "$@"; do
   case "$arg" in
-    --system)
-      INSTALL_DIR="/usr/local/bin"
-      ;;
     --no-install)
       DO_INSTALL=false
       ;;
@@ -54,19 +50,17 @@ for arg in "$@"; do
       FORCE=true
       ;;
     --help|-h)
-      echo "Usage: ./install.sh [--system] [--no-install] [--force] [--help]"
+      echo "Usage: ./install.sh [--no-install] [--force] [--help]"
       echo ""
       echo "Local developer install script. Run after cloning the repo."
       echo ""
       echo "Options:"
-      echo "  --system      Install to /usr/local/bin instead of ~/.local/bin (may need sudo)"
       echo "  --no-install  Build only, do not copy binary to PATH"
       echo "  --force       Overwrite existing installation without asking"
       echo "  --help, -h    Show this help message"
       echo ""
       echo "Examples:"
       echo "  ./install.sh                  # build + install to ~/.local/bin/gog"
-      echo "  ./install.sh --system         # build + install to /usr/local/bin/gog"
       echo "  ./install.sh --no-install     # build only (binary at ./bin/gog)"
       exit 0
       ;;
@@ -159,7 +153,7 @@ else
   ok "bin/gog --version: ${GOG_VERSION_OUTPUT}"
 fi
 
-# -- Step 6: Optionally install to PATH ------------------------------------
+# -- Step 6: Optionally install to ~/.local/bin ----------------------------
 
 if [ "$DO_INSTALL" = true ]; then
   step "Installing to ${INSTALL_DIR}"
@@ -180,22 +174,9 @@ if [ "$DO_INSTALL" = true ]; then
   fi
 
   if [ "$DO_INSTALL" = true ]; then
-    # Create target directory if it does not exist
-    if [ ! -d "$INSTALL_DIR" ]; then
-      info "Creating directory ${INSTALL_DIR}"
-      mkdir -p "$INSTALL_DIR" 2>/dev/null || {
-        warn "Cannot create ${INSTALL_DIR} without elevated permissions."
-        info "Retrying with sudo..."
-        sudo mkdir -p "$INSTALL_DIR"
-      }
-    fi
-
-    # Copy binary
-    cp bin/gog "$TARGET" 2>/dev/null || {
-      info "Requires elevated permissions to write to ${INSTALL_DIR}"
-      sudo cp bin/gog "$TARGET"
-    }
-    chmod +x "$TARGET" 2>/dev/null || sudo chmod +x "$TARGET"
+    mkdir -p "$INSTALL_DIR"
+    cp bin/gog "$TARGET"
+    chmod +x "$TARGET"
 
     ok "Installed to ${TARGET}"
 
