@@ -68,6 +68,11 @@ func (c *GmailSendCmd) Run(ctx context.Context, flags *RootFlags) error {
 	replyToMessageID := normalizeGmailMessageID(c.ReplyToMessageID)
 	threadID := normalizeGmailThreadID(c.ThreadID)
 
+	// Resolve file:// prefix on --body before further processing.
+	if err := resolveFileFlag(&c.Body, "body"); err != nil {
+		return err
+	}
+
 	body, err := resolveBodyInput(c.Body, c.BodyFile)
 	if err != nil {
 		return err

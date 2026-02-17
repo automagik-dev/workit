@@ -30,6 +30,11 @@ func (c *ChatDMSendCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("required: email")
 	}
 
+	// Resolve file:// prefix on --text before further processing.
+	if err := resolveFileFlag(&c.Text, "text"); err != nil {
+		return err
+	}
+
 	text := strings.TrimSpace(c.Text)
 	if text == "" {
 		return usage("required: --text")

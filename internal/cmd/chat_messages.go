@@ -173,6 +173,11 @@ func (c *ChatMessagesSendCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("required: space")
 	}
 
+	// Resolve file:// prefix on --text before further processing.
+	if resolveErr := resolveFileFlag(&c.Text, "text"); resolveErr != nil {
+		return resolveErr
+	}
+
 	text := strings.TrimSpace(c.Text)
 	if text == "" {
 		return usage("required: --text")

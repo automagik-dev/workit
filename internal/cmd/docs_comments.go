@@ -258,6 +258,12 @@ type DocsCommentsAddCmd struct {
 
 func (c *DocsCommentsAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
+
+	// Resolve file:// prefix on content argument before further processing.
+	if err := resolveFileFlag(&c.Content, "content"); err != nil {
+		return err
+	}
+
 	docID := normalizeGoogleID(strings.TrimSpace(c.DocID))
 	content := strings.TrimSpace(c.Content)
 	quoted := strings.TrimSpace(c.Quoted)
@@ -323,6 +329,12 @@ type DocsCommentsReplyCmd struct {
 
 func (c *DocsCommentsReplyCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
+
+	// Resolve file:// prefix on content argument before further processing.
+	if err := resolveFileFlag(&c.Content, "content"); err != nil {
+		return err
+	}
+
 	docID := normalizeGoogleID(strings.TrimSpace(c.DocID))
 	commentID := strings.TrimSpace(c.CommentID)
 	content := strings.TrimSpace(c.Content)

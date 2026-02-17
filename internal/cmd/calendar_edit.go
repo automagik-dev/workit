@@ -58,6 +58,11 @@ func (c *CalendarCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty calendarId")
 	}
 
+	// Resolve file:// prefix on --description before further processing.
+	if err := resolveFileFlag(&c.Description, "description"); err != nil {
+		return err
+	}
+
 	eventType, err := c.resolveCreateEventType()
 	if err != nil {
 		return err
@@ -356,6 +361,11 @@ func (c *CalendarUpdateCmd) Run(ctx context.Context, kctx *kong.Context, flags *
 	}
 	if eventID == "" {
 		return usage("empty eventId")
+	}
+
+	// Resolve file:// prefix on --description before further processing.
+	if err := resolveFileFlag(&c.Description, "description"); err != nil {
+		return err
 	}
 
 	scope := strings.TrimSpace(strings.ToLower(c.Scope))

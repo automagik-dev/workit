@@ -37,6 +37,7 @@ type RootFlags struct {
 	Plain          bool   `help:"Output stable, parseable text to stdout (TSV; no colors)" default:"${plain}" aliases:"tsv" short:"p"`
 	ResultsOnly    bool   `name:"results-only" help:"In JSON mode, emit only the primary result (drops envelope fields like nextPageToken)"`
 	Select         string `name:"select" aliases:"pick,project" help:"In JSON mode, select comma-separated fields (best-effort; supports dot paths). Desire path: use --fields for most commands."`
+	JQ             string `name:"jq" help:"Apply jq expression to JSON output"`
 	DryRun         bool   `help:"Do not make changes; print intended actions and exit successfully" aliases:"noop,preview,dryrun" short:"n"`
 	Force          bool   `help:"Skip confirmations for destructive commands" aliases:"yes,assume-yes" short:"y"`
 	ReadOnly       bool   `name:"read-only" help:"Hide write commands and request read-only OAuth scopes" default:"${read_only}"`
@@ -135,6 +136,17 @@ func Execute(args []string) (err error) {
 		return err
 	}
 
+	// --jq requires JSON output; reject early if combined with --plain.
+	if cli.JQ != "" {
+		if cli.Plain {
+			_, _ = fmt.Fprintln(os.Stderr, "error: --jq requires --json output (incompatible with --plain)")
+			return &ExitError{Code: 2, Err: errors.New("--jq requires --json output")}
+		}
+		// Auto-enable JSON when --jq is provided so that IsJSON(ctx) returns
+		// true and commands emit JSON output for the jq pipeline to process.
+		cli.JSON = true
+	}
+
 	logLevel := slog.LevelWarn
 	if cli.Verbose {
 		logLevel = slog.LevelDebug
@@ -159,6 +171,7 @@ func Execute(args []string) (err error) {
 	ctx = outfmt.WithJSONTransform(ctx, outfmt.JSONTransform{
 		ResultsOnly: cli.ResultsOnly,
 		Select:      splitCommaList(cli.Select),
+		JQ:          cli.JQ,
 	})
 	ctx = authclient.WithClient(ctx, cli.Client)
 
@@ -267,7 +280,7 @@ func isCalendarEventsCommand(args []string) bool {
 
 func globalFlagTakesValue(flag string) bool {
 	switch flag {
-	case "--color", "--account", "--acct", "--client", "--enable-commands", "--command-tier", "--select", "--pick", "--project", "-a":
+	case "--color", "--account", "--acct", "--client", "--enable-commands", "--command-tier", "--select", "--pick", "--project", "--jq", "-a":
 		return true
 	default:
 		return false

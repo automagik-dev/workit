@@ -790,10 +790,10 @@ func (c *DriveShareCmd) Run(ctx context.Context, flags *RootFlags) error {
 	perm := &drive.Permission{Role: role}
 	switch to {
 	case driveShareToAnyone:
-		perm.Type = "anyone"
+		perm.Type = driveShareToAnyone
 		perm.AllowFileDiscovery = c.Discoverable
 	case driveShareToDomain:
-		perm.Type = "domain"
+		perm.Type = driveShareToDomain
 		perm.Domain = domain
 		perm.AllowFileDiscovery = c.Discoverable
 	default:

@@ -351,6 +351,11 @@ func (c *DocsUpdateCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty docId")
 	}
 
+	// Resolve file:// prefix on --content before further processing.
+	if resolveErr := resolveFileFlag(&c.Content, "content"); resolveErr != nil {
+		return resolveErr
+	}
+
 	var content string
 	switch {
 	case c.ContentFile != "":
@@ -639,6 +644,11 @@ func (c *DocsWriteCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty docId")
 	}
 
+	// Resolve file:// prefix on content argument before further processing.
+	if resolveErr := resolveFileFlag(&c.Content, "content"); resolveErr != nil {
+		return resolveErr
+	}
+
 	content, err := resolveContentInput(c.Content, c.File)
 	if err != nil {
 		return err
@@ -784,6 +794,11 @@ func (c *DocsInsertCmd) Run(ctx context.Context, flags *RootFlags) error {
 	docID := strings.TrimSpace(c.DocID)
 	if docID == "" {
 		return usage("empty docId")
+	}
+
+	// Resolve file:// prefix on content argument before further processing.
+	if resolveErr := resolveFileFlag(&c.Content, "content"); resolveErr != nil {
+		return resolveErr
 	}
 
 	content, err := resolveContentInput(c.Content, c.File)
