@@ -563,6 +563,10 @@ func (c *SheetsAddTabCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	if c.Index < -1 {
+		return fmt.Errorf("--index must be >= 0 (got %d)", c.Index)
+	}
+
 	props := &sheets.SheetProperties{
 		Title: tabName,
 	}

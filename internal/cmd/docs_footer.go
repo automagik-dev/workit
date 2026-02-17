@@ -100,7 +100,7 @@ func (c *DocsFooterCmd) runGet(ctx context.Context, u *ui.UI, account, id string
 	}
 
 	u.Out().Printf("footerId\t%s", footerID)
-	u.Out().Printf("text\t%s", text)
+	u.Out().Printf("text\t%s", sanitizeTSVField(text))
 	return nil
 }
 
@@ -212,7 +212,7 @@ func (c *DocsFooterCmd) createAndSetFooter(ctx context.Context, svc *docs.Servic
 
 	u.Out().Printf("Created footer in document %s", id)
 	u.Out().Printf("footerId\t%s", newFooterID)
-	u.Out().Printf("text\t%s", c.Set)
+	u.Out().Printf("text\t%s", sanitizeTSVField(c.Set))
 	return nil
 }
 
@@ -273,7 +273,7 @@ func (c *DocsFooterCmd) updateExistingFooter(ctx context.Context, svc *docs.Serv
 
 	u.Out().Printf("Updated footer in document %s", id)
 	u.Out().Printf("footerId\t%s", footerID)
-	u.Out().Printf("text\t%s", c.Set)
+	u.Out().Printf("text\t%s", sanitizeTSVField(c.Set))
 	return nil
 }
 

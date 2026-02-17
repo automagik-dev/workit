@@ -100,7 +100,7 @@ func (c *DocsHeaderCmd) runGet(ctx context.Context, u *ui.UI, account, id string
 	}
 
 	u.Out().Printf("headerId\t%s", headerID)
-	u.Out().Printf("text\t%s", text)
+	u.Out().Printf("text\t%s", sanitizeTSVField(text))
 	return nil
 }
 
@@ -212,7 +212,7 @@ func (c *DocsHeaderCmd) createAndSetHeader(ctx context.Context, svc *docs.Servic
 
 	u.Out().Printf("Created header in document %s", id)
 	u.Out().Printf("headerId\t%s", newHeaderID)
-	u.Out().Printf("text\t%s", c.Set)
+	u.Out().Printf("text\t%s", sanitizeTSVField(c.Set))
 	return nil
 }
 
@@ -273,7 +273,7 @@ func (c *DocsHeaderCmd) updateExistingHeader(ctx context.Context, svc *docs.Serv
 
 	u.Out().Printf("Updated header in document %s", id)
 	u.Out().Printf("headerId\t%s", headerID)
-	u.Out().Printf("text\t%s", c.Set)
+	u.Out().Printf("text\t%s", sanitizeTSVField(c.Set))
 	return nil
 }
 
