@@ -124,6 +124,21 @@ func Execute(args []string) (err error) {
 	if hasGenerateInput(args) {
 		stripped := stripGenerateInputFlag(args)
 		cmdTokens := extractCommandTokens(stripped)
+
+		// Enforce --enable-commands in the pre-parse path so that
+		// restricted commands cannot be introspected via --generate-input.
+		enabledCSV := extractEnableCommands(args)
+		if enabledCSV != "" {
+			allow := parseEnabledCommands(enabledCSV)
+			if len(allow) > 0 && !allow["*"] && !allow["all"] {
+				if len(cmdTokens) > 0 && !allow[strings.ToLower(cmdTokens[0])] {
+					cmdErr := usagef("command %q is not enabled (set --enable-commands to allow it)", cmdTokens[0])
+					_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(cmdErr))
+					return cmdErr
+				}
+			}
+		}
+
 		node, findErr := findCommandNode(parser.Model.Node, cmdTokens)
 		if findErr != nil {
 			_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(findErr))
@@ -439,14 +454,34 @@ func stripGenerateInputFlag(args []string) []string {
 	return out
 }
 
+// extractEnableCommands scans the raw arg slice for --enable-commands flag/value,
+// falling back to the GOG_ENABLE_COMMANDS env var.  This allows the generate-input
+// pre-parse path to enforce command restrictions without full Kong parsing.
+func extractEnableCommands(args []string) string {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			break
+		}
+		if strings.HasPrefix(a, "--enable-commands=") {
+			return strings.TrimPrefix(a, "--enable-commands=")
+		}
+		if a == "--enable-commands" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return os.Getenv("GOG_ENABLE_COMMANDS")
+}
+
 // extractCommandTokens pulls non-flag tokens from args (the command path).
 // It skips flags and their values to isolate just the subcommand names.
 //
-// We treat ANY token starting with "-" as a flag (not just known global flags).
-// If the flag does not use "=" for its value and the next token does not look
-// like a flag, we skip the next token as a potential flag value. This heuristic
-// covers command-specific flags like "--query foo" that would otherwise cause
-// "foo" to be misidentified as a subcommand token.
+// Only known global value-bearing flags (via globalFlagTakesValue) consume the
+// next token.  Boolean flags like --json, --verbose are correctly skipped
+// without swallowing the following token.  Unknown command-level flags with
+// values (e.g. "--query foo") will leave "foo" as a token; findCommandNode
+// will return a clear "unknown command" error rather than silently resolving
+// the wrong command.
 func extractCommandTokens(args []string) []string {
 	tokens := make([]string, 0, 4)
 	for i := 0; i < len(args); i++ {
@@ -455,12 +490,9 @@ func extractCommandTokens(args []string) []string {
 			break
 		}
 		if strings.HasPrefix(a, "-") {
-			// Skip flag values: if current token is a flag and doesn't
-			// contain "=", the next token is likely its value (unless it
-			// also starts with "-", indicating another flag or a negative
-			// number, which we conservatively treat as a flag).
-			if !strings.Contains(a, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-				i++ // skip the value
+			// Only skip the next token for flags known to take a value.
+			if globalFlagTakesValue(a) && i+1 < len(args) {
+				i++ // skip the known value
 			}
 			continue
 		}
