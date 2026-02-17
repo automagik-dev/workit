@@ -37,6 +37,7 @@ go.work.sum
 # Local build output
 bin/
 /gog
+auth-server/auth-server
 
 # Node (optional dev scripts)
 node_modules/
