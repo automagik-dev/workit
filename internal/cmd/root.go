@@ -137,9 +137,14 @@ func Execute(args []string) (err error) {
 	}
 
 	// --jq requires JSON output; reject early if combined with --plain.
-	if cli.JQ != "" && cli.Plain {
-		_, _ = fmt.Fprintln(os.Stderr, "error: --jq requires --json output (incompatible with --plain)")
-		return &ExitError{Code: 2, Err: errors.New("--jq requires --json output")}
+	if cli.JQ != "" {
+		if cli.Plain {
+			_, _ = fmt.Fprintln(os.Stderr, "error: --jq requires --json output (incompatible with --plain)")
+			return &ExitError{Code: 2, Err: errors.New("--jq requires --json output")}
+		}
+		// Auto-enable JSON when --jq is provided so that IsJSON(ctx) returns
+		// true and commands emit JSON output for the jq pipeline to process.
+		cli.JSON = true
 	}
 
 	logLevel := slog.LevelWarn
