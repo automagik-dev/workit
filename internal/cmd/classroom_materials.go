@@ -48,8 +48,10 @@ func (c *ClassroomMaterialsListCmd) Run(ctx context.Context, flags *RootFlags) e
 		return wrapClassroomError(err)
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	makeCall := func(page string) (*classroom.ListCourseWorkMaterialResponse, error) {
-		call := svc.Courses.CourseWorkMaterials.List(courseID).PageSize(c.Max).PageToken(page).Context(ctx)
+		call := svc.Courses.CourseWorkMaterials.List(courseID).PageSize(effectiveMax).PageToken(page).Context(ctx)
 		if states := splitCSV(c.States); len(states) > 0 {
 			upper := make([]string, 0, len(states))
 			for _, state := range states {
@@ -74,7 +76,7 @@ func (c *ClassroomMaterialsListCmd) Run(ctx context.Context, flags *RootFlags) e
 	var materials []*classroom.CourseWorkMaterial
 	var nextPageToken string
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return wrapClassroomError(err)
 		}
@@ -95,7 +97,7 @@ func (c *ClassroomMaterialsListCmd) Run(ctx context.Context, flags *RootFlags) e
 		var err error
 		materials, nextPageToken, err = scanClassroomTopicPages(
 			c.Topic,
-			c.Page,
+			effectivePage,
 			c.ScanPages,
 			fetch,
 			func(material *classroom.CourseWorkMaterial) string {

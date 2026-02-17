@@ -42,8 +42,10 @@ func (c *GmailDraftsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*gmail.Draft, string, error) {
-		call := svc.Users.Drafts.List("me").MaxResults(c.Max).Context(ctx)
+		call := svc.Users.Drafts.List("me").MaxResults(effectiveMax).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -57,14 +59,14 @@ func (c *GmailDraftsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var drafts []*gmail.Draft
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		drafts = all
 	} else {
 		var err error
-		drafts, nextPageToken, err = fetch(c.Page)
+		drafts, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

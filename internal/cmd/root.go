@@ -38,6 +38,9 @@ type RootFlags struct {
 	ResultsOnly    bool   `name:"results-only" help:"In JSON mode, emit only the primary result (drops envelope fields like nextPageToken)"`
 	Select         string `name:"select" aliases:"pick,project" help:"In JSON mode, select comma-separated fields (best-effort; supports dot paths). Desire path: use --fields for most commands."`
 	JQ             string `name:"jq" help:"Apply jq expression to JSON output"`
+	MaxResults     int    `name:"max-results" help:"Maximum number of results to return (maps to pageSize/maxResults per service)" default:"0"`
+	PageToken      string `name:"page-token" help:"Page token for pagination (maps to pageToken per service)"`
+	GenerateInput  bool   `name:"generate-input" help:"Print JSON input template for the command and exit" aliases:"gen-input"`
 	DryRun         bool   `help:"Do not make changes; print intended actions and exit successfully" aliases:"noop,preview,dryrun" short:"n"`
 	Force          bool   `help:"Skip confirmations for destructive commands" aliases:"yes,assume-yes" short:"y"`
 	ReadOnly       bool   `name:"read-only" help:"Hide write commands and request read-only OAuth scopes" default:"${read_only}"`
@@ -114,6 +117,36 @@ func Execute(args []string) (err error) {
 		}
 	}()
 
+	// Pre-parse: check for --generate-input BEFORE full parsing so that
+	// commands with required positional arguments don't fail.  We scan the
+	// raw args, strip the flag, extract command tokens, and resolve the
+	// command node directly from the parser model.
+	if hasGenerateInput(args) {
+		stripped := stripGenerateInputFlag(args)
+		cmdTokens := extractCommandTokens(stripped)
+
+		// Enforce --enable-commands in the pre-parse path so that
+		// restricted commands cannot be introspected via --generate-input.
+		enabledCSV := extractEnableCommands(args)
+		if enabledCSV != "" {
+			allow := parseEnabledCommands(enabledCSV)
+			if len(allow) > 0 && !allow["*"] && !allow["all"] {
+				if len(cmdTokens) > 0 && !allow[strings.ToLower(cmdTokens[0])] {
+					cmdErr := usagef("command %q is not enabled (set --enable-commands to allow it)", cmdTokens[0])
+					_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(cmdErr))
+					return cmdErr
+				}
+			}
+		}
+
+		node, findErr := findCommandNode(parser.Model.Node, cmdTokens)
+		if findErr != nil {
+			_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(findErr))
+			return findErr
+		}
+		return printGenerateInputFromNode(node)
+	}
+
 	kctx, err := parser.Parse(args)
 	if err != nil {
 		parsedErr := wrapParseError(err)
@@ -168,10 +201,13 @@ func Execute(args []string) (err error) {
 
 	ctx := context.Background()
 	ctx = outfmt.WithMode(ctx, mode)
+	selectExplicit := outfmt.SelectFlagExplicitlySet(args)
 	ctx = outfmt.WithJSONTransform(ctx, outfmt.JSONTransform{
-		ResultsOnly: cli.ResultsOnly,
-		Select:      splitCommaList(cli.Select),
-		JQ:          cli.JQ,
+		ResultsOnly:          cli.ResultsOnly,
+		Select:               splitCommaList(cli.Select),
+		JQ:                   cli.JQ,
+		SelectExplicit:       selectExplicit,
+		FieldDiscoveryWriter: os.Stderr,
 	})
 	ctx = authclient.WithClient(ctx, cli.Client)
 
@@ -280,7 +316,8 @@ func isCalendarEventsCommand(args []string) bool {
 
 func globalFlagTakesValue(flag string) bool {
 	switch flag {
-	case "--color", "--account", "--acct", "--client", "--enable-commands", "--command-tier", "--select", "--pick", "--project", "--jq", "-a":
+	case "--color", "--account", "--acct", "--client", "--enable-commands", "--command-tier", "--select", "--pick", "--project", "--jq", "-a",
+		"--max-results", "--page-token":
 		return true
 	default:
 		return false
@@ -383,4 +420,94 @@ func newUsageError(err error) error {
 		return nil
 	}
 	return &ExitError{Code: 2, Err: err}
+}
+
+// generateInputFlags lists the flag names that trigger generate-input mode.
+var generateInputFlags = map[string]bool{
+	"--generate-input": true,
+	"--gen-input":      true,
+}
+
+// hasGenerateInput returns true if the raw argument slice contains
+// --generate-input or its alias --gen-input.  It also recognises the
+// --flag=value form (e.g. --generate-input=true).
+func hasGenerateInput(args []string) bool {
+	for _, a := range args {
+		if a == "--" {
+			return false
+		}
+		if generateInputFlags[a] {
+			return true
+		}
+		// Support --flag=value form (e.g. --generate-input=true).
+		if idx := strings.IndexByte(a, '='); idx > 0 {
+			if generateInputFlags[a[:idx]] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// stripGenerateInputFlag returns a copy of args with --generate-input / --gen-input removed.
+// It also strips the --flag=value form (e.g. --generate-input=true).
+func stripGenerateInputFlag(args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if generateInputFlags[a] {
+			continue
+		}
+		if idx := strings.IndexByte(a, '='); idx > 0 && generateInputFlags[a[:idx]] {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+// extractEnableCommands scans the raw arg slice for --enable-commands flag/value,
+// falling back to the GOG_ENABLE_COMMANDS env var.  This allows the generate-input
+// pre-parse path to enforce command restrictions without full Kong parsing.
+func extractEnableCommands(args []string) string {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			break
+		}
+		if strings.HasPrefix(a, "--enable-commands=") {
+			return strings.TrimPrefix(a, "--enable-commands=")
+		}
+		if a == "--enable-commands" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return os.Getenv("GOG_ENABLE_COMMANDS")
+}
+
+// extractCommandTokens pulls non-flag tokens from args (the command path).
+// It skips flags and their values to isolate just the subcommand names.
+//
+// Only known global value-bearing flags (via globalFlagTakesValue) consume the
+// next token.  Boolean flags like --json, --verbose are correctly skipped
+// without swallowing the following token.  Unknown command-level flags with
+// values (e.g. "--query foo") will leave "foo" as a token; findCommandNode
+// will return a clear "unknown command" error rather than silently resolving
+// the wrong command.
+func extractCommandTokens(args []string) []string {
+	tokens := make([]string, 0, 4)
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			break
+		}
+		if strings.HasPrefix(a, "-") {
+			// Only skip the next token for flags known to take a value.
+			if globalFlagTakesValue(a) && i+1 < len(args) {
+				i++ // skip the known value
+			}
+			continue
+		}
+		tokens = append(tokens, a)
+	}
+	return tokens
 }

@@ -36,9 +36,11 @@ func (c *GmailHistoryCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	historyID := ""
 	fetch := func(pageToken string) ([]string, string, error) {
-		call := svc.Users.History.List("me").StartHistoryId(startID).MaxResults(c.Max)
+		call := svc.Users.History.List("me").StartHistoryId(startID).MaxResults(effectiveMax)
 		call.HistoryTypes("messageAdded")
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -54,14 +56,14 @@ func (c *GmailHistoryCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var ids []string
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		ids = all
 	} else {
 		var err error
-		ids, nextPageToken, err = fetch(c.Page)
+		ids, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

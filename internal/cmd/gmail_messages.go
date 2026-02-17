@@ -45,10 +45,12 @@ func (c *GmailMessagesSearchCmd) Run(ctx context.Context, flags *RootFlags) erro
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*gmail.Message, string, error) {
 		call := svc.Users.Messages.List("me").
 			Q(query).
-			MaxResults(c.Max).
+			MaxResults(effectiveMax).
 			Fields("messages(id,threadId),nextPageToken").
 			Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
@@ -64,13 +66,13 @@ func (c *GmailMessagesSearchCmd) Run(ctx context.Context, flags *RootFlags) erro
 	var messages []*gmail.Message
 	nextPageToken := ""
 	if c.All {
-		all, collectErr := collectAllPages(c.Page, fetch)
+		all, collectErr := collectAllPages(effectivePage, fetch)
 		if collectErr != nil {
 			return collectErr
 		}
 		messages = all
 	} else {
-		messagesPage, pageToken, fetchErr := fetch(c.Page)
+		messagesPage, pageToken, fetchErr := fetch(effectivePage)
 		if fetchErr != nil {
 			return fetchErr
 		}

@@ -47,12 +47,14 @@ func (c *GroupsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return wrapCloudIdentityError(err, account)
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	// Search for all groups the user belongs to
 	// Using "groups/-" as parent searches across all groups
 	fetch := func(pageToken string) ([]*cloudidentity.GroupRelation, string, error) {
 		call := svc.Groups.Memberships.SearchTransitiveGroups("groups/-").
 			Query("member_key_id == '" + account + "'").
-			PageSize(c.Max).
+			PageSize(effectiveMax).
 			Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -67,14 +69,14 @@ func (c *GroupsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var memberships []*cloudidentity.GroupRelation
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		memberships = all
 	} else {
 		var err error
-		memberships, nextPageToken, err = fetch(c.Page)
+		memberships, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
@@ -190,10 +192,12 @@ func (c *GroupsMembersCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return fmt.Errorf("failed to find group %q: %w", groupEmail, err)
 	}
 
+	effectiveMaxM, effectivePageM := applyPagination(flags, c.Max, c.Page)
+
 	// List members of the group
 	fetch := func(pageToken string) ([]*cloudidentity.Membership, string, error) {
 		call := svc.Groups.Memberships.List(groupName).
-			PageSize(c.Max).
+			PageSize(effectiveMaxM).
 			Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
@@ -208,14 +212,14 @@ func (c *GroupsMembersCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var memberships []*cloudidentity.Membership
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePageM, fetch)
 		if err != nil {
 			return err
 		}
 		memberships = all
 	} else {
 		var err error
-		memberships, nextPageToken, err = fetch(c.Page)
+		memberships, nextPageToken, err = fetch(effectivePageM)
 		if err != nil {
 			return err
 		}

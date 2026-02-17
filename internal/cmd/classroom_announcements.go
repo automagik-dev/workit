@@ -47,8 +47,10 @@ func (c *ClassroomAnnouncementsListCmd) Run(ctx context.Context, flags *RootFlag
 		return wrapClassroomError(err)
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*classroom.Announcement, string, error) {
-		call := svc.Courses.Announcements.List(courseID).PageSize(c.Max).Context(ctx)
+		call := svc.Courses.Announcements.List(courseID).PageSize(effectiveMax).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -72,14 +74,14 @@ func (c *ClassroomAnnouncementsListCmd) Run(ctx context.Context, flags *RootFlag
 	var announcements []*classroom.Announcement
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		announcements = all
 	} else {
 		var err error
-		announcements, nextPageToken, err = fetch(c.Page)
+		announcements, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}

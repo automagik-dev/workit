@@ -40,8 +40,10 @@ func (c *ChatSpacesListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*chat.Space, string, error) {
-		call := svc.Spaces.List().PageSize(c.Max).Context(ctx)
+		call := svc.Spaces.List().PageSize(effectiveMax).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -55,14 +57,14 @@ func (c *ChatSpacesListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var spaces []*chat.Space
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		spaces = all
 	} else {
 		var err error
-		spaces, nextPageToken, err = fetch(c.Page)
+		spaces, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
@@ -148,8 +150,10 @@ func (c *ChatSpacesFindCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMaxFind, _ := applyPagination(flags, c.Max, "")
+
 	fetch := func(pageToken string) ([]*chat.Space, string, error) {
-		call := svc.Spaces.List().PageSize(c.Max).Context(ctx)
+		call := svc.Spaces.List().PageSize(effectiveMaxFind).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}

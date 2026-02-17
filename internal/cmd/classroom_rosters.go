@@ -43,8 +43,10 @@ func (c *ClassroomStudentsListCmd) Run(ctx context.Context, flags *RootFlags) er
 		return wrapClassroomError(err)
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*classroom.Student, string, error) {
-		call := svc.Courses.Students.List(courseID).PageSize(c.Max).Context(ctx)
+		call := svc.Courses.Students.List(courseID).PageSize(effectiveMax).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -58,14 +60,14 @@ func (c *ClassroomStudentsListCmd) Run(ctx context.Context, flags *RootFlags) er
 	var students []*classroom.Student
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		students = all
 	} else {
 		var err error
-		students, nextPageToken, err = fetch(c.Page)
+		students, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
@@ -275,8 +277,10 @@ func (c *ClassroomTeachersListCmd) Run(ctx context.Context, flags *RootFlags) er
 		return wrapClassroomError(err)
 	}
 
+	effectiveMaxT, effectivePageT := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*classroom.Teacher, string, error) {
-		call := svc.Courses.Teachers.List(courseID).PageSize(c.Max).Context(ctx)
+		call := svc.Courses.Teachers.List(courseID).PageSize(effectiveMaxT).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -290,14 +294,14 @@ func (c *ClassroomTeachersListCmd) Run(ctx context.Context, flags *RootFlags) er
 	var teachers []*classroom.Teacher
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePageT, fetch)
 		if err != nil {
 			return err
 		}
 		teachers = all
 	} else {
 		var err error
-		teachers, nextPageToken, err = fetch(c.Page)
+		teachers, nextPageToken, err = fetch(effectivePageT)
 		if err != nil {
 			return err
 		}
@@ -497,6 +501,8 @@ func (c *ClassroomRosterCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return wrapClassroomError(err)
 	}
 
+	effectiveMaxR, effectivePageR := applyPagination(flags, c.Max, c.Page)
+
 	var students []*classroom.Student
 	var teachers []*classroom.Teacher
 	studentsNextPageToken := ""
@@ -504,7 +510,7 @@ func (c *ClassroomRosterCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	if includeStudents {
 		fetch := func(pageToken string) ([]*classroom.Student, string, error) {
-			call := svc.Courses.Students.List(courseID).PageSize(c.Max).Context(ctx)
+			call := svc.Courses.Students.List(courseID).PageSize(effectiveMaxR).Context(ctx)
 			if strings.TrimSpace(pageToken) != "" {
 				call = call.PageToken(pageToken)
 			}
@@ -515,13 +521,13 @@ func (c *ClassroomRosterCmd) Run(ctx context.Context, flags *RootFlags) error {
 			return resp.Students, resp.NextPageToken, nil
 		}
 		if c.All {
-			all, collectErr := collectAllPages(c.Page, fetch)
+			all, collectErr := collectAllPages(effectivePageR, fetch)
 			if collectErr != nil {
 				return collectErr
 			}
 			students = all
 		} else {
-			students, studentsNextPageToken, err = fetch(c.Page)
+			students, studentsNextPageToken, err = fetch(effectivePageR)
 			if err != nil {
 				return err
 			}
@@ -529,7 +535,7 @@ func (c *ClassroomRosterCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 	if includeTeachers {
 		fetch := func(pageToken string) ([]*classroom.Teacher, string, error) {
-			call := svc.Courses.Teachers.List(courseID).PageSize(c.Max).Context(ctx)
+			call := svc.Courses.Teachers.List(courseID).PageSize(effectiveMaxR).Context(ctx)
 			if strings.TrimSpace(pageToken) != "" {
 				call = call.PageToken(pageToken)
 			}
@@ -540,13 +546,13 @@ func (c *ClassroomRosterCmd) Run(ctx context.Context, flags *RootFlags) error {
 			return resp.Teachers, resp.NextPageToken, nil
 		}
 		if c.All {
-			all, collectErr := collectAllPages(c.Page, fetch)
+			all, collectErr := collectAllPages(effectivePageR, fetch)
 			if collectErr != nil {
 				return collectErr
 			}
 			teachers = all
 		} else {
-			teachers, teachersNextPageToken, err = fetch(c.Page)
+			teachers, teachersNextPageToken, err = fetch(effectivePageR)
 			if err != nil {
 				return err
 			}

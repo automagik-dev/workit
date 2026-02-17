@@ -44,8 +44,10 @@ func (c *KeepListCmd) Run(ctx context.Context, flags *RootFlags, keep *KeepCmd) 
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*keepapi.Note, string, error) {
-		call := svc.Notes.List().PageSize(c.Max).Context(ctx)
+		call := svc.Notes.List().PageSize(effectiveMax).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}
@@ -62,14 +64,14 @@ func (c *KeepListCmd) Run(ctx context.Context, flags *RootFlags, keep *KeepCmd) 
 	var notes []*keepapi.Note
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		notes = all
 	} else {
 		var err error
-		notes, nextPageToken, err = fetch(c.Page)
+		notes, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
@@ -149,8 +151,10 @@ func (c *KeepSearchCmd) Run(ctx context.Context, flags *RootFlags, keep *KeepCmd
 		return err
 	}
 
+	effectiveMaxSearch, _ := applyPagination(flags, c.Max, "")
+
 	fetch := func(pageToken string) ([]*keepapi.Note, string, error) {
-		call := svc.Notes.List().PageSize(c.Max).Context(ctx)
+		call := svc.Notes.List().PageSize(effectiveMaxSearch).Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
 			call = call.PageToken(pageToken)
 		}

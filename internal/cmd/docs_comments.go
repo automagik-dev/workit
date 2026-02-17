@@ -51,10 +51,12 @@ func (c *DocsCommentsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*drive.Comment, string, error) {
 		call := svc.Comments.List(docID).
 			IncludeDeleted(false).
-			PageSize(c.Max).
+			PageSize(effectiveMax).
 			Fields("nextPageToken", "comments(id,author,content,createdTime,modifiedTime,resolved,quotedFileContent,replies(id,author,content,createdTime,modifiedTime,action,deleted))").
 			Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
@@ -70,7 +72,7 @@ func (c *DocsCommentsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var comments []*drive.Comment
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
@@ -78,13 +80,13 @@ func (c *DocsCommentsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	} else {
 		if c.IncludeResolved {
 			var err error
-			comments, nextPageToken, err = fetch(c.Page)
+			comments, nextPageToken, err = fetch(effectivePage)
 			if err != nil {
 				return err
 			}
 		} else {
 			// Default: open-only. Scan forward until we find at least one open comment (or run out of pages).
-			pageToken := c.Page
+			pageToken := effectivePage
 			for {
 				pageComments, token, err := fetch(pageToken)
 				if err != nil {

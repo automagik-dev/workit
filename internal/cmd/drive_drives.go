@@ -33,9 +33,11 @@ func (c *DriveDrivesCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 
+	effectiveMax, effectivePage := applyPagination(flags, c.Max, c.Page)
+
 	fetch := func(pageToken string) ([]*drive.Drive, string, error) {
 		call := svc.Drives.List().
-			PageSize(c.Max).
+			PageSize(effectiveMax).
 			Fields("nextPageToken, drives(id, name, createdTime)").
 			Context(ctx)
 		if page := strings.TrimSpace(pageToken); page != "" {
@@ -54,14 +56,14 @@ func (c *DriveDrivesCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var drives []*drive.Drive
 	nextPageToken := ""
 	if c.All {
-		all, err := collectAllPages(c.Page, fetch)
+		all, err := collectAllPages(effectivePage, fetch)
 		if err != nil {
 			return err
 		}
 		drives = all
 	} else {
 		var err error
-		drives, nextPageToken, err = fetch(c.Page)
+		drives, nextPageToken, err = fetch(effectivePage)
 		if err != nil {
 			return err
 		}
