@@ -89,6 +89,11 @@ func readSecureFile(path string) ([]byte, error) {
 	var cleaned string
 	if filepath.IsAbs(path) {
 		cleaned = filepath.Clean(path)
+		// Resolve symlinks so absolute paths match the resolved CWD.
+		// On macOS /var -> /private/var; without this, containment fails.
+		if absResolved, evalErr := filepath.EvalSymlinks(cleaned); evalErr == nil {
+			cleaned = absResolved
+		}
 	} else {
 		cleaned = filepath.Clean(filepath.Join(cwdClean, path))
 	}
@@ -156,6 +161,10 @@ func readSecureFile(path string) ([]byte, error) {
 // Both paths must be absolute and cleaned.
 func isWithinDir(path, dir string) bool {
 	if path == dir {
+		return true
+	}
+	// When dir is the filesystem root, every absolute path is within it.
+	if dir == "/" {
 		return true
 	}
 	// Ensure the dir ends with separator for prefix matching

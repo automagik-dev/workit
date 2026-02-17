@@ -419,6 +419,17 @@ func TestResolveFileInput_SensitivePatternInPathComponent(t *testing.T) {
 	}
 }
 
+func TestIsWithinDir_RootDir(t *testing.T) {
+	// When CWD is /, every absolute path should be considered within it.
+	if !isWithinDir("/tmp/foo", "/") {
+		t.Fatal("expected /tmp/foo to be within /")
+	}
+
+	if !isWithinDir("/", "/") {
+		t.Fatal("expected / to be within /")
+	}
+}
+
 func TestResolveFileInput_NonSensitiveFileAllowed(t *testing.T) {
 	// Ensure files that look somewhat like sensitive names but are not actually
 	// in the sensitive pattern list are allowed.
