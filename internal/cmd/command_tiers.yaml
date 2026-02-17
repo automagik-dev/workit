@@ -4,7 +4,7 @@
 # Utility commands (auth, config, time, agent, schema, sync, version, completion) are always visible.
 gmail:
   search: core
-  send: core
+  send: extended
   get: core
   labels: extended
   modify: extended
@@ -17,7 +17,7 @@ drive:
   ls: core
   search: core
   download: core
-  upload: core
+  upload: extended
   get: core
   cat: core
   mkdir: extended

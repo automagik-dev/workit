@@ -25,10 +25,19 @@ var alwaysVisibleCommands = map[string]bool{
 	"auth": true, "config": true, "time": true, "agent": true,
 	"schema": true, "sync": true, "version": true, "completion": true,
 	"__complete": true, "exit-codes": true, "open": true,
-	// Top-level desire paths (aliases) are always visible.
-	"send": true, "ls": true, "search": true, "download": true,
-	"upload": true, "login": true, "logout": true, "status": true,
+	"login": true, "logout": true, "status": true,
 	"me": true, "whoami": true,
+}
+
+// desirePathTier maps top-level desire-path aliases to their effective tier.
+// These bypass the YAML service lookup because kctx.Command() returns "send ..."
+// not "gmail send ..." for desire paths.
+var desirePathTier = map[string]string{
+	"send":     "extended", // gmail send → extended (write op)
+	"upload":   "extended", // drive upload → extended (write op)
+	"ls":       "core",     // drive ls → core
+	"search":   "core",     // gmail search → core
+	"download": "core",     // drive download → core
 }
 
 func enforceEnabledCommands(kctx *kong.Context, enabled string) error {
@@ -112,6 +121,15 @@ func enforceCommandTier(kctx *kong.Context, tier string) error {
 
 	// Always-visible commands bypass tier check.
 	if alwaysVisibleCommands[topCmd] {
+		return nil
+	}
+
+	// Check desire-path aliases (top-level shortcuts like "send", "upload").
+	if dpTier, ok := desirePathTier[topCmd]; ok {
+		dpLevel := tierLevel[dpTier]
+		if dpLevel > requestedLevel {
+			return usagef("command %q requires tier %q (current: %q)", topCmd, dpTier, tier)
+		}
 		return nil
 	}
 
