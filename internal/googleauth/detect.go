@@ -13,6 +13,7 @@ import (
 
 // Auth mode constants.
 const (
+	AuthModeAuto     = "auto"
 	AuthModeBrowser  = "browser"
 	AuthModeHeadless = "headless"
 	AuthModeManual   = "manual"

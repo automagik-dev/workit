@@ -9,15 +9,22 @@ import (
 	"testing"
 )
 
-// setupTestConfig writes a config file and sets XDG_CONFIG_HOME for tests.
+// setupTestConfig writes a config file to the platform-specific config dir.
+// On Linux: XDG_CONFIG_HOME/gogcli/config.json
+// On macOS: HOME/Library/Application Support/gogcli/config.json
 func setupTestConfig(t *testing.T, content string) {
 	t.Helper()
 
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 
-	dir := filepath.Join(home, "xdg-config", "gogcli")
+	cfgDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatalf("UserConfigDir: %v", err)
+	}
+
+	dir := filepath.Join(cfgDir, "gogcli")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatalf("mkdir config dir: %v", err)
 	}
@@ -33,7 +40,7 @@ func clearTestConfig(t *testing.T) {
 
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 }
 
 func TestResolveAuthMode_ExplicitHeadless(t *testing.T) {

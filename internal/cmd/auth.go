@@ -989,7 +989,7 @@ func (c *AuthStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
 	cfg, _ := config.ReadConfig()
 	authMode := cfg.AuthMode
 	if authMode == "" {
-		authMode = "auto"
+		authMode = googleauth.AuthModeAuto
 	}
 	callbackServer := cfg.CallbackServer
 
