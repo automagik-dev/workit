@@ -25,7 +25,7 @@ Fast, script-friendly CLI for Gmail, Calendar, Chat, Classroom, Drive, Docs, Sli
 - **Groups** - list groups you belong to, view group members (Google Workspace)
 - **Local time** - quick local/UTC time display for scripts and agents
 - **Multiple accounts** - manage multiple Google accounts simultaneously (with aliases)
-- **Command allowlist** - restrict top-level commands for sandboxed/agent runs
+- **Agent safety** - `--read-only`, `--command-tier`, and `--enable-commands` restrict what an AI agent can do
 - **Headless OAuth** - authenticate users who complete OAuth on mobile/web, ideal for AI agents
 - **Secure credential storage** using OS keyring or encrypted on-disk keyring (configurable)
 - **Auto-refreshing tokens** - authenticate once, use indefinitely
@@ -1342,12 +1342,83 @@ gog --verbose gmail search 'newer_than:7d'
 # Shows API requests and responses
 ```
 
+## Agent Safety
+
+When an AI agent drives `gog` on behalf of a user, you can restrict what it is
+allowed to do. Three independent mechanisms are available and they stack -- all
+filters are evaluated, and the most restrictive combination wins.
+
+### `--read-only`
+
+Block every write operation (send, upload, delete, create, etc.) and, when used
+with `auth add --readonly`, request read-only OAuth scopes so the token itself
+cannot perform mutations.
+
+```bash
+gog --read-only drive ls        # OK -- listing is read-only
+gog --read-only gmail send ...  # BLOCKED
+```
+
+### `--command-tier core|extended|complete`
+
+Limit which subcommands are visible. The three tiers are cumulative:
+
+| Tier | What it includes |
+|------|-----------------|
+| **core** | Read-only essentials -- list, search, get, download, export, cat |
+| **extended** | Common mutations -- create, update, delete, send, upload |
+| **complete** | Everything (default) -- batch ops, permissions, settings, advanced |
+
+Commands not assigned to a tier default to **complete**. Utility commands
+(`auth`, `config`, `agent`, `version`, etc.) are always available regardless of
+tier.
+
+```bash
+gog --command-tier core calendar ls      # OK
+gog --command-tier core calendar create  # BLOCKED (create requires "extended")
+```
+
+### `--enable-commands <csv>`
+
+Allowlist specific top-level commands. Only the listed service groups are
+accessible; everything else is rejected.
+
+```bash
+gog --enable-commands calendar,tasks calendar ls   # OK
+gog --enable-commands calendar,tasks gmail search   # BLOCKED
+```
+
+### Composing filters
+
+All three mechanisms are independent and evaluated in order. A command must pass
+every active filter to execute. For example:
+
+```bash
+gog --read-only --command-tier core --enable-commands drive,calendar \
+    drive ls
+```
+
+This allows only read-only, core-tier subcommands of `drive` and `calendar`.
+
+### Environment variables for agent sandboxing
+
+Set these before launching an agent session so every invocation is
+automatically restricted:
+
+```bash
+export GOG_READ_ONLY=true
+export GOG_COMMAND_TIER=core
+export GOG_ENABLE_COMMANDS=drive,calendar
+```
+
 ## Global Flags
 
 All commands support these flags:
 
 - `--account <email|alias|auto>` - Account to use (overrides GOG_ACCOUNT)
-- `--enable-commands <csv>` - Allowlist top-level commands (e.g., `calendar,tasks`)
+- `--command-tier <core|extended|complete>` - Command visibility tier (default: complete; env: `GOG_COMMAND_TIER`)
+- `--enable-commands <csv>` - Allowlist top-level commands (e.g., `calendar,tasks`; env: `GOG_ENABLE_COMMANDS`)
+- `--read-only` - Hide write commands and request read-only OAuth scopes (env: `GOG_READ_ONLY`)
 - `--json` - Output JSON to stdout (best for scripting)
 - `--plain` - Output stable, parseable text to stdout (TSV; no colors)
 - `--color <mode>` - Color mode: `auto`, `always`, or `never` (default: auto)
