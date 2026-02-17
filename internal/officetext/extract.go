@@ -12,6 +12,9 @@ import (
 	"strings"
 )
 
+// ErrZipEntryTooLarge is returned when a decompressed ZIP entry exceeds the size limit.
+var ErrZipEntryTooLarge = errors.New("zip entry exceeds decompressed size limit")
+
 // ErrUnsupportedFormat is returned when the file format is not supported
 // for text extraction.
 var ErrUnsupportedFormat = errors.New("unsupported format for text extraction")
@@ -120,12 +123,14 @@ func readZipEntry(zr *zip.Reader, name string) ([]byte, error) {
 			defer rc.Close()
 
 			lr := io.LimitReader(rc, maxZipEntrySize+1)
+
 			content, err := io.ReadAll(lr)
 			if err != nil {
 				return nil, fmt.Errorf("read %s: %w", name, err)
 			}
+
 			if int64(len(content)) > maxZipEntrySize {
-				return nil, fmt.Errorf("entry %s exceeds %d byte decompressed limit", name, maxZipEntrySize)
+				return nil, fmt.Errorf("entry %s: %w", name, ErrZipEntryTooLarge)
 			}
 
 			return content, nil
