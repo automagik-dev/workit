@@ -195,7 +195,7 @@ if [ "$DO_INSTALL" = true ]; then
       info "Requires elevated permissions to write to ${INSTALL_DIR}"
       sudo cp bin/gog "$TARGET"
     }
-    chmod +x "$TARGET"
+    chmod +x "$TARGET" 2>/dev/null || sudo chmod +x "$TARGET"
 
     ok "Installed to ${TARGET}"
 
