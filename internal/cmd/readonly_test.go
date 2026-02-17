@@ -91,6 +91,20 @@ type readonlyTestCLI struct {
 			Update struct{} `cmd:"" name:"update"`
 		} `cmd:"" name:"comments"`
 	} `cmd:"" name:"drive2"`
+	Gmail3 struct {
+		Settings struct {
+			Delegates struct {
+				List struct{} `cmd:"" name:"list"`
+				Add  struct{} `cmd:"" name:"add"`
+			} `cmd:"" name:"delegates"`
+		} `cmd:"" name:"settings"`
+	} `cmd:"" name:"gmail3"`
+	Classroom struct {
+		Courses struct {
+			List    struct{} `cmd:"" name:"list"`
+			Archive struct{} `cmd:"" name:"archive"`
+		} `cmd:"" name:"courses"`
+	} `cmd:"" name:"classroom"`
 	Docs struct {
 		Get         struct{} `cmd:"" name:"get"`
 		Create      struct{} `cmd:"" name:"create"`
@@ -269,6 +283,11 @@ func TestEnforceReadOnly_NestedWriteCommands(t *testing.T) {
 		{"drive2 comments create", true},
 		{"drive2 comments update", true},
 		{"drive2 comments list", false},
+		// Deep command paths (depth >= 4) — write verb at position 3
+		{"gmail3 settings delegates add", true},
+		{"gmail3 settings delegates list", false},
+		{"classroom courses archive", true},
+		{"classroom courses list", false},
 	}
 
 	for _, tt := range tests {

@@ -102,7 +102,14 @@ func openZip(data []byte) (*zip.Reader, error) {
 	return zr, nil
 }
 
+// maxZipEntrySize is the maximum decompressed size allowed for a single ZIP
+// entry. This guards against zip bombs where a small compressed entry inflates
+// to gigabytes of XML content.
+const maxZipEntrySize = 100 * 1024 * 1024 // 100 MB decompressed
+
 // readZipEntry finds and reads a named file from a zip.Reader.
+// It caps the decompressed content at maxZipEntrySize to prevent
+// unbounded memory allocation from crafted archives.
 func readZipEntry(zr *zip.Reader, name string) ([]byte, error) {
 	for _, f := range zr.File {
 		if f.Name == name {
@@ -112,9 +119,13 @@ func readZipEntry(zr *zip.Reader, name string) ([]byte, error) {
 			}
 			defer rc.Close()
 
-			content, err := io.ReadAll(rc)
+			lr := io.LimitReader(rc, maxZipEntrySize+1)
+			content, err := io.ReadAll(lr)
 			if err != nil {
 				return nil, fmt.Errorf("read %s: %w", name, err)
+			}
+			if int64(len(content)) > maxZipEntrySize {
+				return nil, fmt.Errorf("entry %s exceeds %d byte decompressed limit", name, maxZipEntrySize)
 			}
 
 			return content, nil

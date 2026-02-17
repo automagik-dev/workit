@@ -120,11 +120,13 @@ func enforceReadOnly(kctx *kong.Context, readOnly bool) error {
 			}
 		}
 
-		// Handle nested write commands (e.g., chat messages send).
-		if len(cmd) >= 3 {
-			nestedCmd := strings.ToLower(cmd[2])
-			if nestedWriteVerbs[nestedCmd] {
-				return usagef("command %q %q %q is unavailable in read-only mode", topCmd, subCmd, nestedCmd)
+		// Check all remaining command path tokens for write verbs.
+		// This catches nested writes at any depth (e.g., "chat messages send",
+		// "gmail settings delegates add", "classroom courses archive").
+		for i := 2; i < len(cmd); i++ {
+			token := strings.ToLower(cmd[i])
+			if nestedWriteVerbs[token] {
+				return usagef("command %q is unavailable in read-only mode", strings.Join(cmd, " "))
 			}
 		}
 	}
