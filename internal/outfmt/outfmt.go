@@ -94,6 +94,13 @@ func WriteJSON(ctx context.Context, w io.Writer, v any) error {
 		// Field discovery: --select was explicitly set to "" (empty).
 		// Print available fields and return immediately so stdout is not
 		// polluted with the normal JSON payload.
+		//
+		// TODO(perf): field discovery currently runs AFTER the command handler
+		// (including auth + API calls) because we need the result value for
+		// reflection. To short-circuit before execution, we would need a
+		// static registry mapping command nodes to their output struct types,
+		// similar to how --generate-input resolves flags without running the
+		// command. See Finding 1 in the UX-unified PR review.
 		if IsFieldDiscovery("", t.SelectExplicit) && len(t.Select) == 0 && t.FieldDiscoveryWriter != nil {
 			fields := DiscoverFields(v)
 			PrintFieldDiscovery(t.FieldDiscoveryWriter, fields, "")

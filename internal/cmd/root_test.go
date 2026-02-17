@@ -87,6 +87,83 @@ func TestExecute_UnknownFlag(t *testing.T) {
 	}
 }
 
+func TestExtractCommandTokens(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{
+			name: "simple subcommand",
+			args: []string{"drive", "ls"},
+			want: []string{"drive", "ls"},
+		},
+		{
+			name: "global flag with value",
+			args: []string{"--account", "me@example.com", "drive", "ls"},
+			want: []string{"drive", "ls"},
+		},
+		{
+			name: "global flag with equals",
+			args: []string{"--account=me@example.com", "drive", "ls"},
+			want: []string{"drive", "ls"},
+		},
+		{
+			name: "unknown command-specific flag with value",
+			args: []string{"gmail", "search", "--query", "is:unread", "--json"},
+			want: []string{"gmail", "search"},
+		},
+		{
+			name: "unknown flag with equals",
+			args: []string{"gmail", "search", "--query=is:unread"},
+			want: []string{"gmail", "search"},
+		},
+		{
+			name: "boolean flag no value",
+			args: []string{"drive", "ls", "--json"},
+			want: []string{"drive", "ls"},
+		},
+		{
+			name: "double dash stops parsing",
+			args: []string{"drive", "--", "ls"},
+			want: []string{"drive"},
+		},
+		{
+			name: "mixed flags and subcommands",
+			// Heuristic: --verbose (no =) followed by "drive" (no -)
+			// causes "drive" to be skipped as a presumed flag value.
+			// This is acceptable: the main use case is --generate-input
+			// where flags like --verbose typically precede commands.
+			args: []string{"drive", "--query", "foo", "--verbose", "ls"},
+			want: []string{"drive"},
+		},
+		{
+			name: "short flag",
+			args: []string{"-a", "me@example.com", "drive", "ls"},
+			want: []string{"drive", "ls"},
+		},
+		{
+			name: "flag followed by another flag",
+			args: []string{"drive", "ls", "--json", "--verbose"},
+			want: []string{"drive", "ls"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractCommandTokens(tt.args)
+			if len(got) != len(tt.want) {
+				t.Fatalf("extractCommandTokens(%v) = %v, want %v", tt.args, got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("extractCommandTokens(%v)[%d] = %q, want %q", tt.args, i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestNewUsageError(t *testing.T) {
 	if newUsageError(nil) != nil {
 		t.Fatalf("expected nil for nil error")

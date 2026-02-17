@@ -441,6 +441,12 @@ func stripGenerateInputFlag(args []string) []string {
 
 // extractCommandTokens pulls non-flag tokens from args (the command path).
 // It skips flags and their values to isolate just the subcommand names.
+//
+// We treat ANY token starting with "-" as a flag (not just known global flags).
+// If the flag does not use "=" for its value and the next token does not look
+// like a flag, we skip the next token as a potential flag value. This heuristic
+// covers command-specific flags like "--query foo" that would otherwise cause
+// "foo" to be misidentified as a subcommand token.
 func extractCommandTokens(args []string) []string {
 	tokens := make([]string, 0, 4)
 	for i := 0; i < len(args); i++ {
@@ -449,9 +455,12 @@ func extractCommandTokens(args []string) []string {
 			break
 		}
 		if strings.HasPrefix(a, "-") {
-			// Skip flags that take a value argument.
-			if globalFlagTakesValue(a) && i+1 < len(args) {
-				i++
+			// Skip flag values: if current token is a flag and doesn't
+			// contain "=", the next token is likely its value (unless it
+			// also starts with "-", indicating another flag or a negative
+			// number, which we conservatively treat as a flag).
+			if !strings.Contains(a, "=") && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				i++ // skip the value
 			}
 			continue
 		}

@@ -47,16 +47,20 @@
 
 ### Field Discovery (`--select ""`)
 
-Pass an explicit empty string to `--select` to list available JSON fields without making an API call:
+Pass an explicit empty string to `--select` to list available JSON fields:
 
 ```
 gog drive ls --json --select ""
 ```
 
-- Output goes to **stderr** (stdout stays clean).
-- Exit code **0** -- no API call is made.
+- Output goes to **stderr** (stdout stays clean for piping).
+- Exit code **0**.
 - A usage hint is printed: `gog drive ls --json --select "name,id,size"`.
 - Works for every command that supports `--json` output.
+- **Note:** The command still executes (including auth and API calls) because field
+  names are discovered via reflection on the result struct at output time. The normal
+  JSON payload is suppressed from stdout. A future optimization may short-circuit
+  execution for commands whose output type can be determined statically.
 
 ### Input Templates (`--generate-input` / `--gen-input`)
 
@@ -82,7 +86,9 @@ gog drive ls --max-results 5 --page-token TOKEN --json
 ```
 
 - Maps to the correct API parameter per service (`pageSize` or `maxResults`).
-- **Precedence:** per-command `--max`/`--limit` overrides `--max-results` when both are provided.
+- **Precedence:** Global `--max-results` takes priority over per-command defaults when set.
+  Per-command `--max`/`--limit` flags use compile-time defaults that cannot be distinguished
+  from explicit user values by the framework, so the global flag always wins when non-zero.
 - `--all` overrides `--max-results` (fetches all pages).
 - `--results-only` strips `nextPageToken` from output; avoid it when paginating across multiple pages.
 
