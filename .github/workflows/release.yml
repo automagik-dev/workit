@@ -36,6 +36,27 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: git checkout ${{ inputs.tag }}
 
+      - name: Generate changelog-backed release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          fi
+          version="${tag#v}"
+          notes_file="/tmp/release-notes.md"
+          awk -v ver="$version" '
+            $0 ~ "^## "ver" " {print "## "ver; in_section=1; next}
+            in_section && /^## / {exit}
+            in_section {print}
+          ' CHANGELOG.md | sed '/^$/d' > "$notes_file"
+          if [[ ! -s "$notes_file" ]]; then
+            echo "missing release notes section for $version in CHANGELOG.md" >&2
+            exit 1
+          fi
+          echo "RELEASE_NOTES_FILE=$notes_file" >> "$GITHUB_ENV"
+
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -44,3 +65,15 @@ jobs:
           args: release --clean --config /tmp/.goreleaser.yaml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply generated notes to release
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+          fi
+          gh release edit "$tag" --notes-file "$RELEASE_NOTES_FILE"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

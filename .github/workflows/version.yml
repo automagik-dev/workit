@@ -1,0 +1,67 @@
+name: version
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  version-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Compute dev/build version metadata
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          SHORT_SHA="$(git rev-parse --short=12 HEAD)"
+          DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          if [[ "$BRANCH" == "main" ]]; then
+            VERSION="$(git describe --tags --always --dirty)"
+          else
+            VERSION="dev-${BRANCH}-${SHORT_SHA}"
+          fi
+          VERSION="$(echo "$VERSION" | tr '/' '-')"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build with explicit version contract ldflags
+        run: |
+          go build -ldflags "-X github.com/steipete/gogcli/internal/cmd.version=${{ steps.vars.outputs.version }} -X github.com/steipete/gogcli/internal/cmd.branch=${{ steps.vars.outputs.branch }} -X github.com/steipete/gogcli/internal/cmd.commit=${{ steps.vars.outputs.short_sha }} -X github.com/steipete/gogcli/internal/cmd.date=${{ steps.vars.outputs.date }}" -o ./bin/gog ./cmd/gog
+
+      - name: Emit version artifact
+        run: |
+          mkdir -p .artifacts
+          ./bin/gog version --json | tee .artifacts/version.json
+
+      - name: Assert version artifact contract
+        run: |
+          jq -e '.version|type=="string" and length>0' .artifacts/version.json >/dev/null
+          jq -e '.branch|type=="string" and length>0' .artifacts/version.json >/dev/null
+          jq -e '.commit|type=="string" and length>0' .artifacts/version.json >/dev/null
+          jq -e '.date|type=="string" and length>0' .artifacts/version.json >/dev/null
+
+      - name: Upload version artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-contract
+          path: .artifacts/version.json

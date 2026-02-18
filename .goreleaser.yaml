@@ -12,6 +12,7 @@ builds:
     ldflags: >-
       -s -w
       -X github.com/steipete/gogcli/internal/cmd.version={{ .Tag }}
+      -X github.com/steipete/gogcli/internal/cmd.branch={{ .Branch }}
       -X github.com/steipete/gogcli/internal/cmd.commit={{ .ShortCommit }}
       -X github.com/steipete/gogcli/internal/cmd.date={{ .Date }}
     env:
@@ -27,6 +28,7 @@ builds:
     ldflags: >-
       -s -w
       -X github.com/steipete/gogcli/internal/cmd.version={{ .Tag }}
+      -X github.com/steipete/gogcli/internal/cmd.branch={{ .Branch }}
       -X github.com/steipete/gogcli/internal/cmd.commit={{ .ShortCommit }}
       -X github.com/steipete/gogcli/internal/cmd.date={{ .Date }}
     env:

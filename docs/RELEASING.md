@@ -19,6 +19,23 @@ Assumptions:
 - Tap repo: `../homebrew-tap` (tap: `steipete/tap`)
 - Homebrew formula name: `gogcli` (installs the `gog` binary)
 
+## Branch model and protections
+
+Use a `dev` -> `main` promotion flow:
+
+- Feature work merges into `dev`.
+- `main` is release-only and receives tested merges from `dev`.
+- Protect both branches with required checks.
+
+Recommended required checks:
+
+- `ci / test`
+- `ci / worker`
+- `ci / darwin-cgo-build`
+- `version / version-artifact`
+
+`version / version-artifact` enforces the version artifact contract (`version`, `branch`, `commit`, `date`) and uploads `version-contract` JSON.
+
 ## 0) Prereqs
 - Clean working tree on `main`.
 - Go toolchain installed (Go version comes from `go.mod`).
@@ -30,9 +47,10 @@ Assumptions:
 make ci
 ```
 
-Confirm GitHub Actions `ci` is green for the commit you’re tagging:
+Confirm GitHub Actions `ci` and `version` are green for the commit you’re tagging:
 ```sh
-gh run list -L 5 --branch main
+gh run list -L 5 --branch main --workflow ci.yml
+gh run list -L 5 --branch main --workflow version.yml
 ```
 
 ## 2) Update changelog
@@ -54,14 +72,14 @@ git push origin main --tags
 ```
 
 ## 4) Verify GitHub release artifacts
-The tag push triggers `.github/workflows/release.yml` (GoReleaser). Ensure it completes successfully and the release has assets.
+The tag push triggers `.github/workflows/release.yml` (GoReleaser + changelog-derived release notes). Ensure it completes successfully and the release has assets.
 
 ```sh
 gh run list -L 5 --workflow release.yml
 gh release view vX.Y.Z
 ```
 
-Ensure GitHub release notes are not empty (mirror the changelog section).
+Ensure GitHub release notes are not empty and match the matching changelog section.
 
 If the workflow needs a rerun:
 ```sh
@@ -103,7 +121,9 @@ brew install steipete/tap/gogcli
 brew test steipete/tap/gogcli
 
 gog --help
+gog --version
+gog version --json
 ```
 
 ## Notes
-- `gog --version` / `gog version` should report the release version post-install.
+- `gog --version` / `gog version` should report version + branch/commit/date metadata post-install.

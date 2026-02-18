@@ -21,6 +21,12 @@ jobs:
         run: make fmt-check
       - name: Test
         run: go test ./...
+      - name: Dead code (blocking, CLI binary entrypoint)
+        run: make deadcode
+      - name: Race tests (blocking)
+        run: make race
+      - name: Coverage gate (blocking)
+        run: make coverage COVERAGE_MIN=70
       - name: Lint
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then

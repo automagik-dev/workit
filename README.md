@@ -69,6 +69,28 @@ Help:
 - `make gog-help` shows CLI help (note: `make gog --help` is Make’s own help; use `--`).
 - Version: `gog --version` or `gog version`.
 
+### Version artifact contract
+
+`gog --version` and `gog version --json` expose build metadata used by CI/release automation.
+
+Contract (`gog version --json`):
+
+```json
+{
+  "version": "v0.12.0",
+  "branch": "main",
+  "commit": "abc123def456",
+  "date": "2026-02-18T20:03:00Z"
+}
+```
+
+- `version`: semantic version tag for releases, or dev auto-version for non-main builds.
+- `branch`: git branch used for the build.
+- `commit`: short commit SHA (12 chars).
+- `date`: UTC build timestamp (RFC3339).
+
+The `version` workflow (`.github/workflows/version.yml`) publishes this JSON as the `version-contract` artifact and validates the schema.
+
 ## Quick Start
 
 ### 1. Get OAuth2 Credentials
@@ -1489,7 +1511,20 @@ Pinned tools (installed into `.tools/`):
 - Lint: `make lint` (golangci-lint)
 - Test: `make test`
 
-CI runs format checks, tests, and lint on push/PR.
+CI runs format checks, tests, lint, deadcode, race, and coverage gates on push/PR.
+
+Required checks for protected branches (`main`, `dev`) should include at least:
+
+- `ci / test`
+- `ci / worker`
+- `ci / darwin-cgo-build`
+- `version / version-artifact`
+
+Branch protection recommendation:
+- Require pull requests before merge.
+- Require all required checks to pass.
+- Restrict direct pushes to `main`.
+- Use `dev` as the integration branch and merge `dev -> main` for release promotion.
 
 ### Integration Tests (Live Google APIs)
 

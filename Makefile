@@ -4,20 +4,24 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := build
 
 .PHONY: build gog gogcli gog-help gogcli-help help fmt fmt-check lint lint-full test ci tools
-.PHONY: worker-ci build-internal
+.PHONY: worker-ci build-internal deadcode race coverage
 
 BIN_DIR := $(CURDIR)/bin
 BIN := $(BIN_DIR)/gog
 CMD := ./cmd/gog
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 COMMIT := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo "")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-LDFLAGS := -X github.com/steipete/gogcli/internal/cmd.version=$(VERSION) -X github.com/steipete/gogcli/internal/cmd.commit=$(COMMIT) -X github.com/steipete/gogcli/internal/cmd.date=$(DATE)
+COVERAGE_MIN ?= 70
+LDFLAGS := -X github.com/steipete/gogcli/internal/cmd.version=$(VERSION) -X github.com/steipete/gogcli/internal/cmd.branch=$(BRANCH) -X github.com/steipete/gogcli/internal/cmd.commit=$(COMMIT) -X github.com/steipete/gogcli/internal/cmd.date=$(DATE)
 
 TOOLS_DIR := $(CURDIR)/.tools
 GOFUMPT := $(TOOLS_DIR)/gofumpt
 GOIMPORTS := $(TOOLS_DIR)/goimports
+DEADCODE := $(TOOLS_DIR)/deadcode
+DEADCODE_BASELINE := .deadcode-baseline.txt
 GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint
 LINT_NEW_FROM ?= origin/main
 
@@ -90,6 +94,7 @@ tools:
 	@mkdir -p $(TOOLS_DIR)
 	@GOBIN=$(TOOLS_DIR) go install mvdan.cc/gofumpt@v0.9.2
 	@GOBIN=$(TOOLS_DIR) go install golang.org/x/tools/cmd/goimports@v0.41.0
+	@GOBIN=$(TOOLS_DIR) go install golang.org/x/tools/cmd/deadcode@v0.41.0
 	@GOBIN=$(TOOLS_DIR) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
 
 fmt: tools
@@ -117,7 +122,36 @@ pnpm-gate:
 test:
 	@go test ./...
 
-ci: pnpm-gate fmt-check lint test
+deadcode: tools
+	@tmp_dead=$$(mktemp); \
+	$(DEADCODE) ./... > "$$tmp_dead"; \
+	if [ ! -f "$(DEADCODE_BASELINE)" ]; then \
+		echo "missing $(DEADCODE_BASELINE); generate baseline before running deadcode gate" >&2; \
+		rm -f "$$tmp_dead"; \
+		exit 1; \
+	fi; \
+	if ! diff -u "$(DEADCODE_BASELINE)" "$$tmp_dead"; then \
+		echo "deadcode gate failed: output changed from baseline" >&2; \
+		rm -f "$$tmp_dead"; \
+		exit 1; \
+	fi; \
+	rm -f "$$tmp_dead"; \
+	echo "deadcode baseline check: OK"
+
+race:
+	@go test -race ./...
+
+coverage:
+	@tmp_cov=$$(mktemp); \
+	go test -coverprofile="$$tmp_cov" ./... >/dev/null; \
+	total=$$(go tool cover -func="$$tmp_cov" | awk '/^total:/ {gsub("%","",$$3); print $$3}'); \
+	rm -f "$$tmp_cov"; \
+	awk -v total="$$total" -v min="$(COVERAGE_MIN)" 'BEGIN { \
+		printf("coverage total: %.1f%% (min %.1f%%)\n", total, min); \
+		if (total+0 < min+0) exit 1; \
+	}'
+
+ci: pnpm-gate fmt-check lint test deadcode race coverage
 
 worker-ci:
 	@pnpm -C internal/tracking/worker lint

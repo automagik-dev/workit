@@ -226,9 +226,10 @@ type keyringResult struct {
 // error, but would need refactoring for long-running use.
 func openKeyringWithTimeout(cfg keyring.Config, timeout time.Duration) (keyring.Keyring, error) {
 	ch := make(chan keyringResult, 1)
+	openFn := keyringOpenFunc
 
 	go func() {
-		ring, err := keyringOpenFunc(cfg)
+		ring, err := openFn(cfg)
 		ch <- keyringResult{ring, err}
 	}()
 

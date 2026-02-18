@@ -7,13 +7,15 @@ import (
 )
 
 func TestExecute_VersionFlag(t *testing.T) {
-	origV, origC, origD := version, commit, date
+	origV, origB, origC, origD := version, branch, commit, date
 	t.Cleanup(func() {
 		version = origV
+		branch = origB
 		commit = origC
 		date = origD
 	})
 	version = "1.2.3"
+	branch = "main"
 	commit = "abc123"
 	date = ""
 
@@ -24,19 +26,21 @@ func TestExecute_VersionFlag(t *testing.T) {
 			}
 		})
 	})
-	if !strings.Contains(out, "1.2.3") {
+	if !strings.Contains(out, "1.2.3") || !strings.Contains(out, "main") {
 		t.Fatalf("unexpected out=%q", out)
 	}
 }
 
 func TestExecute_VersionCommand_JSON(t *testing.T) {
-	origV, origC, origD := version, commit, date
+	origV, origB, origC, origD := version, branch, commit, date
 	t.Cleanup(func() {
 		version = origV
+		branch = origB
 		commit = origC
 		date = origD
 	})
 	version = "1.2.3"
+	branch = "dev"
 	commit = "abc123"
 	date = "2025-12-26T00:00:00Z"
 
@@ -52,7 +56,7 @@ func TestExecute_VersionCommand_JSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &parsed); err != nil {
 		t.Fatalf("json parse: %v\nout=%q", err, out)
 	}
-	if parsed["version"] != "1.2.3" || parsed["commit"] != "abc123" || parsed["date"] != "2025-12-26T00:00:00Z" {
+	if parsed["version"] != "1.2.3" || parsed["branch"] != "dev" || parsed["commit"] != "abc123" || parsed["date"] != "2025-12-26T00:00:00Z" {
 		t.Fatalf("unexpected json: %#v", parsed)
 	}
 }

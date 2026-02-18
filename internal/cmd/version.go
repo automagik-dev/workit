@@ -11,6 +11,7 @@ import (
 
 var (
 	version = "0.12.0-dev"
+	branch  = ""
 	commit  = ""
 	date    = ""
 )
@@ -20,16 +21,22 @@ func VersionString() string {
 	if v == "" {
 		v = "dev"
 	}
-	if strings.TrimSpace(commit) == "" && strings.TrimSpace(date) == "" {
+
+	metadata := make([]string, 0, 3)
+	if b := strings.TrimSpace(branch); b != "" {
+		metadata = append(metadata, b)
+	}
+	if c := strings.TrimSpace(commit); c != "" {
+		metadata = append(metadata, c)
+	}
+	if d := strings.TrimSpace(date); d != "" {
+		metadata = append(metadata, d)
+	}
+
+	if len(metadata) == 0 {
 		return v
 	}
-	if strings.TrimSpace(commit) == "" {
-		return fmt.Sprintf("%s (%s)", v, strings.TrimSpace(date))
-	}
-	if strings.TrimSpace(date) == "" {
-		return fmt.Sprintf("%s (%s)", v, strings.TrimSpace(commit))
-	}
-	return fmt.Sprintf("%s (%s %s)", v, strings.TrimSpace(commit), strings.TrimSpace(date))
+	return fmt.Sprintf("%s (%s)", v, strings.Join(metadata, " "))
 }
 
 type VersionCmd struct{}
@@ -38,6 +45,7 @@ func (c *VersionCmd) Run(ctx context.Context) error {
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
 			"version": strings.TrimSpace(version),
+			"branch":  strings.TrimSpace(branch),
 			"commit":  strings.TrimSpace(commit),
 			"date":    strings.TrimSpace(date),
 		})

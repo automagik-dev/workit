@@ -23,19 +23,27 @@ func TestCompletionCmdRun(t *testing.T) {
 
 func TestVersionStringVariantsMore(t *testing.T) {
 	origVersion := version
+	origBranch := branch
 	origCommit := commit
 	origDate := date
 	t.Cleanup(func() {
 		version = origVersion
+		branch = origBranch
 		commit = origCommit
 		date = origDate
 	})
 
 	version = "1.2.3"
+	branch = ""
 	commit = ""
 	date = ""
 	if got := VersionString(); got != "1.2.3" {
 		t.Fatalf("unexpected version: %q", got)
+	}
+
+	branch = "feature/x"
+	if got := VersionString(); !strings.Contains(got, "feature/x") {
+		t.Fatalf("expected branch in version, got %q", got)
 	}
 
 	commit = "abc"
@@ -51,15 +59,18 @@ func TestVersionStringVariantsMore(t *testing.T) {
 
 func TestVersionCmdJSON(t *testing.T) {
 	origVersion := version
+	origBranch := branch
 	origCommit := commit
 	origDate := date
 	t.Cleanup(func() {
 		version = origVersion
+		branch = origBranch
 		commit = origCommit
 		date = origDate
 	})
 
 	version = "1.2.3"
+	branch = "dev"
 	commit = "abc"
 	date = "2026-01-09"
 
@@ -69,7 +80,7 @@ func TestVersionCmdJSON(t *testing.T) {
 			t.Fatalf("Run: %v", err)
 		}
 	})
-	if !strings.Contains(out, "\"version\"") || !strings.Contains(out, "\"commit\"") {
+	if !strings.Contains(out, "\"version\"") || !strings.Contains(out, "\"branch\"") || !strings.Contains(out, "\"commit\"") {
 		t.Fatalf("unexpected json output: %q", out)
 	}
 }
