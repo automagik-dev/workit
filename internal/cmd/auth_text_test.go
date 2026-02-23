@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steipete/gogcli/internal/config"
-	"github.com/steipete/gogcli/internal/secrets"
+	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/secrets"
 )
 
 func TestAuthTextOutputs(t *testing.T) {

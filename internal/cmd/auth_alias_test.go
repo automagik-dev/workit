@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 func TestAuthAliasSetListUnset_JSON(t *testing.T) {

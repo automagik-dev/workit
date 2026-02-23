@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/api/docs/v1"
 
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 // DocElement represents a structural element in a Google Doc for the structure command.

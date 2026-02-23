@@ -12,13 +12,13 @@ import (
 	"github.com/alecthomas/kong"
 	"golang.org/x/term"
 
-	"github.com/steipete/gogcli/internal/authclient"
-	"github.com/steipete/gogcli/internal/config"
-	"github.com/steipete/gogcli/internal/errfmt"
-	"github.com/steipete/gogcli/internal/googleauth"
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/secrets"
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/authclient"
+	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/errfmt"
+	"github.com/namastexlabs/gog-cli/internal/googleauth"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 const (

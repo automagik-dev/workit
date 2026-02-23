@@ -4,9 +4,9 @@ package config
 // Example:
 //
 //	go build -ldflags "\
-//	  -X 'github.com/steipete/gogcli/internal/config.DefaultClientID=...' \
-//	  -X 'github.com/steipete/gogcli/internal/config.DefaultClientSecret=...' \
-//	  -X 'github.com/steipete/gogcli/internal/config.DefaultCallbackServer=...'"
+//	  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientID=...' \
+//	  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientSecret=...' \
+//	  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultCallbackServer=...'"
 var (
 	DefaultClientID       string
 	DefaultClientSecret   string

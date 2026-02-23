@@ -11,7 +11,7 @@ import (
 
 	"github.com/99designs/keyring"
 
-	"github.com/steipete/gogcli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/config"
 )
 
 var errKeyringOpenBlocked = errors.New("keyring open blocked")

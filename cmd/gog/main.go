@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/steipete/gogcli/internal/cmd"
+	"github.com/namastexlabs/gog-cli/internal/cmd"
 )
 
 func main() {

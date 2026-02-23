@@ -14,8 +14,8 @@ import (
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/idtoken"
 
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 var (

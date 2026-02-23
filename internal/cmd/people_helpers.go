@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/steipete/gogcli/internal/googleapi"
+	"github.com/namastexlabs/gog-cli/internal/googleapi"
 )
 
 const peopleMeResource = "people/me"

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steipete/gogcli/internal/googleauth"
+	"github.com/namastexlabs/gog-cli/internal/googleauth"
 )
 
 func TestAuthManageCmd_ServicesAndOptions(t *testing.T) {

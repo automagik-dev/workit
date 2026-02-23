@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/steipete/gogcli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/config"
 )
 
 const (

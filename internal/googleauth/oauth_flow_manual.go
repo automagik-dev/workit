@@ -11,8 +11,8 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/steipete/gogcli/internal/config"
-	"github.com/steipete/gogcli/internal/input"
+	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/input"
 )
 
 func authorizeManual(ctx context.Context, opts AuthorizeOptions, creds config.ClientCredentials) (string, error) {

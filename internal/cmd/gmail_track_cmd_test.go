@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/tracking"
+	"github.com/namastexlabs/gog-cli/internal/tracking"
 )
 
 func setupTrackingEnv(t *testing.T) {

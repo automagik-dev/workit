@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/steipete/gogcli/internal/authclient"
-	"github.com/steipete/gogcli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/authclient"
+	"github.com/namastexlabs/gog-cli/internal/config"
 )
 
 func resolveClientOverride(flags *RootFlags, cmdClient string) string {

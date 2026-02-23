@@ -5,7 +5,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/steipete/gogcli/internal/secrets"
+	"github.com/namastexlabs/gog-cli/internal/secrets"
 )
 
 func TestAuthAddCmd_ChecksKeychainFirst(t *testing.T) {

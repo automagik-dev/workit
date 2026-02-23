@@ -15,7 +15,7 @@ scripts/verify-release.sh X.Y.Z
 ```
 
 Assumptions:
-- Repo: `steipete/gogcli`
+- Repo: `namastexlabs/gog-cli`
 - Tap repo: `../homebrew-tap` (tap: `steipete/tap`)
 - Homebrew formula name: `gogcli` (installs the `gog` binary)
 
@@ -91,7 +91,7 @@ In the tap repo (assumed sibling at `../homebrew-tap`), create/update `Formula/g
 
 Recommended formula shape (build-from-source, no binary assets needed):
 - `version "X.Y.Z"`
-- `url "https://github.com/steipete/gogcli/archive/refs/tags/vX.Y.Z.tar.gz"`
+- `url "https://github.com/namastexlabs/gog-cli/archive/refs/tags/vX.Y.Z.tar.gz"`
 - `sha256 "<sha256>"`
 - `depends_on "go" => :build`
 - Build:
@@ -99,7 +99,7 @@ Recommended formula shape (build-from-source, no binary assets needed):
 
 Compute the SHA256 for the tag tarball:
 ```sh
-curl -L -o /tmp/gogcli.tar.gz https://github.com/steipete/gogcli/archive/refs/tags/vX.Y.Z.tar.gz
+curl -L -o /tmp/gogcli.tar.gz https://github.com/namastexlabs/gog-cli/archive/refs/tags/vX.Y.Z.tar.gz
 shasum -a 256 /tmp/gogcli.tar.gz
 ```
 

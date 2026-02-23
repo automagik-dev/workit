@@ -13,9 +13,9 @@ import (
 	"github.com/alecthomas/kong"
 	formsapi "google.golang.org/api/forms/v1"
 
-	"github.com/steipete/gogcli/internal/googleapi"
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/googleapi"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 var newFormsService = googleapi.NewForms

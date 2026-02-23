@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/steipete/gogcli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/config"
 )
 
 func resolveBodyInput(body, bodyFile string) (string, error) {
