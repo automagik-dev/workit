@@ -188,48 +188,71 @@ func resolveDriveFolderID(ctx context.Context, svc *drive.Service, input string,
 	// Handle Google URLs (e.g. drive.google.com/drive/folders/<id>).
 	in = normalizeGoogleID(in)
 
+	// Known Drive folder aliases that the API accepts as parent IDs.
+	if in == "root" {
+		return in, nil
+	}
+
 	// Heuristic: Drive folder IDs are long opaque strings with no whitespace.
 	if !strings.ContainsAny(in, " \t\r\n") && len(in) >= 16 {
 		return in, nil
+	}
+
+	// Past the heuristic: the input looks like a human-readable name.
+	// We need a Drive service to resolve it.
+	if svc == nil {
+		return "", fmt.Errorf("Drive folder %q looks like a name, not an ID; use --account to enable name resolution or provide the folder ID directly", in)
 	}
 
 	// Search Drive for a folder with that exact name.
 	escaped := strings.ReplaceAll(strings.ReplaceAll(in, "\\", "\\\\"), "'", "\\'")
 	query := fmt.Sprintf("name = '%s' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", escaped)
 
-	if driveID == "" {
-		// My Drive: restrict to root-level folders.
-		query += " and 'root' in parents"
-	}
-
-	call := svc.Files.List().
-		Context(ctx).
-		Q(query).
-		Fields("files(id, name)").
-		PageSize(100)
-
-	if driveID != "" {
-		call = call.SupportsAllDrives(true).
-			IncludeItemsFromAllDrives(true).
-			Corpora("drive").
-			DriveId(driveID)
-	}
-
-	result, err := call.Do()
-	if err != nil {
-		return "", fmt.Errorf("search Drive folders: %w", err)
-	}
-
 	type match struct {
 		ID   string
 		Name string
 	}
 	var matches []match
-	for _, f := range result.Files {
-		if f == nil || strings.TrimSpace(f.Id) == "" {
-			continue
+	seenTokens := map[string]bool{}
+	pageToken := ""
+	for {
+		if seenTokens[pageToken] {
+			return "", fmt.Errorf("pagination loop while searching Drive folders (repeated page token %q)", pageToken)
 		}
-		matches = append(matches, match{ID: f.Id, Name: f.Name})
+		seenTokens[pageToken] = true
+
+		call := svc.Files.List().
+			Context(ctx).
+			Q(query).
+			Fields("nextPageToken, files(id, name)").
+			PageSize(100)
+
+		if driveID != "" {
+			call = call.SupportsAllDrives(true).
+				IncludeItemsFromAllDrives(true).
+				Corpora("drive").
+				DriveId(driveID)
+		}
+
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
+		}
+
+		result, err := call.Do()
+		if err != nil {
+			return "", fmt.Errorf("search Drive folders: %w", err)
+		}
+		for _, f := range result.Files {
+			if f == nil || strings.TrimSpace(f.Id) == "" {
+				continue
+			}
+			matches = append(matches, match{ID: f.Id, Name: f.Name})
+		}
+		next := strings.TrimSpace(result.NextPageToken)
+		if next == "" {
+			break
+		}
+		pageToken = next
 	}
 
 	if len(matches) == 1 {

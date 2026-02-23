@@ -46,20 +46,25 @@ func (c *SyncInitCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	// Resolve folder name/URL to a Drive folder ID.
-	driveFolder = normalizeGoogleID(driveFolder)
+	// resolveDriveFolderID handles URL normalization and the ID heuristic
+	// internally, so we always call it. The Drive service is only needed when
+	// the input looks like a human-readable name; pass nil when --account is
+	// not provided and let the resolver return a clear error if it needs to
+	// search.
 	driveID := strings.TrimSpace(c.DriveID)
-	if strings.ContainsAny(driveFolder, " \t\r\n") || len(driveFolder) < 16 {
-		// Looks like a human-readable name — resolve via Drive API.
-		driveSvc, err := getDriveService(ctx, flags)
+	var driveSvc *drive.Service
+	if flags.Account != "" {
+		var err error
+		driveSvc, err = getDriveService(ctx, flags)
 		if err != nil {
 			return fmt.Errorf("resolve Drive folder name: %w", err)
 		}
-		resolved, err := resolveDriveFolderID(ctx, driveSvc, driveFolder, driveID)
-		if err != nil {
-			return err
-		}
-		driveFolder = resolved
 	}
+	resolved, err := resolveDriveFolderID(ctx, driveSvc, driveFolder, driveID)
+	if err != nil {
+		return err
+	}
+	driveFolder = resolved
 
 	db, err := sync.OpenDB()
 	if err != nil {
