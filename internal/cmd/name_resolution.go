@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"google.golang.org/api/calendar/v3"
+	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/tasks/v1"
 )
 
@@ -172,4 +173,80 @@ func resolveCalendarID(ctx context.Context, svc *calendar.Service, input string)
 	}
 
 	return in, nil
+}
+
+// resolveDriveFolderID resolves a Drive folder name to a folder ID.
+// It first tries normalizeGoogleID to handle URL pastes, then uses the same
+// ID-heuristic as resolveTasklistID. If the input looks like a human name,
+// it searches Drive for an exact-match folder.
+func resolveDriveFolderID(ctx context.Context, svc *drive.Service, input string, driveID string) (string, error) {
+	in := strings.TrimSpace(input)
+	if in == "" {
+		return "", nil
+	}
+
+	// Handle Google URLs (e.g. drive.google.com/drive/folders/<id>).
+	in = normalizeGoogleID(in)
+
+	// Heuristic: Drive folder IDs are long opaque strings with no whitespace.
+	if !strings.ContainsAny(in, " \t\r\n") && len(in) >= 16 {
+		return in, nil
+	}
+
+	// Search Drive for a folder with that exact name.
+	escaped := strings.ReplaceAll(strings.ReplaceAll(in, "\\", "\\\\"), "'", "\\'")
+	query := fmt.Sprintf("name = '%s' and mimeType = 'application/vnd.google-apps.folder' and trashed = false", escaped)
+
+	if driveID == "" {
+		// My Drive: restrict to root-level folders.
+		query += " and 'root' in parents"
+	}
+
+	call := svc.Files.List().
+		Context(ctx).
+		Q(query).
+		Fields("files(id, name)").
+		PageSize(100)
+
+	if driveID != "" {
+		call = call.SupportsAllDrives(true).
+			IncludeItemsFromAllDrives(true).
+			Corpora("drive").
+			DriveId(driveID)
+	}
+
+	result, err := call.Do()
+	if err != nil {
+		return "", fmt.Errorf("search Drive folders: %w", err)
+	}
+
+	type match struct {
+		ID   string
+		Name string
+	}
+	var matches []match
+	for _, f := range result.Files {
+		if f == nil || strings.TrimSpace(f.Id) == "" {
+			continue
+		}
+		matches = append(matches, match{ID: f.Id, Name: f.Name})
+	}
+
+	if len(matches) == 1 {
+		return matches[0].ID, nil
+	}
+	if len(matches) > 1 {
+		sort.Slice(matches, func(i, j int) bool { return matches[i].ID < matches[j].ID })
+		parts := make([]string, 0, len(matches))
+		for _, m := range matches {
+			label := m.Name
+			if label == "" {
+				label = "(unnamed)"
+			}
+			parts = append(parts, fmt.Sprintf("%s (%s)", label, m.ID))
+		}
+		return "", usagef("ambiguous Drive folder %q; matches: %s", in, strings.Join(parts, ", "))
+	}
+
+	return "", fmt.Errorf("Drive folder not found: %q", in)
 }
