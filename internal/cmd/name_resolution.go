@@ -201,7 +201,7 @@ func resolveDriveFolderID(ctx context.Context, svc *drive.Service, input string,
 	// Past the heuristic: the input looks like a human-readable name.
 	// We need a Drive service to resolve it.
 	if svc == nil {
-		return "", fmt.Errorf("Drive folder %q looks like a name, not an ID; use --account to enable name resolution or provide the folder ID directly", in)
+		return "", fmt.Errorf("drive folder %q looks like a name, not an ID; use --account to enable name resolution or provide the folder ID directly", in)
 	}
 
 	// Search Drive for a folder with that exact name.
@@ -271,5 +271,5 @@ func resolveDriveFolderID(ctx context.Context, svc *drive.Service, input string,
 		return "", usagef("ambiguous Drive folder %q; matches: %s", in, strings.Join(parts, ", "))
 	}
 
-	return "", fmt.Errorf("Drive folder not found: %q", in)
+	return "", fmt.Errorf("drive folder not found: %q", in)
 }
