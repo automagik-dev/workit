@@ -45,6 +45,27 @@ func (c *SyncInitCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty --drive-folder")
 	}
 
+	// Resolve folder name/URL to a Drive folder ID.
+	// resolveDriveFolderID handles URL normalization and the ID heuristic
+	// internally, so we always call it. The Drive service is only needed when
+	// the input looks like a human-readable name; pass nil when --account is
+	// not provided and let the resolver return a clear error if it needs to
+	// search.
+	driveID := strings.TrimSpace(c.DriveID)
+	var driveSvc *drive.Service
+	if flags.Account != "" {
+		var err error
+		driveSvc, err = getDriveService(ctx, flags)
+		if err != nil {
+			return fmt.Errorf("resolve Drive folder name: %w", err)
+		}
+	}
+	resolved, err := resolveDriveFolderID(ctx, driveSvc, driveFolder, driveID)
+	if err != nil {
+		return err
+	}
+	driveFolder = resolved
+
 	db, err := sync.OpenDB()
 	if err != nil {
 		return fmt.Errorf("open sync database: %w", err)
@@ -60,7 +81,7 @@ func (c *SyncInitCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return fmt.Errorf("sync config already exists for path: %s", existing.LocalPath)
 	}
 
-	cfg, err := db.CreateConfig(localPath, driveFolder, strings.TrimSpace(c.DriveID))
+	cfg, err := db.CreateConfig(localPath, driveFolder, driveID)
 	if err != nil {
 		return fmt.Errorf("create sync config: %w", err)
 	}
