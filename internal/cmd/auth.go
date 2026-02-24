@@ -495,7 +495,7 @@ type AuthAddCmd struct {
 	NoPoll         bool          `name:"no-poll" help:"In headless mode, output URL without polling (use 'gog auth poll' later)"`
 
 	ForceConsent bool   `name:"force-consent" help:"Force consent screen to obtain a refresh token"`
-	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"user"`
+	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"all"`
 	Readonly     bool   `name:"readonly" help:"Use read-only scopes where available (still includes OIDC identity scopes)"`
 	DriveScope   string `name:"drive-scope" help:"Drive scope mode: full|readonly|file" enum:"full,readonly,file" default:"full"`
 }
@@ -641,7 +641,7 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 		RequireState: c.Remote,
 	})
 	if err != nil {
-		return err
+		return googleauth.WrapOAuthError(err)
 	}
 
 	authorizedEmail, err := fetchAuthorizedEmail(ctx, client, refreshToken, scopes, 15*time.Second)
@@ -741,7 +741,7 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 	// If no-poll, return now
 	if c.NoPoll {
 		if !outfmt.IsJSON(ctx) {
-			u.Err().Println("Use 'gog auth poll <state>' to retrieve the token after authorization.")
+			u.Err().Println("Use 'gog auth poll <state>' to save the token.")
 		}
 		return nil
 	}
@@ -753,7 +753,24 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 
 	refreshToken, err := pollForToken(ctx, callbackServer, info.State, c.PollTimeout)
 	if err != nil {
-		return err
+		// Poll timeout is a soft failure: exit 0 with state so user can poll later.
+		if googleauth.IsPollTimeout(err) {
+			if outfmt.IsJSON(ctx) {
+				return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+					"stored":   false,
+					"state":    info.State,
+					"poll_url": info.PollURL,
+					"timeout":  true,
+				})
+			}
+			u.Err().Println("Poll timed out (this is OK — the authorization flow is still valid).")
+			u.Err().Printf("State: %s", info.State)
+			u.Err().Printf("Poll URL: %s", info.PollURL)
+			u.Err().Println("")
+			u.Err().Println("Use 'gog auth poll <state>' to save the token after authorizing.")
+			return nil
+		}
+		return googleauth.WrapOAuthError(err)
 	}
 
 	// Pre-flight: ensure keychain is accessible before storing token
@@ -811,7 +828,7 @@ type AuthPollCmd struct {
 	Email          string        `name:"email" help:"Email to verify and store token for"`
 	CallbackServer string        `name:"callback-server" help:"Callback server URL"`
 	Timeout        time.Duration `name:"timeout" help:"Poll timeout" default:"5m"`
-	ServicesCSV    string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services}" default:"user"`
+	ServicesCSV    string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services}" default:"all"`
 	Readonly       bool          `name:"readonly" help:"Use read-only scopes where available"`
 	DriveScope     string        `name:"drive-scope" help:"Drive scope mode: full|readonly|file" enum:"full,readonly,file" default:"full"`
 }
@@ -836,21 +853,86 @@ func (c *AuthPollCmd) Run(ctx context.Context) error {
 	// Poll for the token
 	refreshToken, err := pollForToken(ctx, callbackServer, c.State, c.Timeout)
 	if err != nil {
-		return err
+		return googleauth.WrapOAuthError(err)
 	}
 
-	// If email is provided, verify and store the token
+	// If email is provided, verify and store the token using the explicit email.
 	if strings.TrimSpace(c.Email) != "" {
 		return c.storeToken(ctx, refreshToken)
 	}
 
-	// Just output the refresh token
+	// No --email flag: auto-infer email via Google userinfo.
+	client := config.DefaultClientName
+
+	services, err := parseAuthServices(c.ServicesCSV)
+	if err != nil {
+		return err
+	}
+	if len(services) == 0 {
+		return fmt.Errorf("no services selected")
+	}
+
+	scopes, err := googleauth.ScopesForManageWithOptions(services, googleauth.ScopeOptions{
+		Readonly:   c.Readonly,
+		DriveScope: googleauth.DriveScopeMode(c.DriveScope),
+	})
+	if err != nil {
+		return err
+	}
+
+	authorizedEmail, emailErr := fetchAuthorizedEmail(ctx, client, refreshToken, scopes, 15*time.Second)
+	if emailErr != nil {
+		// Userinfo failed: fall back to printing the raw token + WARNING.
+		if outfmt.IsJSON(ctx) {
+			return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+				"refresh_token": refreshToken,
+				"stored":        false,
+				"warning":       "Could not infer email from token. Use --email to store.",
+			})
+		}
+		u.Out().Printf("refresh_token\t%s", refreshToken)
+		u.Err().Println("")
+		u.Err().Println("WARNING: Could not infer email from token (userinfo failed).")
+		u.Err().Printf("To store the token, re-run: gog auth poll %s --email <email>", c.State)
+		return nil
+	}
+
+	// Pre-flight: ensure keychain is accessible before storing token.
+	if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
+		return fmt.Errorf("keychain access: %w", keychainErr)
+	}
+
+	store, err := openSecretsStore()
+	if err != nil {
+		return err
+	}
+	serviceNames := make([]string, 0, len(services))
+	for _, svc := range services {
+		serviceNames = append(serviceNames, string(svc))
+	}
+	sort.Strings(serviceNames)
+
+	if err := store.SetToken(client, authorizedEmail, secrets.Token{
+		Client:       client,
+		Email:        authorizedEmail,
+		Services:     serviceNames,
+		Scopes:       scopes,
+		RefreshToken: refreshToken,
+	}); err != nil {
+		return err
+	}
+
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-			"refresh_token": refreshToken,
+			"stored":   true,
+			"email":    authorizedEmail,
+			"services": serviceNames,
+			"client":   client,
 		})
 	}
-	u.Out().Printf("refresh_token\t%s", refreshToken)
+	u.Out().Printf("email\t%s", authorizedEmail)
+	u.Out().Printf("services\t%s", strings.Join(serviceNames, ","))
+	u.Out().Printf("client\t%s", client)
 	return nil
 }
 
@@ -1165,7 +1247,7 @@ func (c *AuthListCmd) Run(ctx context.Context, _ *RootFlags) error {
 					it.Valid = &valid
 					it.Error = "service account (not checked)"
 				} else {
-					err := checkRefreshToken(ctx, e.Token.Client, e.Token.RefreshToken, e.Token.Scopes, c.Timeout)
+					err := googleauth.WrapOAuthError(checkRefreshToken(ctx, e.Token.Client, e.Token.RefreshToken, e.Token.Scopes, c.Timeout))
 					valid := err == nil
 					it.Valid = &valid
 					if err != nil {
@@ -1216,7 +1298,7 @@ func (c *AuthListCmd) Run(ctx context.Context, _ *RootFlags) error {
 				continue
 			}
 
-			err := checkRefreshToken(ctx, e.Token.Client, e.Token.RefreshToken, e.Token.Scopes, c.Timeout)
+			err := googleauth.WrapOAuthError(checkRefreshToken(ctx, e.Token.Client, e.Token.RefreshToken, e.Token.Scopes, c.Timeout))
 			valid := err == nil
 			msg := ""
 			if err != nil {
@@ -1316,7 +1398,7 @@ func (c *AuthRemoveCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 type AuthManageCmd struct {
 	ForceConsent bool          `name:"force-consent" help:"Force consent screen when adding accounts"`
-	ServicesCSV  string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"user"`
+	ServicesCSV  string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"all"`
 	Timeout      time.Duration `name:"timeout" help:"Server timeout duration" default:"10m"`
 }
 
@@ -1401,7 +1483,13 @@ func (c *AuthKeepCmd) Run(ctx context.Context, _ *RootFlags) error {
 
 func parseAuthServices(servicesCSV string) ([]googleauth.Service, error) {
 	trimmed := strings.ToLower(strings.TrimSpace(servicesCSV))
-	if trimmed == "" || trimmed == "user" || trimmed == literalAll {
+	if trimmed == "" || trimmed == "user" {
+		return googleauth.UserServices(), nil
+	}
+	// "all" returns all OAuth-eligible services (same as UserServices today,
+	// but a distinct path so new non-user services can be added to "all" later
+	// without changing "user" behavior).
+	if trimmed == literalAll {
 		return googleauth.UserServices(), nil
 	}
 

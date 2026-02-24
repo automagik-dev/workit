@@ -475,3 +475,40 @@ func (d *DB) RemoveSyncItem(configID int64, localPath string) error {
 
 	return err
 }
+
+// ListPendingUploads returns all sync items with pending_upload state for a config.
+func (d *DB) ListPendingUploads(configID int64) ([]SyncItem, error) {
+	rows, err := d.db.Query(
+		`SELECT id, config_id, local_path, drive_id, local_md5, remote_md5,
+		        local_mtime, remote_mtime, sync_state
+		 FROM sync_items WHERE config_id = ? AND sync_state = ?`,
+		configID, StatePendingUpload,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query pending uploads: %w", err)
+	}
+	defer rows.Close()
+
+	var items []SyncItem
+	for rows.Next() {
+		var item SyncItem
+		var localMtime, remoteMtime sql.NullTime
+
+		if err := rows.Scan(&item.ID, &item.ConfigID, &item.LocalPath, &item.DriveID,
+			&item.LocalMD5, &item.RemoteMD5, &localMtime, &remoteMtime, &item.SyncState); err != nil {
+			return nil, fmt.Errorf("scan pending upload: %w", err)
+		}
+
+		if localMtime.Valid {
+			item.LocalMtime = localMtime.Time
+		}
+
+		if remoteMtime.Valid {
+			item.RemoteMtime = remoteMtime.Time
+		}
+
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}

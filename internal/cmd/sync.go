@@ -21,8 +21,8 @@ type SyncCmd struct {
 	List   SyncListCmd   `cmd:"" help:"List all sync configurations"`
 	Remove SyncRemoveCmd `cmd:"" help:"Remove a sync configuration"`
 	Status SyncStatusCmd `cmd:"" help:"Show sync status for all configurations"`
-	Start  SyncStartCmd  `cmd:"" help:"Start sync daemon (placeholder)"`
-	Stop   SyncStopCmd   `cmd:"" help:"Stop sync daemon (placeholder)"`
+	Start  SyncStartCmd  `cmd:"" help:"Start sync daemon"`
+	Stop   SyncStopCmd   `cmd:"" help:"Stop sync daemon"`
 }
 
 // SyncInitCmd initializes a new sync configuration.
@@ -275,7 +275,7 @@ func (c *SyncStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
 	return nil
 }
 
-// SyncStartCmd starts the sync daemon (placeholder).
+// SyncStartCmd starts the sync daemon.
 type SyncStartCmd struct {
 	LocalPath      string `arg:"" name:"local-path" help:"Local directory path to sync"`
 	Daemon         bool   `name:"daemon" short:"d" help:"Run as background daemon"`

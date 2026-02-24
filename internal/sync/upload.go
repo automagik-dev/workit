@@ -7,16 +7,19 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	gosync "sync"
 	"time"
 
 	"google.golang.org/api/drive/v3"
 )
 
 // Uploader handles uploading files to Google Drive.
+// It is safe for concurrent use from multiple goroutines.
 type Uploader struct {
 	service    *drive.Service
 	rootFolder string
 	driveID    string            // For shared drives
+	mu         gosync.Mutex      // Protects folderIDs
 	folderIDs  map[string]string // Maps relative paths to Drive folder IDs
 }
 
@@ -35,6 +38,21 @@ func NewUploader(service *drive.Service, rootFolder, driveID string) *Uploader {
 		driveID:    driveID,
 		folderIDs:  make(map[string]string),
 	}
+}
+
+// getFolderID returns the cached Drive folder ID for a relative path.
+func (u *Uploader) getFolderID(relPath string) (string, bool) {
+	u.mu.Lock()
+	id, ok := u.folderIDs[relPath]
+	u.mu.Unlock()
+	return id, ok
+}
+
+// setFolderID caches a Drive folder ID for a relative path.
+func (u *Uploader) setFolderID(relPath, id string) {
+	u.mu.Lock()
+	u.folderIDs[relPath] = id
+	u.mu.Unlock()
 }
 
 // UploadFile uploads a file to Drive.
@@ -158,7 +176,7 @@ func (u *Uploader) CreateFolder(ctx context.Context, relPath string) error {
 	}
 
 	if existingID != "" {
-		u.folderIDs[relPath] = existingID
+		u.setFolderID(relPath, existingID)
 
 		return nil
 	}
@@ -183,7 +201,7 @@ func (u *Uploader) CreateFolder(ctx context.Context, relPath string) error {
 		return fmt.Errorf("create folder in Drive: %w", err)
 	}
 
-	u.folderIDs[relPath] = result.Id
+	u.setFolderID(relPath, result.Id)
 
 	return nil
 }
@@ -241,7 +259,7 @@ func (u *Uploader) ensureParentFolders(ctx context.Context, relPath string) (str
 	}
 
 	// Check cache first
-	if id, ok := u.folderIDs[dir]; ok {
+	if id, ok := u.getFolderID(dir); ok {
 		return id, nil
 	}
 
@@ -258,7 +276,7 @@ func (u *Uploader) ensureParentFolders(ctx context.Context, relPath string) (str
 		currentPath = filepath.Join(currentPath, part)
 
 		// Check cache
-		if id, ok := u.folderIDs[currentPath]; ok {
+		if id, ok := u.getFolderID(currentPath); ok {
 			currentID = id
 
 			continue
@@ -271,7 +289,7 @@ func (u *Uploader) ensureParentFolders(ctx context.Context, relPath string) (str
 		}
 
 		if existingID != "" {
-			u.folderIDs[currentPath] = existingID
+			u.setFolderID(currentPath, existingID)
 			currentID = existingID
 
 			continue
@@ -297,7 +315,7 @@ func (u *Uploader) ensureParentFolders(ctx context.Context, relPath string) (str
 			return "", fmt.Errorf("create folder %s: %w", part, err)
 		}
 
-		u.folderIDs[currentPath] = result.Id
+		u.setFolderID(currentPath, result.Id)
 		currentID = result.Id
 	}
 
@@ -312,7 +330,7 @@ func (u *Uploader) getParentFolderID(ctx context.Context, relPath string) (strin
 	}
 
 	// Check cache
-	if id, ok := u.folderIDs[dir]; ok {
+	if id, ok := u.getFolderID(dir); ok {
 		return id, nil
 	}
 
