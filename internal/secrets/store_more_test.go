@@ -273,3 +273,269 @@ func TestSetSecretSetsLabel(t *testing.T) {
 		t.Fatalf("expected label %q, got %q", config.AppName, it.Label)
 	}
 }
+
+// slicesEqual reports whether two string slices are identical (same length and elements).
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestMergeTokenFields(t *testing.T) {
+	existing := Token{
+		Email:        "a@b.com",
+		Client:       "default",
+		Services:     []string{"calendar", "drive"},
+		Scopes:       []string{"scope-a", "scope-b"},
+		RefreshToken: "old-rt",
+		CreatedAt:    time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	incoming := Token{
+		Email:        "a@b.com",
+		Client:       "default",
+		Services:     []string{"drive", "groups"},
+		Scopes:       []string{"scope-b", "scope-c"},
+		RefreshToken: "new-rt",
+		CreatedAt:    time.Date(2026, 2, 24, 0, 0, 0, 0, time.UTC),
+	}
+	merged := MergeTokenFields(existing, incoming)
+
+	// Services should be union: calendar, drive, groups (sorted)
+	wantServices := []string{"calendar", "drive", "groups"}
+	if !slicesEqual(merged.Services, wantServices) {
+		t.Fatalf("services: got %v, want %v", merged.Services, wantServices)
+	}
+
+	// Scopes should be union: scope-a, scope-b, scope-c (sorted)
+	wantScopes := []string{"scope-a", "scope-b", "scope-c"}
+	if !slicesEqual(merged.Scopes, wantScopes) {
+		t.Fatalf("scopes: got %v, want %v", merged.Scopes, wantScopes)
+	}
+
+	// RefreshToken and CreatedAt from incoming
+	if merged.RefreshToken != "new-rt" {
+		t.Fatalf("refresh token: got %q, want %q", merged.RefreshToken, "new-rt")
+	}
+	if !merged.CreatedAt.Equal(incoming.CreatedAt) {
+		t.Fatalf("created at: got %v, want %v", merged.CreatedAt, incoming.CreatedAt)
+	}
+}
+
+func TestMergeTokenFields_Duplicates(t *testing.T) {
+	existing := Token{
+		Email:        "a@b.com",
+		Client:       "default",
+		Services:     []string{"a", "b", "b"},
+		Scopes:       []string{"x", "y", "y"},
+		RefreshToken: "old-rt",
+		CreatedAt:    time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	incoming := Token{
+		Email:        "a@b.com",
+		Client:       "default",
+		Services:     []string{"b", "c", "c"},
+		Scopes:       []string{"y", "z", "z"},
+		RefreshToken: "new-rt",
+		CreatedAt:    time.Date(2026, 2, 24, 0, 0, 0, 0, time.UTC),
+	}
+	merged := MergeTokenFields(existing, incoming)
+
+	wantServices := []string{"a", "b", "c"}
+	if !slicesEqual(merged.Services, wantServices) {
+		t.Fatalf("services: got %v, want %v", merged.Services, wantServices)
+	}
+
+	wantScopes := []string{"x", "y", "z"}
+	if !slicesEqual(merged.Scopes, wantScopes) {
+		t.Fatalf("scopes: got %v, want %v", merged.Scopes, wantScopes)
+	}
+}
+
+func TestMergeTokenFields_EmptyExisting(t *testing.T) {
+	existing := Token{} // zero value — first-time auth case
+	incoming := Token{
+		Email:        "a@b.com",
+		Client:       "default",
+		Services:     []string{"drive", "calendar"},
+		Scopes:       []string{"scope-a", "scope-b"},
+		RefreshToken: "new-rt",
+		CreatedAt:    time.Date(2026, 2, 24, 0, 0, 0, 0, time.UTC),
+	}
+	merged := MergeTokenFields(existing, incoming)
+
+	// Services and Scopes come from incoming only (sorted)
+	wantServices := []string{"calendar", "drive"}
+	if !slicesEqual(merged.Services, wantServices) {
+		t.Fatalf("services: got %v, want %v", merged.Services, wantServices)
+	}
+
+	wantScopes := []string{"scope-a", "scope-b"}
+	if !slicesEqual(merged.Scopes, wantScopes) {
+		t.Fatalf("scopes: got %v, want %v", merged.Scopes, wantScopes)
+	}
+
+	if merged.RefreshToken != "new-rt" {
+		t.Fatalf("refresh token: got %q, want %q", merged.RefreshToken, "new-rt")
+	}
+	if merged.Email != "a@b.com" {
+		t.Fatalf("email: got %q, want %q", merged.Email, "a@b.com")
+	}
+	if merged.Client != "default" {
+		t.Fatalf("client: got %q, want %q", merged.Client, "default")
+	}
+	if !merged.CreatedAt.Equal(incoming.CreatedAt) {
+		t.Fatalf("created at: got %v, want %v", merged.CreatedAt, incoming.CreatedAt)
+	}
+}
+
+func TestKeyringStore_MergeToken_NewAccount(t *testing.T) {
+	ring := keyring.NewArrayKeyring(nil)
+	store := &KeyringStore{ring: ring}
+	client := config.DefaultClientName
+
+	tok := Token{
+		Email:        "new@example.com",
+		Client:       client,
+		Services:     []string{"drive"},
+		Scopes:       []string{"scope-a"},
+		RefreshToken: "rt-new",
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	// MergeToken on empty store should fall through to SetToken
+	if err := store.MergeToken(client, tok.Email, tok); err != nil {
+		t.Fatalf("MergeToken: %v", err)
+	}
+
+	got, err := store.GetToken(client, tok.Email)
+	if err != nil {
+		t.Fatalf("GetToken: %v", err)
+	}
+
+	if got.RefreshToken != "rt-new" {
+		t.Fatalf("refresh token: got %q, want %q", got.RefreshToken, "rt-new")
+	}
+	if !slicesEqual(got.Services, []string{"drive"}) {
+		t.Fatalf("services: got %v, want %v", got.Services, []string{"drive"})
+	}
+	if !slicesEqual(got.Scopes, []string{"scope-a"}) {
+		t.Fatalf("scopes: got %v, want %v", got.Scopes, []string{"scope-a"})
+	}
+}
+
+// faultyKeyring wraps an ArrayKeyring but injects a controlled error on Get
+// for a specific key prefix, allowing tests to simulate keychain access failures
+// or decode errors without affecting Set/Keys/Remove.
+type faultyKeyring struct {
+	inner    keyring.Keyring
+	getError error // returned for all Get calls (unless nil)
+}
+
+func (f *faultyKeyring) Get(key string) (keyring.Item, error) {
+	if f.getError != nil {
+		return keyring.Item{}, f.getError
+	}
+
+	return f.inner.Get(key)
+}
+
+func (f *faultyKeyring) GetMetadata(key string) (keyring.Metadata, error) {
+	return f.inner.GetMetadata(key)
+}
+
+func (f *faultyKeyring) Set(item keyring.Item) error { return f.inner.Set(item) }
+func (f *faultyKeyring) Remove(key string) error     { return f.inner.Remove(key) }
+func (f *faultyKeyring) Keys() ([]string, error)     { return f.inner.Keys() }
+
+func TestKeyringStore_MergeToken_NonNotFoundError(t *testing.T) {
+	errAccess := errors.New("keychain access denied")
+	ring := &faultyKeyring{
+		inner:    keyring.NewArrayKeyring(nil),
+		getError: errAccess,
+	}
+	store := &KeyringStore{ring: ring}
+	client := config.DefaultClientName
+
+	tok := Token{
+		Email:        "user@example.com",
+		Client:       client,
+		Services:     []string{"drive"},
+		Scopes:       []string{"scope-a"},
+		RefreshToken: "rt-new",
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	err := store.MergeToken(client, tok.Email, tok)
+	if err == nil {
+		t.Fatal("expected error from MergeToken when GetToken returns non-ErrKeyNotFound error")
+	}
+
+	if !errors.Is(err, errAccess) {
+		t.Fatalf("expected underlying error %q, got: %v", errAccess, err)
+	}
+
+	if !strings.Contains(err.Error(), "merge token") {
+		t.Fatalf("expected error wrapped with 'merge token' prefix, got: %v", err)
+	}
+}
+
+func TestKeyringStore_MergeToken_ExistingAccount(t *testing.T) {
+	ring := keyring.NewArrayKeyring(nil)
+	store := &KeyringStore{ring: ring}
+	client := config.DefaultClientName
+	email := "existing@example.com"
+
+	// Seed an existing token with drive and calendar
+	existing := Token{
+		Email:        email,
+		Client:       client,
+		Services:     []string{"drive", "calendar"},
+		Scopes:       []string{"scope-a", "scope-b"},
+		RefreshToken: "old-rt",
+		CreatedAt:    time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	if err := store.SetToken(client, email, existing); err != nil {
+		t.Fatalf("SetToken: %v", err)
+	}
+
+	// Merge with groups + drive (overlapping)
+	incoming := Token{
+		Email:        email,
+		Client:       client,
+		Services:     []string{"groups", "drive"},
+		Scopes:       []string{"scope-b", "scope-c"},
+		RefreshToken: "new-rt",
+		CreatedAt:    time.Date(2026, 2, 24, 0, 0, 0, 0, time.UTC),
+	}
+	if err := store.MergeToken(client, email, incoming); err != nil {
+		t.Fatalf("MergeToken: %v", err)
+	}
+
+	got, err := store.GetToken(client, email)
+	if err != nil {
+		t.Fatalf("GetToken: %v", err)
+	}
+
+	// Services should be merged: calendar, drive, groups (sorted)
+	wantServices := []string{"calendar", "drive", "groups"}
+	if !slicesEqual(got.Services, wantServices) {
+		t.Fatalf("services: got %v, want %v", got.Services, wantServices)
+	}
+
+	// Scopes should be merged: scope-a, scope-b, scope-c (sorted)
+	wantScopes := []string{"scope-a", "scope-b", "scope-c"}
+	if !slicesEqual(got.Scopes, wantScopes) {
+		t.Fatalf("scopes: got %v, want %v", got.Scopes, wantScopes)
+	}
+
+	// RefreshToken should be from incoming
+	if got.RefreshToken != "new-rt" {
+		t.Fatalf("refresh token: got %q, want %q", got.RefreshToken, "new-rt")
+	}
+}

@@ -17,9 +17,9 @@ import (
 
 var (
 	errMissingCallbackServer = errors.New("callback server URL required for headless auth")
-	errPollTimeout = errors.New("timeout waiting for token")
+	errPollTimeout           = errors.New("timeout waiting for token")
 	errTokenConsumed         = errors.New("token has already been retrieved")
-	errTokenNotFound = errors.New("token not found or expired")
+	errTokenNotFound         = errors.New("token not found or expired")
 )
 
 // IsPollTimeout reports whether err is a poll timeout error.

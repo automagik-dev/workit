@@ -91,10 +91,11 @@ func (m *memStoreErr) SetToken(string, string, secrets.Token) error { return nil
 func (m *memStoreErr) GetToken(string, string) (secrets.Token, error) {
 	return secrets.Token{}, errors.New("missing")
 }
-func (m *memStoreErr) DeleteToken(string, string) error         { return m.deleteErr }
-func (m *memStoreErr) ListTokens() ([]secrets.Token, error)     { return nil, m.keysErr }
-func (m *memStoreErr) GetDefaultAccount(string) (string, error) { return "", nil }
-func (m *memStoreErr) SetDefaultAccount(string, string) error   { return nil }
+func (m *memStoreErr) DeleteToken(string, string) error                     { return m.deleteErr }
+func (m *memStoreErr) ListTokens() ([]secrets.Token, error)                 { return nil, m.keysErr }
+func (m *memStoreErr) GetDefaultAccount(string) (string, error)             { return "", nil }
+func (m *memStoreErr) SetDefaultAccount(string, string) error               { return nil }
+func (m *memStoreErr) MergeToken(_ string, _ string, _ secrets.Token) error { return m.keysErr }
 
 func TestAuthTokensDelete_Errors(t *testing.T) {
 	origOpen := openSecretsStore

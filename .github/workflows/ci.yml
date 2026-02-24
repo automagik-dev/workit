@@ -58,16 +58,3 @@ jobs:
         run: pnpm -C internal/tracking/worker build
       - name: Test
         run: pnpm -C internal/tracking/worker test
-
-  darwin-cgo-build:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Test
-        run: go test ./...
-      - name: Build (Keychain / cgo)
-        run: CGO_ENABLED=1 go build ./cmd/gog

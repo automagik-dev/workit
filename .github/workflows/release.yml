@@ -15,7 +15,39 @@ permissions:
   contents: write
 
 jobs:
+  test:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Test
+        run: go test ./...
+
+  worker:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable Corepack (pnpm)
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.27.0 --activate
+      - name: Install dependencies
+        run: pnpm -C internal/tracking/worker install --frozen-lockfile
+      - name: Build
+        run: pnpm -C internal/tracking/worker build
+      - name: Test
+        run: pnpm -C internal/tracking/worker test
+
   goreleaser:
+    needs: [test, worker]
     runs-on: macos-latest
     steps:
       - name: Checkout

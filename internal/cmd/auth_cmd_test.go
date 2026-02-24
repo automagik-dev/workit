@@ -112,6 +112,15 @@ func (s *memSecretsStore) SetDefaultAccount(client string, email string) error {
 	return nil
 }
 
+func (s *memSecretsStore) MergeToken(client string, email string, tok secrets.Token) error {
+	existing, err := s.GetToken(client, email)
+	if err != nil {
+		return s.SetToken(client, email, tok)
+	}
+	merged := secrets.MergeTokenFields(existing, tok)
+	return s.SetToken(client, email, merged)
+}
+
 func TestAuthTokens_ExportImportRoundtrip_JSON(t *testing.T) {
 	origOpen := openSecretsStore
 	origKeychain := ensureKeychainAccess

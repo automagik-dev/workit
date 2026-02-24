@@ -31,12 +31,13 @@ type stubStore struct {
 	err        error
 }
 
-func (s *stubStore) Keys() ([]string, error)                      { return nil, nil }
-func (s *stubStore) SetToken(string, string, secrets.Token) error { return nil }
-func (s *stubStore) DeleteToken(string, string) error             { return nil }
-func (s *stubStore) ListTokens() ([]secrets.Token, error)         { return nil, nil }
-func (s *stubStore) GetDefaultAccount(string) (string, error)     { return "", nil }
-func (s *stubStore) SetDefaultAccount(string, string) error       { return nil }
+func (s *stubStore) Keys() ([]string, error)                              { return nil, nil }
+func (s *stubStore) SetToken(string, string, secrets.Token) error         { return nil }
+func (s *stubStore) DeleteToken(string, string) error                     { return nil }
+func (s *stubStore) ListTokens() ([]secrets.Token, error)                 { return nil, nil }
+func (s *stubStore) GetDefaultAccount(string) (string, error)             { return "", nil }
+func (s *stubStore) SetDefaultAccount(string, string) error               { return nil }
+func (s *stubStore) MergeToken(_ string, _ string, _ secrets.Token) error { return nil }
 func (s *stubStore) GetToken(client string, email string) (secrets.Token, error) {
 	s.lastClient = client
 	s.lastEmail = email

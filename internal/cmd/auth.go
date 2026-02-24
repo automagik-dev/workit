@@ -662,7 +662,7 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 	sort.Strings(serviceNames)
 
-	if err := store.SetToken(client, authorizedEmail, secrets.Token{
+	if err := store.MergeToken(client, authorizedEmail, secrets.Token{
 		Client:       client,
 		Email:        authorizedEmail,
 		Services:     serviceNames,
@@ -798,7 +798,7 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 	}
 	sort.Strings(serviceNames)
 
-	if err := store.SetToken(client, authorizedEmail, secrets.Token{
+	if err := store.MergeToken(client, authorizedEmail, secrets.Token{
 		Client:       client,
 		Email:        authorizedEmail,
 		Services:     serviceNames,
@@ -806,6 +806,20 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 		RefreshToken: refreshToken,
 	}); err != nil {
 		return err
+	}
+
+	override := authclient.ClientOverrideFromContext(ctx)
+	if override != "" {
+		cfg, err := config.ReadConfig()
+		if err != nil {
+			return err
+		}
+		if err := config.SetAccountClient(&cfg, authorizedEmail, client); err != nil {
+			return err
+		}
+		if err := config.WriteConfig(cfg); err != nil {
+			return err
+		}
 	}
 
 	if outfmt.IsJSON(ctx) {
@@ -897,43 +911,9 @@ func (c *AuthPollCmd) Run(ctx context.Context) error {
 		return nil
 	}
 
-	// Pre-flight: ensure keychain is accessible before storing token.
-	if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
-		return fmt.Errorf("keychain access: %w", keychainErr)
-	}
-
-	store, err := openSecretsStore()
-	if err != nil {
-		return err
-	}
-	serviceNames := make([]string, 0, len(services))
-	for _, svc := range services {
-		serviceNames = append(serviceNames, string(svc))
-	}
-	sort.Strings(serviceNames)
-
-	if err := store.SetToken(client, authorizedEmail, secrets.Token{
-		Client:       client,
-		Email:        authorizedEmail,
-		Services:     serviceNames,
-		Scopes:       scopes,
-		RefreshToken: refreshToken,
-	}); err != nil {
-		return err
-	}
-
-	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-			"stored":   true,
-			"email":    authorizedEmail,
-			"services": serviceNames,
-			"client":   client,
-		})
-	}
-	u.Out().Printf("email\t%s", authorizedEmail)
-	u.Out().Printf("services\t%s", strings.Join(serviceNames, ","))
-	u.Out().Printf("client\t%s", client)
-	return nil
+	// Inference succeeded — set email and store via storeToken (which uses MergeToken).
+	c.Email = authorizedEmail
+	return c.storeToken(ctx, refreshToken)
 }
 
 func (c *AuthPollCmd) storeToken(ctx context.Context, refreshToken string) error {
@@ -986,7 +966,7 @@ func (c *AuthPollCmd) storeToken(ctx context.Context, refreshToken string) error
 	}
 	sort.Strings(serviceNames)
 
-	if err := store.SetToken(client, authorizedEmail, secrets.Token{
+	if err := store.MergeToken(client, authorizedEmail, secrets.Token{
 		Client:       client,
 		Email:        authorizedEmail,
 		Services:     serviceNames,
@@ -994,6 +974,19 @@ func (c *AuthPollCmd) storeToken(ctx context.Context, refreshToken string) error
 		RefreshToken: refreshToken,
 	}); err != nil {
 		return err
+	}
+
+	if override != "" {
+		cfg, err := config.ReadConfig()
+		if err != nil {
+			return err
+		}
+		if err := config.SetAccountClient(&cfg, authorizedEmail, client); err != nil {
+			return err
+		}
+		if err := config.WriteConfig(cfg); err != nil {
+			return err
+		}
 	}
 
 	if outfmt.IsJSON(ctx) {

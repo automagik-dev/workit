@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 type Store interface {
 	Keys() ([]string, error)
 	SetToken(client string, email string, tok Token) error
+	MergeToken(client string, email string, tok Token) error
 	GetToken(client string, email string) (Token, error)
 	DeleteToken(client string, email string) error
 	ListTokens() ([]Token, error)
@@ -489,6 +491,62 @@ func legacyTokenKey(email string) string {
 
 func TokenKey(client string, email string) string {
 	return tokenKey(client, normalize(email))
+}
+
+// mergeStringSlice unions two string slices, deduplicates, and returns the
+// result sorted.
+func mergeStringSlice(a, b []string) []string {
+	seen := make(map[string]struct{}, len(a)+len(b))
+	for _, s := range a {
+		seen[s] = struct{}{}
+	}
+	for _, s := range b {
+		seen[s] = struct{}{}
+	}
+
+	out := make([]string, 0, len(seen))
+	for s := range seen {
+		out = append(out, s)
+	}
+
+	sort.Strings(out)
+
+	return out
+}
+
+// MergeTokenFields returns a new Token that unions Services and Scopes from
+// existing and incoming (sorted, deduplicated), while taking RefreshToken,
+// CreatedAt, Email, and Client from the incoming token.
+func MergeTokenFields(existing, incoming Token) Token {
+	return Token{
+		Client:       incoming.Client,
+		Email:        incoming.Email,
+		Services:     mergeStringSlice(existing.Services, incoming.Services),
+		Scopes:       mergeStringSlice(existing.Scopes, incoming.Scopes),
+		CreatedAt:    incoming.CreatedAt,
+		RefreshToken: incoming.RefreshToken,
+	}
+}
+
+// MergeToken reads the existing token for the given client/email pair, merges
+// its Services and Scopes with tok via MergeTokenFields, and stores the result.
+// If no existing token is found (first-time auth), it falls through to SetToken.
+// Any other GetToken error (decode failures, keychain access errors, migration
+// errors) is propagated so callers notice the problem instead of silently
+// dropping previously merged scopes.
+func (s *KeyringStore) MergeToken(client string, email string, tok Token) error {
+	existing, err := s.GetToken(client, email)
+	if err != nil {
+		if errors.Is(err, keyring.ErrKeyNotFound) {
+			return s.SetToken(client, email, tok)
+		}
+
+		return fmt.Errorf("merge token: %w", err)
+	}
+
+	merged := MergeTokenFields(existing, tok)
+
+	return s.SetToken(client, email, merged)
 }
 
 func normalize(s string) string {

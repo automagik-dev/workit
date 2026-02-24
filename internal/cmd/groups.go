@@ -53,7 +53,7 @@ func (c *GroupsListCmd) Run(ctx context.Context, flags *RootFlags) error {
 	// Using "groups/-" as parent searches across all groups
 	fetch := func(pageToken string) ([]*cloudidentity.GroupRelation, string, error) {
 		call := svc.Groups.Memberships.SearchTransitiveGroups("groups/-").
-			Query("member_key_id == '" + account + "'").
+			Query("member_key_id == '" + account + "' && 'cloudidentity.googleapis.com/groups.discussion_forum' in labels").
 			PageSize(effectiveMax).
 			Context(ctx)
 		if strings.TrimSpace(pageToken) != "" {
@@ -143,8 +143,11 @@ func wrapCloudIdentityError(err error, account string) error {
 		strings.Contains(errStr, "insufficient authentication scopes") {
 		return errfmt.NewUserFacingError("Insufficient permissions for Cloud Identity API; re-authenticate with the cloud-identity.groups.readonly scope: gog auth add <account> --services groups", err)
 	}
-	if isConsumerAccount(account) && (strings.Contains(errStr, "invalid argument") || strings.Contains(errStr, "badRequest")) {
-		return errfmt.NewUserFacingError("Cloud Identity groups require a Google Workspace/Cloud Identity account; consumer accounts (gmail.com/googlemail.com) are not supported.", err)
+	if strings.Contains(errStr, "invalid argument") || strings.Contains(errStr, "badRequest") {
+		if isConsumerAccount(account) {
+			return errfmt.NewUserFacingError("Cloud Identity groups require a Google Workspace/Cloud Identity account; consumer accounts (gmail.com/googlemail.com) are not supported.", err)
+		}
+		return errfmt.NewUserFacingError(fmt.Sprintf("Cloud Identity API returned an invalid argument error for %s; ensure the Cloud Identity API is enabled and the account has Workspace Enterprise or Cloud Identity Premium licensing.", account), err)
 	}
 	return err
 }

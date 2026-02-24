@@ -422,7 +422,7 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 		serviceNames = append(serviceNames, string(svc))
 	}
 
-	if err := ms.store.SetToken(ms.client, email, secrets.Token{
+	if err := ms.store.MergeToken(ms.client, email, secrets.Token{
 		Email:        email,
 		Services:     serviceNames,
 		Scopes:       scopes,
