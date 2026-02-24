@@ -32,6 +32,16 @@ func TestWrapCloudIdentityError_ConsumerAccount(t *testing.T) {
 	}
 }
 
+func TestWrapCloudIdentityError_WorkspaceInvalidArg(t *testing.T) {
+	err := wrapCloudIdentityError(errors.New("badRequest: Request contains an invalid argument."), "user@company.com")
+	if !strings.Contains(err.Error(), "invalid argument error for user@company.com") {
+		t.Fatalf("unexpected workspace error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "Cloud Identity Premium") {
+		t.Fatalf("expected licensing hint: %v", err)
+	}
+}
+
 func TestGetRelationType(t *testing.T) {
 	if got := getRelationType("DIRECT"); got != "direct" {
 		t.Fatalf("unexpected relation: %q", got)
