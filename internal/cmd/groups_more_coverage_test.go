@@ -12,7 +12,7 @@ import (
 	"google.golang.org/api/cloudidentity/v1"
 	"google.golang.org/api/option"
 
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 func TestCollectGroupMemberEmails_RecursiveAndPaging(t *testing.T) {
