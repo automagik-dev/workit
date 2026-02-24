@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -93,7 +94,7 @@ func (e *Engine) Start(ctx context.Context) error {
 	}
 
 	// Create error channel to collect errors from goroutines
-	errChan := make(chan error, 3)
+	errChan := make(chan error, 4)
 	var wg sync.WaitGroup
 
 	// Start the filesystem watcher
@@ -119,6 +120,16 @@ func (e *Engine) Start(ctx context.Context) error {
 	go func() {
 		defer wg.Done()
 		e.eventLoop(ctx)
+	}()
+
+	// Process pre-existing files that were marked pending_upload by initialScan.
+	// Launched AFTER watcher/poller/eventLoop so filesystem events are not missed.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := e.processPendingUploads(ctx); err != nil && ctx.Err() == nil {
+			errChan <- fmt.Errorf("pending uploads: %w", err)
+		}
 	}()
 
 	// Wait for context cancellation or first error
@@ -439,4 +450,58 @@ func (e *Engine) updateSyncItemFromDownload(relPath, driveID, md5 string) error 
 // removeSyncItem removes a sync item.
 func (e *Engine) removeSyncItem(relPath string) error {
 	return e.db.RemoveSyncItem(e.config.ID, relPath)
+}
+
+// processPendingUploads uploads all files that were marked pending_upload by initialScan.
+// It runs sequentially, logging progress and continuing past individual failures.
+func (e *Engine) processPendingUploads(ctx context.Context) error {
+	items, err := e.db.ListPendingUploads(e.config.ID)
+	if err != nil {
+		return fmt.Errorf("list pending uploads: %w", err)
+	}
+
+	if len(items) == 0 {
+		return nil
+	}
+
+	total := len(items)
+	log.Printf("Uploading pre-existing files: 0/%d", total)
+
+	for i, item := range items {
+		// Check for graceful shutdown between items.
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		absPath := filepath.Join(e.config.LocalPath, item.LocalPath)
+
+		result, err := e.uploader.UploadFile(ctx, item.LocalPath, absPath)
+		if err != nil {
+			_ = e.db.AddLogEntry(e.config.ID, "error", item.LocalPath, map[string]any{
+				"action": "pending_upload",
+				"error":  err.Error(),
+			})
+
+			log.Printf("Uploading pre-existing files: %d/%d (failed: %s)", i+1, total, item.LocalPath)
+
+			continue
+		}
+
+		if err := e.updateSyncItem(item.LocalPath, result); err != nil {
+			_ = e.db.AddLogEntry(e.config.ID, "error", item.LocalPath, map[string]any{
+				"action": "update_sync_item",
+				"error":  err.Error(),
+			})
+		}
+
+		_ = e.db.AddLogEntry(e.config.ID, "upload", item.LocalPath, map[string]any{
+			"drive_id": result.DriveID,
+			"md5":      result.MD5,
+			"source":   "initial_scan",
+		})
+
+		log.Printf("Uploading pre-existing files: %d/%d", i+1, total)
+	}
+
+	return nil
 }
