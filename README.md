@@ -50,7 +50,7 @@ yay -S gogcli
 
 ```bash
 git clone https://github.com/namastexlabs/gog-cli.git
-cd gogcli
+cd gog-cli
 make
 ```
 
