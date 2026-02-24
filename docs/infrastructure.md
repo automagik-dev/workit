@@ -198,9 +198,9 @@ Compile the CLI with your infrastructure defaults:
 
 ```bash
 go build -ldflags "\
-  -X 'github.com/steipete/gogcli/internal/config.DefaultClientID=your-client-id' \
-  -X 'github.com/steipete/gogcli/internal/config.DefaultClientSecret=your-client-secret' \
-  -X 'github.com/steipete/gogcli/internal/config.DefaultCallbackServer=https://auth.yourdomain.com'" \
+  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientID=your-client-id' \
+  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientSecret=your-client-secret' \
+  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultCallbackServer=https://auth.yourdomain.com'" \
   -o gog ./cmd/gog
 ```
 

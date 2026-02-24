@@ -12,7 +12,7 @@ import (
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 // newCommentsTestServer returns a test server that handles the Drive comments API

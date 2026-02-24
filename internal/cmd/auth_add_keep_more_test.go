@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/steipete/gogcli/internal/config"
-	"github.com/steipete/gogcli/internal/googleauth"
-	"github.com/steipete/gogcli/internal/outfmt"
-	"github.com/steipete/gogcli/internal/secrets"
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/googleauth"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 func TestAuthAddCmd_JSON_More(t *testing.T) {

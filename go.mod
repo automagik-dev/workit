@@ -1,4 +1,4 @@
-module github.com/steipete/gogcli
+module github.com/namastexlabs/gog-cli
 
 go 1.25
 

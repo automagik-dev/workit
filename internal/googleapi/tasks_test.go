@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/config"
-	"github.com/steipete/gogcli/internal/secrets"
+	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/secrets"
 )
 
 type tasksStubStore struct {

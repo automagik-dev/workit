@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 func PromptLine(ctx context.Context, prompt string) (string, error) {

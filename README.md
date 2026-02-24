@@ -49,8 +49,8 @@ yay -S gogcli
 ### Build from Source
 
 ```bash
-git clone https://github.com/steipete/gogcli.git
-cd gogcli
+git clone https://github.com/namastexlabs/gog-cli.git
+cd gog-cli
 make
 ```
 
@@ -1599,7 +1599,7 @@ MIT
 
 ## Links
 
-- [GitHub Repository](https://github.com/steipete/gogcli)
+- [GitHub Repository](https://github.com/namastexlabs/gog-cli)
 - [Gmail API Documentation](https://developers.google.com/gmail/api)
 - [Google Calendar API Documentation](https://developers.google.com/calendar)
 - [Google Drive API Documentation](https://developers.google.com/drive)

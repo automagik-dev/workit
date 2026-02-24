@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/steipete/gogcli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
 )
 
 type OpenCmd struct {

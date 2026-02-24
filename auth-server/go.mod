@@ -1,4 +1,4 @@
-module github.com/steipete/gogcli/auth-server
+module github.com/namastexlabs/gog-cli/auth-server
 
 go 1.25
 

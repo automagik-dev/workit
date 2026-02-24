@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/steipete/gogcli/internal/config"
+	"github.com/namastexlabs/gog-cli/internal/config"
 )
 
 // Auth mode constants.

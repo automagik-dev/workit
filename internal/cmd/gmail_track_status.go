@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/steipete/gogcli/internal/tracking"
-	"github.com/steipete/gogcli/internal/ui"
+	"github.com/namastexlabs/gog-cli/internal/tracking"
+	"github.com/namastexlabs/gog-cli/internal/ui"
 )
 
 type GmailTrackStatusCmd struct{}

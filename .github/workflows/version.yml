@@ -46,7 +46,7 @@ jobs:
 
       - name: Build with explicit version contract ldflags
         run: |
-          go build -ldflags "-X github.com/steipete/gogcli/internal/cmd.version=${{ steps.vars.outputs.version }} -X github.com/steipete/gogcli/internal/cmd.branch=${{ steps.vars.outputs.branch }} -X github.com/steipete/gogcli/internal/cmd.commit=${{ steps.vars.outputs.short_sha }} -X github.com/steipete/gogcli/internal/cmd.date=${{ steps.vars.outputs.date }}" -o ./bin/gog ./cmd/gog
+          go build -ldflags "-X github.com/namastexlabs/gog-cli/internal/cmd.version=${{ steps.vars.outputs.version }} -X github.com/namastexlabs/gog-cli/internal/cmd.branch=${{ steps.vars.outputs.branch }} -X github.com/namastexlabs/gog-cli/internal/cmd.commit=${{ steps.vars.outputs.short_sha }} -X github.com/namastexlabs/gog-cli/internal/cmd.date=${{ steps.vars.outputs.date }}" -o ./bin/gog ./cmd/gog
 
       - name: Emit version artifact
         run: |

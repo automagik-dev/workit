@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/steipete/gogcli/internal/outfmt"
+	"github.com/namastexlabs/gog-cli/internal/outfmt"
 )
 
 func TestContactsBatchCreate_ParsesJSONInput(t *testing.T) {
