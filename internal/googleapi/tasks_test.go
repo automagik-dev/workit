@@ -13,12 +13,12 @@ type tasksStubStore struct {
 	err error
 }
 
-func (s *tasksStubStore) Keys() ([]string, error)                      { return nil, nil }
-func (s *tasksStubStore) SetToken(string, string, secrets.Token) error { return nil }
-func (s *tasksStubStore) DeleteToken(string, string) error             { return nil }
-func (s *tasksStubStore) ListTokens() ([]secrets.Token, error)         { return nil, nil }
-func (s *tasksStubStore) GetDefaultAccount(string) (string, error)     { return "", nil }
-func (s *tasksStubStore) SetDefaultAccount(string, string) error       { return nil }
+func (s *tasksStubStore) Keys() ([]string, error)                              { return nil, nil }
+func (s *tasksStubStore) SetToken(string, string, secrets.Token) error         { return nil }
+func (s *tasksStubStore) DeleteToken(string, string) error                     { return nil }
+func (s *tasksStubStore) ListTokens() ([]secrets.Token, error)                 { return nil, nil }
+func (s *tasksStubStore) GetDefaultAccount(string) (string, error)             { return "", nil }
+func (s *tasksStubStore) SetDefaultAccount(string, string) error               { return nil }
 func (s *tasksStubStore) MergeToken(_ string, _ string, _ secrets.Token) error { return nil }
 func (s *tasksStubStore) GetToken(string, string) (secrets.Token, error) {
 	if s.err != nil {
