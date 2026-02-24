@@ -531,13 +531,17 @@ func MergeTokenFields(existing, incoming Token) Token {
 // MergeToken reads the existing token for the given client/email pair, merges
 // its Services and Scopes with tok via MergeTokenFields, and stores the result.
 // If no existing token is found (first-time auth), it falls through to SetToken.
+// Any other GetToken error (decode failures, keychain access errors, migration
+// errors) is propagated so callers notice the problem instead of silently
+// dropping previously merged scopes.
 func (s *KeyringStore) MergeToken(client string, email string, tok Token) error {
 	existing, err := s.GetToken(client, email)
 	if err != nil {
-		// Key not found or any other retrieval failure — fall through to SetToken.
-		// This is safe because MergeToken is additive; worst case on a transient
-		// error we get the same result as SetToken (first-time auth path).
-		return s.SetToken(client, email, tok)
+		if errors.Is(err, keyring.ErrKeyNotFound) {
+			return s.SetToken(client, email, tok)
+		}
+
+		return fmt.Errorf("merge token: %w", err)
 	}
 
 	merged := MergeTokenFields(existing, tok)

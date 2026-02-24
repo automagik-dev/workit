@@ -429,6 +429,62 @@ func TestKeyringStore_MergeToken_NewAccount(t *testing.T) {
 	}
 }
 
+// faultyKeyring wraps an ArrayKeyring but injects a controlled error on Get
+// for a specific key prefix, allowing tests to simulate keychain access failures
+// or decode errors without affecting Set/Keys/Remove.
+type faultyKeyring struct {
+	inner    keyring.Keyring
+	getError error // returned for all Get calls (unless nil)
+}
+
+func (f *faultyKeyring) Get(key string) (keyring.Item, error) {
+	if f.getError != nil {
+		return keyring.Item{}, f.getError
+	}
+
+	return f.inner.Get(key)
+}
+
+func (f *faultyKeyring) GetMetadata(key string) (keyring.Metadata, error) {
+	return f.inner.GetMetadata(key)
+}
+
+func (f *faultyKeyring) Set(item keyring.Item) error { return f.inner.Set(item) }
+func (f *faultyKeyring) Remove(key string) error     { return f.inner.Remove(key) }
+func (f *faultyKeyring) Keys() ([]string, error)     { return f.inner.Keys() }
+
+func TestKeyringStore_MergeToken_NonNotFoundError(t *testing.T) {
+	errAccess := errors.New("keychain access denied")
+	ring := &faultyKeyring{
+		inner:    keyring.NewArrayKeyring(nil),
+		getError: errAccess,
+	}
+	store := &KeyringStore{ring: ring}
+	client := config.DefaultClientName
+
+	tok := Token{
+		Email:        "user@example.com",
+		Client:       client,
+		Services:     []string{"drive"},
+		Scopes:       []string{"scope-a"},
+		RefreshToken: "rt-new",
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	err := store.MergeToken(client, tok.Email, tok)
+	if err == nil {
+		t.Fatal("expected error from MergeToken when GetToken returns non-ErrKeyNotFound error")
+	}
+
+	if !errors.Is(err, errAccess) {
+		t.Fatalf("expected underlying error %q, got: %v", errAccess, err)
+	}
+
+	if !strings.Contains(err.Error(), "merge token") {
+		t.Fatalf("expected error wrapped with 'merge token' prefix, got: %v", err)
+	}
+}
+
 func TestKeyringStore_MergeToken_ExistingAccount(t *testing.T) {
 	ring := keyring.NewArrayKeyring(nil)
 	store := &KeyringStore{ring: ring}
