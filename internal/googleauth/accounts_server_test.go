@@ -89,6 +89,10 @@ func (s *fakeStore) SetDefaultAccount(client string, email string) error {
 	return nil
 }
 
+func (s *fakeStore) MergeToken(client string, email string, tok secrets.Token) error {
+	return s.SetToken(client, email, tok)
+}
+
 func TestManageServer_HandleAccountsPage(t *testing.T) {
 	ms := &ManageServer{
 		csrfToken: "csrf",

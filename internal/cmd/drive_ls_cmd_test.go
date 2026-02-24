@@ -147,6 +147,87 @@ func TestDriveLsCmd_TextAndJSON(t *testing.T) {
 	}
 }
 
+func TestDriveLsCmd_LongIDPreserved(t *testing.T) {
+	// Regression test: Google Docs-style IDs are ~44 chars. Verify that neither
+	// plain mode (raw stdout) nor text mode (tabwriter) truncates them.
+	const longID = "1S6i8hTOSuWgxlLDt7rQsR3CqoR7Y9-46erd1gmRwaxM"
+
+	origNew := newDriveService
+	t.Cleanup(func() { newDriveService = origNew })
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.NotFound(w, r)
+			return
+		}
+		if errMsg := driveAllDrivesQueryError(r, true); errMsg != "" {
+			http.Error(w, errMsg, http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"files": []map[string]any{
+				{
+					"id":           longID,
+					"name":         "My Google Doc",
+					"mimeType":     "application/vnd.google-apps.document",
+					"size":         "0",
+					"modifiedTime": "2026-02-20T10:00:00Z",
+				},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	svc, err := drive.NewService(context.Background(),
+		option.WithoutAuthentication(),
+		option.WithHTTPClient(srv.Client()),
+		option.WithEndpoint(srv.URL+"/"),
+	)
+	if err != nil {
+		t.Fatalf("NewService: %v", err)
+	}
+	newDriveService = func(context.Context, string) (*drive.Service, error) { return svc, nil }
+
+	flags := &RootFlags{Account: "a@b.com"}
+
+	// Plain mode: raw tab-separated output to stdout.
+	u1, err := ui.New(ui.Options{Stdout: io.Discard, Stderr: io.Discard, Color: "never"})
+	if err != nil {
+		t.Fatalf("ui.New: %v", err)
+	}
+	ctx1 := ui.WithUI(context.Background(), u1)
+	ctx1 = outfmt.WithMode(ctx1, outfmt.Mode{Plain: true})
+
+	plainOut := captureStdout(t, func() {
+		cmd := &DriveLsCmd{}
+		if execErr := runKong(t, cmd, []string{}, ctx1, flags); execErr != nil {
+			t.Fatalf("execute (plain): %v", execErr)
+		}
+	})
+	if !strings.Contains(plainOut, longID) {
+		t.Fatalf("plain mode: long ID truncated or missing\nwant substring: %s\ngot: %s", longID, plainOut)
+	}
+
+	// Text mode: tabwriter-padded output to stdout.
+	u2, err := ui.New(ui.Options{Stdout: io.Discard, Stderr: io.Discard, Color: "never"})
+	if err != nil {
+		t.Fatalf("ui.New: %v", err)
+	}
+	ctx2 := ui.WithUI(context.Background(), u2)
+	ctx2 = outfmt.WithMode(ctx2, outfmt.Mode{})
+
+	textOut := captureStdout(t, func() {
+		cmd := &DriveLsCmd{}
+		if execErr := runKong(t, cmd, []string{}, ctx2, flags); execErr != nil {
+			t.Fatalf("execute (text): %v", execErr)
+		}
+	})
+	if !strings.Contains(textOut, longID) {
+		t.Fatalf("text mode: long ID truncated or missing\nwant substring: %s\ngot: %s", longID, textOut)
+	}
+}
+
 func TestDriveLsCmd_NoAllDrives(t *testing.T) {
 	origNew := newDriveService
 	t.Cleanup(func() { newDriveService = origNew })

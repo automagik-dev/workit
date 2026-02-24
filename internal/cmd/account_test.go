@@ -33,6 +33,9 @@ func (s *fakeSecretsStore) GetDefaultAccount(string) (string, error) {
 	return s.defaultAccount, s.errDefault
 }
 func (s *fakeSecretsStore) ListTokens() ([]secrets.Token, error) { return s.tokens, s.errListTokens }
+func (s *fakeSecretsStore) MergeToken(client string, email string, tok secrets.Token) error {
+	return s.SetToken(client, email, tok)
+}
 
 func TestRequireAccount_PrefersFlag(t *testing.T) {
 	t.Setenv("GOG_ACCOUNT", "env@example.com")

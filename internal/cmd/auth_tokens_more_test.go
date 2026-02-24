@@ -207,3 +207,12 @@ func (m *memStore) SetDefaultAccount(client string, email string) error {
 	m.defaultEmail = email
 	return nil
 }
+
+func (m *memStore) MergeToken(client string, email string, tok secrets.Token) error {
+	existing, err := m.GetToken(client, email)
+	if err != nil {
+		return m.SetToken(client, email, tok)
+	}
+	merged := secrets.MergeTokenFields(existing, tok)
+	return m.SetToken(client, email, merged)
+}
