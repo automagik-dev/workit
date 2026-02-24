@@ -6,13 +6,13 @@ Google Contacts: personal contacts, other contacts, directory search, and batch 
 - `gog contacts list`
 - `gog contacts search <query...>`
 - `gog contacts get <resourceName>`
-- `gog contacts create ...`
-- `gog contacts update <resourceName> ...`
+- `gog contacts create --given <name> [--family ...] [--email ...] [--phone ...]`
+- `gog contacts update <resourceName> [--given ...] [--family ...] [--email ...] [--phone ...] [--birthday YYYY-MM-DD] [--notes ...]`
 - `gog contacts delete <resourceName>`
 
 ## Batch operations
-- `gog contacts batch create --in contacts.json`
-- `gog contacts batch delete --ids people/c123,people/c456`
+- `gog contacts batch create --file contacts.json`
+- `gog contacts batch delete <resourceName>...` (or `--file names.json`)
 
 ## Directory + other contacts
 - `gog contacts directory list`
@@ -24,5 +24,5 @@ Google Contacts: personal contacts, other contacts, directory search, and batch 
 ## Example
 ```bash
 gog contacts search 'ana silva' --read-only
-gog contacts create --given-name Ana --family-name Silva --email ana@acme.com --dry-run
+gog contacts create --given Ana --family Silva --email ana@acme.com --dry-run
 ```

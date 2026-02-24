@@ -5,7 +5,7 @@ Google Forms command guide.
 ## Form CRUD-ish
 - `gog forms create --title "..." [--description ...]`
 - `gog forms get <formId>`
-- `gog forms publish <formId> [--accepting-responses=true|false ...]`
+- `gog forms publish <formId> [--publish-as-template] [--require-authentication]`
 
 ## Responses
 - `gog forms responses list <formId>`

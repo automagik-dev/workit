@@ -19,16 +19,17 @@ High-surface service (70+ commands): courses, roster, coursework, materials, sub
 
 ## Submissions lifecycle
 - `gog classroom submissions list|get`
-- `gog classroom submissions turn-in|reclaim|return|grade`
+- `gog classroom submissions turn-in|reclaim|return`
+- `gog classroom submissions grade <courseId> <courseWorkId> <submissionId> --draft-grade <n>`
 
 ## Announcements
 - `gog classroom announcements list|get|create|update|delete|assignees`
 
 ## Invitations, guardians, profiles
 - `gog classroom invitations list|get|create|accept|delete`
-- `gog classroom guardians list|get|delete`
-- `gog classroom guardian-invitations list|get|create`
-- `gog classroom profile get`
+- `gog classroom guardians list|get|delete` (args: `<studentId> [<guardianId>]`)
+- `gog classroom guardian-invitations list|get|create` (args: `<studentId> [<invitationId>]`)
+- `gog classroom profile get [<userId>]` (default: me)
 
 ## Example
 ```bash

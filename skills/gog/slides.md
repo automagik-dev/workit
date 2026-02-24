@@ -4,7 +4,7 @@ Google Slides: create/copy/export decks, slide CRUD, notes, and markdown-based g
 
 ## Deck operations
 - `gog slides create <title>`
-- `gog slides create-from-markdown <title> --in slides.md`
+- `gog slides create-from-markdown <title> --content-file slides.md`
 - `gog slides info <presentationId>`
 - `gog slides copy <presentationId> <title>`
 - `gog slides export <presentationId> --format pdf|pptx`
@@ -25,6 +25,6 @@ Google Slides: create/copy/export decks, slide CRUD, notes, and markdown-based g
 
 ## Example
 ```bash
-gog slides create-from-markdown 'QBR 2026-02' --in ./qbr.md --dry-run
+gog slides create-from-markdown 'QBR 2026-02' --content-file ./qbr.md --dry-run
 gog slides update-notes <presentationId> <slideId> --notes 'Talk track v2' --dry-run
 ```
