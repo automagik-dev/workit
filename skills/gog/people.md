@@ -1,19 +1,17 @@
 # people.md
 
-Google People API (profile + Workspace directory lookups).
+Google People (`gog people` / alias `person`).
 
-## Commands
-- `gog people me`
-- `gog people get <userId>`
-- `gog people search <query...>`
-- `gog people relations [userId]`
+Use `--read-only` for discovery and `--json`/`--plain` for scripts.
 
-## Notes
-- `people search` is best for org directory discovery.
-- Use `contacts` service for personal address-book CRUD.
+## Top-level commands (from `gog people --help`)
+- `me`
+- `get <userId>`
+- `search <query...>`
+- `relations [userId]`
 
-## Example
+## Examples
 ```bash
-gog people me --read-only
-gog people search 'product manager sao paulo' --read-only
+gog people me --read-only --json
+gog people search 'product manager sao paulo' --read-only --plain
 ```

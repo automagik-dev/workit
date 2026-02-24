@@ -1,16 +1,15 @@
 # groups.md
 
-> Workspace-only: Google Groups APIs require Workspace admin/domain context.
+Google Groups (`gog groups` / alias `group`). Workspace context required.
 
-## Commands
-- `gog groups list`
-- `gog groups members <groupEmail>`
+Use `--read-only` for inspection and `--json`/`--plain` for machine-friendly output.
 
-## Usage
-Use for group discovery and membership inspection. For calendar-team scenarios, combine with `gog calendar team <group-email>`.
+## Top-level commands (from `gog groups --help`)
+- `list`
+- `members <groupEmail>`
 
-## Example
+## Examples
 ```bash
-gog groups list --read-only
-gog groups members eng@acme.com --read-only
+gog groups list --read-only --plain
+gog groups members eng@acme.com --read-only --json
 ```

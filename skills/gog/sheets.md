@@ -1,33 +1,25 @@
 # sheets.md
 
-Google Sheets: range CRUD, formatting, tabs, exports, and batch updates.
+Google Sheets (`gog sheets` / alias `sheet`).
 
-## CRUD on ranges
-- `gog sheets get <spreadsheetId> <range>`
-- `gog sheets update <spreadsheetId> <range> <values...>`
-- `gog sheets append <spreadsheetId> <range> <values...>`
-- `gog sheets clear <spreadsheetId> <range>`
-- `gog sheets notes <spreadsheetId> <range>`
+Use `--read-only` for non-mutating checks, `--dry-run` before writes, and `--json`/`--plain` for scripts.
 
-## Structure and metadata
-- `gog sheets metadata <spreadsheetId>`
-- `gog sheets add-tab <spreadsheetId> <tab-name>`
-- `gog sheets format <spreadsheetId> <range> ...`
+## Top-level commands (from `gog sheets --help`)
+- `get <spreadsheetId> <range>`
+- `update <spreadsheetId> <range> [values...]`
+- `append <spreadsheetId> <range> [values...]`
+- `clear <spreadsheetId> <range>`
+- `format <spreadsheetId> <range>`
+- `notes <spreadsheetId> <range>`
+- `metadata <spreadsheetId>`
+- `create <title>`
+- `copy <spreadsheetId> <title>`
+- `export <spreadsheetId>`
+- `add-tab <spreadsheet-id> <tab-name>`
+- `batch-update <spreadsheetId>`
 
-## File-level operations
-- `gog sheets create <title>`
-- `gog sheets copy <spreadsheetId> <title>`
-- `gog sheets export <spreadsheetId> --format pdf|xlsx|csv`
-
-## Batch ops
-- `gog sheets batch-update <spreadsheetId> --requests @requests.json`
-
-## Template creation pattern
-- Keep a template sheet in Drive, then duplicate via:
-  - `gog sheets copy <templateSpreadsheetId> "New Report - 2026-02"`
-
-## Example
+## Examples
 ```bash
+gog sheets get <sheetId> 'Summary!A1:C20' --read-only --json
 gog sheets update <sheetId> 'Summary!A1:C1' 'Week' 'Revenue' 'Delta' --dry-run
-gog sheets batch-update <sheetId> --requests @batch.json --dry-run
 ```

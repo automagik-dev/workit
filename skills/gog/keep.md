@@ -1,22 +1,22 @@
 # keep.md
 
-> Workspace-only service.
->
-> Read-only orientation: current command surface is mostly retrieval/search (no full CRUD exposed here).
+Google Keep (`gog keep`) — Workspace only.
 
-## Commands
-- `gog keep list`
-- `gog keep get <noteId>`
-- `gog keep search <query>` (client-side text search)
-- `gog keep attachment <attachmentName> --out <path>`
+Use `--read-only` for exploration and `--json`/`--plain` for automation.
+Use `--dry-run` when available on mutating paths.
+
+## Top-level commands (from `gog keep --help`)
+- `list`
+- `get <noteId>`
+- `search <query>`
+- `attachment <attachmentName>`
 
 ## Service-account flags
-Keep commands include:
 - `--service-account <json-key>`
 - `--impersonate <user@domain>`
 
-## Example
+## Examples
 ```bash
-gog keep list --read-only
-gog keep get <noteId> --read-only
+gog keep list --read-only --json
+gog keep get <noteId> --read-only --plain
 ```
