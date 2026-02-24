@@ -21,6 +21,7 @@ internal/googleapi/errors.go:110:6: unreachable func: IsQuotaExceededError
 internal/googleapi/errors.go:116:6: unreachable func: IsNotFoundError
 internal/googleapi/errors.go:122:6: unreachable func: IsPermissionDeniedError
 internal/googleapi/keep.go:15:6: unreachable func: NewKeep
+internal/googleauth/headless.go:32:6: unreachable func: NewPollTimeoutError
 internal/googleauth/oauth_flow.go:308:6: unreachable func: waitPostSuccess
 internal/googleauth/oauth_flow_manual_redirect.go:54:6: unreachable func: extractCodeAndState
 internal/googleauth/scopes.go:34:6: unreachable func: ScopesForCommands
