@@ -3,7 +3,11 @@ set -euo pipefail
 
 version="${1:-}"
 if [[ -z "$version" ]]; then
-  echo "usage: scripts/verify-release.sh X.Y.Z" >&2
+  echo "usage: scripts/verify-release.sh N.YYMMDD.BUILD  (calver, e.g. 2.260224.1)" >&2
+  exit 2
+fi
+if ! [[ "$version" =~ ^[0-9]+\.[0-9]{6}\.[0-9]+$ ]]; then
+  echo "version must be calver: N.YYMMDD.BUILD (e.g. 2.260224.1)" >&2
   exit 2
 fi
 

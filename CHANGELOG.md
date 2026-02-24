@@ -1,10 +1,15 @@
 # Changelog
 
-## 0.12.0 - Unreleased
+## Unreleased
+
+(nothing yet)
+
+## 2.260224.1 - 2026-02-24
 
 ### Fixed
 - Calendar: respond patches only attendees to avoid custom reminders validation errors. (#265) — thanks @sebasrodriguez.
 - Secrets: respect empty `GOG_KEYRING_PASSWORD` (treat set-to-empty as intentional; avoids headless prompts). (#269) — thanks @zerone0x.
+- Sync: resolve Drive folder name/URL to ID during `sync init`; fixes silent upload failures when `--drive-folder` is a human-readable name. (#10)
 
 ## 0.11.0 - 2026-02-15
 
