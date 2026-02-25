@@ -500,6 +500,7 @@ func mergeStringSlice(a, b []string) []string {
 	for _, s := range a {
 		seen[s] = struct{}{}
 	}
+
 	for _, s := range b {
 		seen[s] = struct{}{}
 	}

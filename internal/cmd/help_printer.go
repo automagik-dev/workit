@@ -13,6 +13,8 @@ import (
 	"golang.org/x/term"
 )
 
+const buildVersionDev = "dev"
+
 func helpOptions() kong.HelpOptions {
 	mode := strings.ToLower(strings.TrimSpace(os.Getenv("WK_HELP")))
 	return kong.HelpOptions{
@@ -55,7 +57,7 @@ func helpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 func injectBuildLine(out string) string {
 	v := strings.TrimSpace(version)
 	if v == "" {
-		v = "dev"
+		v = buildVersionDev
 	}
 	c := strings.TrimSpace(commit)
 	line := fmt.Sprintf("Build: %s", v)
