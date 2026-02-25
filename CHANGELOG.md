@@ -4,6 +4,11 @@
 
 (nothing yet)
 
+## 2.260225.1 - 2026-02-25
+
+### Fixed
+- Release: publish a post-rename tag from source that includes `cmd/wk` so `release.yml` completes successfully.
+
 ## 2.260224.1 - 2026-02-24
 
 ### Fixed
