@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/namastexlabs/workit/internal/docx"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/docx"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // DocxRewriteCmd replaces all body content in a DOCX with markdown content.

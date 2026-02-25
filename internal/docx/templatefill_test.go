@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/docx"
+	"github.com/automagik-dev/workit/internal/docx"
 )
 
 // templateDocumentXML is a document with {{PLACEHOLDER}} patterns.

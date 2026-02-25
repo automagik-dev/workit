@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 type timezoneResolveMode int

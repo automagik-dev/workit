@@ -45,7 +45,7 @@ wk auth add you@gmail.com --headless --services=user
 # https://accounts.google.com/o/oauth2/v2/auth?...
 #
 # State: abc123xyz
-# Poll URL: https://auth.namastex.io/token/abc123xyz
+# Poll URL: https://auth.automagik.dev/token/abc123xyz
 # Expires in: 300 seconds
 #
 # Waiting for authorization...
@@ -70,7 +70,7 @@ wk auth add you@gmail.com --headless --json
 {
   "auth_url": "https://accounts.google.com/o/oauth2/v2/auth?...",
   "state": "abc123xyz",
-  "poll_url": "https://auth.namastex.io/token/abc123xyz",
+  "poll_url": "https://auth.automagik.dev/token/abc123xyz",
   "expires_in": 300
 }
 ```
@@ -99,7 +99,7 @@ For headless mode, OAuth credentials are resolved in order:
 
 Set the callback server URL:
 ```bash
-export WK_CALLBACK_SERVER=https://auth.namastex.io
+export WK_CALLBACK_SERVER=https://auth.automagik.dev
 ```
 
 ### "timeout waiting for token"

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/docx"
+	"github.com/automagik-dev/workit/internal/docx"
 )
 
 func TestAddComment(t *testing.T) {

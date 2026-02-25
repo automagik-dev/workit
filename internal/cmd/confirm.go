@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/namastexlabs/workit/internal/input"
+	"github.com/automagik-dev/workit/internal/input"
 )
 
 func confirmDestructive(ctx context.Context, flags *RootFlags, action string) error {

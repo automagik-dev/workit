@@ -1,4 +1,4 @@
-module github.com/namastexlabs/workit
+module github.com/automagik-dev/workit
 
 go 1.25
 

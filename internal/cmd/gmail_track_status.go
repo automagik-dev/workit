@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/tracking"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/tracking"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 type GmailTrackStatusCmd struct{}

@@ -5,19 +5,13 @@
 ## 1. Install the Binary
 
 ```bash
-# Clone and build
-git clone https://github.com/namastexlabs/workit.git
-cd workit
-make
-
-# Move to PATH
-sudo cp bin/wk /usr/local/bin/wk
+curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
 ```
 
-Or, if you have a pre-built binary with Namastex credentials baked in:
+For subsequent upgrades:
+
 ```bash
-# Just copy the binary to your agent's PATH
-cp wk /usr/local/bin/wk
+wk update
 ```
 
 ## 2. Configure Credentials
@@ -31,7 +25,7 @@ If the binary was built with `make build-internal`, it already has OAuth credent
 ```bash
 export WK_CLIENT_ID="your-client-id"
 export WK_CLIENT_SECRET="your-client-secret"
-export WK_CALLBACK_SERVER="https://auth.namastex.io"
+export WK_CALLBACK_SERVER="https://auth.automagik.dev"
 ```
 
 **Option C: Credentials file (standard workit way)**
@@ -170,12 +164,15 @@ Changes sync bidirectionally:
 
 ```bash
 # Install
-git clone https://github.com/namastexlabs/workit.git && cd workit && make && sudo cp bin/wk /usr/local/bin/
+curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
+
+# Update
+wk update
 
 # Configure (if not using pre-built binary)
 export WK_CLIENT_ID="xxx"
 export WK_CLIENT_SECRET="xxx" 
-export WK_CALLBACK_SERVER="https://auth.namastex.io"
+export WK_CALLBACK_SERVER="https://auth.automagik.dev"
 export WK_KEYRING_BACKEND=file
 export WK_KEYRING_PASSWORD="secure-password"
 

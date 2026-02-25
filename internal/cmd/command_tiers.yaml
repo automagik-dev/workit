@@ -1,7 +1,7 @@
 # Command tier definitions. Each top-level key is a service name,
 # each child key is a subcommand name, value is tier: core, extended, or complete.
 # Commands not listed default to "complete" tier.
-# Utility commands (auth, config, time, agent, schema, sync, version, completion) are always visible.
+# Utility commands (auth, config, time, agent, schema, sync, update, version, completion) are always visible.
 gmail:
   search: core
   send: extended

@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/api/classroom/v1"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 type ClassroomGuardiansCmd struct {

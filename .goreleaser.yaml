@@ -11,10 +11,10 @@ builds:
     binary: wk
     ldflags: >-
       -s -w
-      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
-      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
-      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
-      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
     env:
       - CGO_ENABLED=0
     targets:
@@ -27,10 +27,10 @@ builds:
     binary: wk
     ldflags: >-
       -s -w
-      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
-      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
-      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
-      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
     env:
       - CGO_ENABLED=1
     targets:
@@ -41,10 +41,10 @@ builds:
     binary: gog
     ldflags: >-
       -s -w
-      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
-      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
-      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
-      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
     env:
       - CGO_ENABLED=0
     targets:
@@ -57,10 +57,10 @@ builds:
     binary: gog
     ldflags: >-
       -s -w
-      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
-      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
-      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
-      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
     env:
       - CGO_ENABLED=1
     targets:

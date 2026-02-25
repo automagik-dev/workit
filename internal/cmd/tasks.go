@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/googleapi"
 )
 
 var newTasksService = googleapi.NewTasks

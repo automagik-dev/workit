@@ -198,9 +198,9 @@ Compile the CLI with your infrastructure defaults:
 
 ```bash
 go build -ldflags "\
-  -X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=your-client-id' \
-  -X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=your-client-secret' \
-  -X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=https://auth.yourdomain.com'" \
+  -X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=your-client-id' \
+  -X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=your-client-secret' \
+  -X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=https://auth.yourdomain.com'" \
   -o wk ./cmd/wk
 ```
 

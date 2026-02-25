@@ -15,8 +15,8 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/api/slides/v1"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // slidesPresGetResponse returns a minimal presentation JSON with one existing slide.

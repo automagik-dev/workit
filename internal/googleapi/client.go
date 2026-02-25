@@ -14,10 +14,10 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/workit/internal/authclient"
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/googleauth"
-	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/authclient"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/googleauth"
+	"github.com/automagik-dev/workit/internal/secrets"
 )
 
 const defaultHTTPTimeout = 30 * time.Second

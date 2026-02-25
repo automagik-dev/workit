@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/api/gmail/v1"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestGmailSendAsCmd_ValidationErrors(t *testing.T) {

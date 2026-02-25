@@ -46,7 +46,7 @@ jobs:
 
       - name: Build with explicit version contract ldflags
         run: |
-          go build -ldflags "-X github.com/namastexlabs/workit/internal/cmd.version=${{ steps.vars.outputs.version }} -X github.com/namastexlabs/workit/internal/cmd.branch=${{ steps.vars.outputs.branch }} -X github.com/namastexlabs/workit/internal/cmd.commit=${{ steps.vars.outputs.short_sha }} -X github.com/namastexlabs/workit/internal/cmd.date=${{ steps.vars.outputs.date }}" -o ./bin/wk ./cmd/wk
+          go build -ldflags "-X github.com/automagik-dev/workit/internal/cmd.version=${{ steps.vars.outputs.version }} -X github.com/automagik-dev/workit/internal/cmd.branch=${{ steps.vars.outputs.branch }} -X github.com/automagik-dev/workit/internal/cmd.commit=${{ steps.vars.outputs.short_sha }} -X github.com/automagik-dev/workit/internal/cmd.date=${{ steps.vars.outputs.date }}" -o ./bin/wk ./cmd/wk
 
       - name: Emit version artifact
         run: |

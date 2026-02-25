@@ -13,7 +13,7 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/automagik-dev/workit/internal/googleauth"
 )
 
 // withPrimaryCalendar wraps an http.Handler to also respond to primary calendar requests

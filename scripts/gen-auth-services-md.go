@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/automagik-dev/workit/internal/googleauth"
 )
 
 const (

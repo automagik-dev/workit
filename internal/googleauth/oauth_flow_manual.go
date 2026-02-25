@@ -11,8 +11,8 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/input"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/input"
 )
 
 func authorizeManual(ctx context.Context, opts AuthorizeOptions, creds config.ClientCredentials) (string, error) {

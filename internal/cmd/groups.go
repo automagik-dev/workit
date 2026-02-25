@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/api/cloudidentity/v1"
 
-	"github.com/namastexlabs/workit/internal/errfmt"
-	"github.com/namastexlabs/workit/internal/googleapi"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/errfmt"
+	"github.com/automagik-dev/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 var newCloudIdentityService = googleapi.NewCloudIdentityGroups

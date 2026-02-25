@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 type gmailWatchStore struct {

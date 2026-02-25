@@ -7,7 +7,7 @@
 # - WK_CLIENT_SECRET
 
 PORT=8089
-REDIRECT_URL="https://gogoauth.namastex.io/callback"
+REDIRECT_URL="https://auth.automagik.dev/callback"
 
 # Check for credentials
 if [ -z "$WK_CLIENT_ID" ] || [ -z "$WK_CLIENT_SECRET" ]; then

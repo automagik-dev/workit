@@ -33,7 +33,7 @@ Skip keys (base):
   tasks, contacts, people, groups, keep, classroom
 
 Env:
-  WK_LIVE_EMAIL_TEST=steipete+gogtest@gmail.com
+  WK_LIVE_EMAIL_TEST=you+wktest.com
   WK_LIVE_GROUP_EMAIL=<group@domain>
   WK_LIVE_CLASSROOM_COURSE=<courseId>
   WK_LIVE_CLASSROOM_CREATE=1
@@ -140,7 +140,7 @@ fi
 
 echo "Using account: $ACCOUNT"
 
-EMAIL_TEST="${WK_LIVE_EMAIL_TEST:-steipete+gogtest@gmail.com}"
+EMAIL_TEST="${WK_LIVE_EMAIL_TEST:-you+wktest.com}"
 TS=$(date +%Y%m%d%H%M%S)
 LIVE_TMP=$(mktemp -d "${TMPDIR:-/tmp}/wk-live-$TS-XXXX")
 trap 'rm -rf "$LIVE_TMP"' EXIT

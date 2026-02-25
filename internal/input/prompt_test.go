@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestPromptLineFrom(t *testing.T) {

@@ -8,7 +8,7 @@ func TestCallbackServerKey_ValidURLs(t *testing.T) {
 	tests := []struct {
 		value string
 	}{
-		{"https://gogoauth.namastex.io"},
+		{"https://auth.automagik.dev"},
 		{"http://localhost:8089"},
 		{"https://example.com/path"},
 	}
@@ -29,7 +29,7 @@ func TestCallbackServerKey_InvalidURLs(t *testing.T) {
 		value string
 	}{
 		{"ftp://bad"},
-		{"gogoauth.namastex.io"},
+		{"auth.automagik.dev"},
 		{""},
 	}
 	for _, tt := range tests {

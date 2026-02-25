@@ -12,13 +12,13 @@ import (
 	"github.com/alecthomas/kong"
 	"golang.org/x/term"
 
-	"github.com/namastexlabs/workit/internal/authclient"
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/errfmt"
-	"github.com/namastexlabs/workit/internal/googleauth"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/secrets"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/authclient"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/errfmt"
+	"github.com/automagik-dev/workit/internal/googleauth"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 const (
@@ -91,6 +91,7 @@ type CLI struct {
 	ExitCodes  AgentExitCodesCmd     `cmd:"" name:"exit-codes" aliases:"exitcodes" help:"Print stable exit codes (alias for 'agent exit-codes')"`
 	Agent      AgentCmd              `cmd:"" help:"Agent-friendly helpers"`
 	Schema     SchemaCmd             `cmd:"" help:"Machine-readable command/flag schema" aliases:"help-json,helpjson"`
+	Update     UpdateCmd             `cmd:"" help:"Update wk binary and local skills"`
 	VersionCmd VersionCmd            `cmd:"" name:"version" help:"Print version"`
 	Completion CompletionCmd         `cmd:"" help:"Generate shell completion scripts"`
 	Complete   CompletionInternalCmd `cmd:"" name:"__complete" hidden:"" help:"Internal completion helper"`

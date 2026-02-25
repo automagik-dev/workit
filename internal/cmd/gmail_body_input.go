@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 func resolveBodyInput(body, bodyFile string) (string, error) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/tracking"
+	"github.com/automagik-dev/workit/internal/tracking"
 )
 
 func setupTrackingEnv(t *testing.T) {

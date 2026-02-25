@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/api/gmail/v1"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 type attachmentInfo struct {

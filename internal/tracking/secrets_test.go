@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/secrets"
 )
 
 func setupTrackingKeyringEnv(t *testing.T) {

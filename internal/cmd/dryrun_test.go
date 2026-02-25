@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/outfmt"
 )
 
 func TestDryRunExit_JSON_IgnoresResultsOnlyTransform(t *testing.T) {

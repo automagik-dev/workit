@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 // Auth mode constants.

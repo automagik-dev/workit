@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 func resolveDriveDownloadDestPath(meta *drive.File, outPathFlag string) (string, error) {

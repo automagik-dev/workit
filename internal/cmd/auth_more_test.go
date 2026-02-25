@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/googleauth"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/googleauth"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestAuthKeepCmd_JSON(t *testing.T) {

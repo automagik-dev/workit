@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/secrets"
 )
 
 var openSecretsStoreForAccount = secrets.OpenDefault

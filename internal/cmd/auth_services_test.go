@@ -6,8 +6,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestAuthServices_JSON(t *testing.T) {

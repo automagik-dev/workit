@@ -23,7 +23,7 @@ var tierLevel = map[string]int{
 // alwaysVisibleCommands are utility commands not subject to tier filtering.
 var alwaysVisibleCommands = map[string]bool{
 	"auth": true, "config": true, "time": true, "agent": true,
-	"schema": true, "sync": true, "version": true, "completion": true,
+	"schema": true, "sync": true, "update": true, "version": true, "completion": true,
 	"__complete": true, "exit-codes": true, "open": true,
 	"login": true, "logout": true, "status": true,
 	"me": true, "whoami": true,

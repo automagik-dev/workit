@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/namastexlabs/workit/internal/timeparse"
+	"github.com/automagik-dev/workit/internal/timeparse"
 )
 
 type repeatUnit int

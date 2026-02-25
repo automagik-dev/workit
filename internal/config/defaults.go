@@ -4,9 +4,9 @@ package config
 // Example:
 //
 //	go build -ldflags "\
-//	  -X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=...' \
-//	  -X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=...' \
-//	  -X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=...'"
+//	  -X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=...' \
+//	  -X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=...' \
+//	  -X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=...'"
 var (
 	DefaultClientID       string
 	DefaultClientSecret   string

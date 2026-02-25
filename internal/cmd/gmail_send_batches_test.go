@@ -14,9 +14,9 @@ import (
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/tracking"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/tracking"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestSendGmailBatches_WithTracking(t *testing.T) {

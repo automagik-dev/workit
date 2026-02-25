@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestContactsUpdate_FromFile_JSON_CanClearFields(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/docx"
+	"github.com/automagik-dev/workit/internal/docx"
 )
 
 func TestListTemplates_Empty(t *testing.T) {

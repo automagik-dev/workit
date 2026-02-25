@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // dryRunExit prints the intended operation and exits successfully (exit code 0).

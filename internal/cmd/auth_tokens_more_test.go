@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/secrets"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestAuthTokensExportImport_JSON(t *testing.T) {
