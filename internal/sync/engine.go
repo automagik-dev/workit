@@ -10,7 +10,7 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // Engine orchestrates bidirectional sync between a local folder and Google Drive.
