@@ -4,6 +4,13 @@
 
 (nothing yet)
 
+## 2.260225.2 - 2026-02-25
+
+### Fixed
+- Rebrand closure: update docs site, OAuth templates, and auth-server deployment artifacts from `gog` to `wk`/Workit.
+- Build guidance: make `WK_*` the primary Makefile contract with explicit `GOG_*` compatibility fallback.
+- Release closure: publish this tag from a commit that includes the full rebrand closure file set.
+
 ## 2.260224.1 - 2026-02-24
 
 ### Fixed

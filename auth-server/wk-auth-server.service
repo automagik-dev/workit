@@ -1,22 +1,22 @@
 [Unit]
-Description=gog-cli OAuth Callback Server
+Description=Workit OAuth Callback Server
 After=network.target
-Documentation=https://github.com/automagik-genie/gog-cli
+Documentation=https://github.com/namastexlabs/workit
 
 [Service]
 Type=simple
 User=genie
 Group=genie
-WorkingDirectory=/home/genie/workspace/repos/gog-cli/auth-server
+WorkingDirectory=/home/genie/workspace/repos/workit/auth-server
 
 # Load credentials from env file
-EnvironmentFile=/home/genie/.config/gog/credentials.env
+EnvironmentFile=/home/genie/.config/workit/credentials.env
 
 # Server config
 Environment=PORT=8089
-Environment=REDIRECT_URL=https://gogoauth.namastex.io/callback
+Environment=REDIRECT_URL=https://wkauth.namastex.io/callback
 
-ExecStart=/home/genie/workspace/repos/gog-cli/auth-server/auth-server \
+ExecStart=/home/genie/workspace/repos/workit/auth-server/auth-server \
     --port=${PORT} \
     --redirect-url=${REDIRECT_URL}
 
