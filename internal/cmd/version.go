@@ -19,7 +19,7 @@ var (
 func VersionString() string {
 	v := strings.TrimSpace(version)
 	if v == "" {
-		v = "dev"
+		v = buildVersionDev
 	}
 
 	metadata := make([]string, 0, 3)

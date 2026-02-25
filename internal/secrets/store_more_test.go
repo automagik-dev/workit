@@ -3,6 +3,7 @@ package secrets
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -13,7 +14,10 @@ import (
 	"github.com/automagik-dev/workit/internal/config"
 )
 
-var errTestKeychain = errors.New("test -25308 error")
+var (
+	errTestKeychain       = errors.New("test -25308 error")
+	errKeychainAccessDeny = errors.New("keychain access denied")
+)
 
 func TestKeyringStore_ListDeleteDefault(t *testing.T) {
 	ring := keyring.NewArrayKeyring(nil)
@@ -279,11 +283,13 @@ func slicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -322,6 +328,7 @@ func TestMergeTokenFields(t *testing.T) {
 	if merged.RefreshToken != "new-rt" {
 		t.Fatalf("refresh token: got %q, want %q", merged.RefreshToken, "new-rt")
 	}
+
 	if !merged.CreatedAt.Equal(incoming.CreatedAt) {
 		t.Fatalf("created at: got %v, want %v", merged.CreatedAt, incoming.CreatedAt)
 	}
@@ -383,12 +390,15 @@ func TestMergeTokenFields_EmptyExisting(t *testing.T) {
 	if merged.RefreshToken != "new-rt" {
 		t.Fatalf("refresh token: got %q, want %q", merged.RefreshToken, "new-rt")
 	}
+
 	if merged.Email != "a@b.com" {
 		t.Fatalf("email: got %q, want %q", merged.Email, "a@b.com")
 	}
+
 	if merged.Client != "default" {
 		t.Fatalf("client: got %q, want %q", merged.Client, "default")
 	}
+
 	if !merged.CreatedAt.Equal(incoming.CreatedAt) {
 		t.Fatalf("created at: got %v, want %v", merged.CreatedAt, incoming.CreatedAt)
 	}
@@ -421,9 +431,11 @@ func TestKeyringStore_MergeToken_NewAccount(t *testing.T) {
 	if got.RefreshToken != "rt-new" {
 		t.Fatalf("refresh token: got %q, want %q", got.RefreshToken, "rt-new")
 	}
+
 	if !slicesEqual(got.Services, []string{"drive"}) {
 		t.Fatalf("services: got %v, want %v", got.Services, []string{"drive"})
 	}
+
 	if !slicesEqual(got.Scopes, []string{"scope-a"}) {
 		t.Fatalf("scopes: got %v, want %v", got.Scopes, []string{"scope-a"})
 	}
@@ -442,22 +454,52 @@ func (f *faultyKeyring) Get(key string) (keyring.Item, error) {
 		return keyring.Item{}, f.getError
 	}
 
-	return f.inner.Get(key)
+	item, err := f.inner.Get(key)
+	if err != nil {
+		return keyring.Item{}, fmt.Errorf("inner get %q: %w", key, err)
+	}
+
+	return item, nil
 }
 
 func (f *faultyKeyring) GetMetadata(key string) (keyring.Metadata, error) {
-	return f.inner.GetMetadata(key)
+	metadata, err := f.inner.GetMetadata(key)
+	if err != nil {
+		return keyring.Metadata{}, fmt.Errorf("inner get metadata %q: %w", key, err)
+	}
+
+	return metadata, nil
 }
 
-func (f *faultyKeyring) Set(item keyring.Item) error { return f.inner.Set(item) }
-func (f *faultyKeyring) Remove(key string) error     { return f.inner.Remove(key) }
-func (f *faultyKeyring) Keys() ([]string, error)     { return f.inner.Keys() }
+func (f *faultyKeyring) Set(item keyring.Item) error {
+	if err := f.inner.Set(item); err != nil {
+		return fmt.Errorf("inner set %q: %w", item.Key, err)
+	}
+
+	return nil
+}
+
+func (f *faultyKeyring) Remove(key string) error {
+	if err := f.inner.Remove(key); err != nil {
+		return fmt.Errorf("inner remove %q: %w", key, err)
+	}
+
+	return nil
+}
+
+func (f *faultyKeyring) Keys() ([]string, error) {
+	keys, err := f.inner.Keys()
+	if err != nil {
+		return nil, fmt.Errorf("inner keys: %w", err)
+	}
+
+	return keys, nil
+}
 
 func TestKeyringStore_MergeToken_NonNotFoundError(t *testing.T) {
-	errAccess := errors.New("keychain access denied")
 	ring := &faultyKeyring{
 		inner:    keyring.NewArrayKeyring(nil),
-		getError: errAccess,
+		getError: errKeychainAccessDeny,
 	}
 	store := &KeyringStore{ring: ring}
 	client := config.DefaultClientName
@@ -476,8 +518,8 @@ func TestKeyringStore_MergeToken_NonNotFoundError(t *testing.T) {
 		t.Fatal("expected error from MergeToken when GetToken returns non-ErrKeyNotFound error")
 	}
 
-	if !errors.Is(err, errAccess) {
-		t.Fatalf("expected underlying error %q, got: %v", errAccess, err)
+	if !errors.Is(err, errKeychainAccessDeny) {
+		t.Fatalf("expected underlying error %q, got: %v", errKeychainAccessDeny, err)
 	}
 
 	if !strings.Contains(err.Error(), "merge token") {

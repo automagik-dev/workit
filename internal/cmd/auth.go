@@ -560,48 +560,10 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 		manual = true
 	}
 
-	if c.Remote {
-		step := c.Step
-		if step == 0 {
-			if authURL != "" || authCode != "" {
-				step = 2
-			} else {
-				step = 1
-			}
-		}
-		switch step {
-		case 1:
-			if authURL != "" || authCode != "" {
-				return usage("remote step 1 does not accept --auth-url or --auth-code")
-			}
-			result, manualErr := manualAuthURL(ctx, googleauth.AuthorizeOptions{
-				Services:     services,
-				Scopes:       scopes,
-				Manual:       true,
-				ForceConsent: c.ForceConsent,
-				Client:       client,
-			})
-			if manualErr != nil {
-				return manualErr
-			}
-			if outfmt.IsJSON(ctx) {
-				return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-					"auth_url":     result.URL,
-					"state_reused": result.StateReused,
-				})
-			}
-			u.Out().Printf("auth_url\t%s", result.URL)
-			u.Out().Printf("state_reused\t%t", result.StateReused)
-			u.Err().Println("Run again with --remote --step 2 --auth-url <redirect-url>")
-			return nil
-		case 2:
-			if authCode != "" {
-				return usage("--auth-code is not valid with --remote (state check is mandatory)")
-			}
-			if authURL == "" {
-				return usage("remote step 2 requires --auth-url")
-			}
-		}
+	if shouldContinue, remoteErr := c.handleRemoteAuthStep(ctx, client, services, scopes, authURL, authCode, u); remoteErr != nil {
+		return remoteErr
+	} else if !shouldContinue {
+		return nil
 	}
 
 	timeout := c.Timeout
@@ -695,6 +657,74 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u.Out().Printf("services\t%s", strings.Join(serviceNames, ","))
 	u.Out().Printf("client\t%s", client)
 	return nil
+}
+
+func (c *AuthAddCmd) handleRemoteAuthStep(
+	ctx context.Context,
+	client string,
+	services []googleauth.Service,
+	scopes []string,
+	authURL string,
+	authCode string,
+	u *ui.UI,
+) (bool, error) {
+	if !c.Remote {
+		return true, nil
+	}
+
+	step := c.Step
+	if step == 0 {
+		if authURL != "" || authCode != "" {
+			step = 2
+		} else {
+			step = 1
+		}
+	}
+
+	switch step {
+	case 1:
+		if authURL != "" || authCode != "" {
+			return false, usage("remote step 1 does not accept --auth-url or --auth-code")
+		}
+
+		result, err := manualAuthURL(ctx, googleauth.AuthorizeOptions{
+			Services:     services,
+			Scopes:       scopes,
+			Manual:       true,
+			ForceConsent: c.ForceConsent,
+			Client:       client,
+		})
+		if err != nil {
+			return false, err
+		}
+
+		if outfmt.IsJSON(ctx) {
+			if err := outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+				"auth_url":     result.URL,
+				"state_reused": result.StateReused,
+			}); err != nil {
+				return false, err
+			}
+
+			return false, nil
+		}
+
+		u.Out().Printf("auth_url\t%s", result.URL)
+		u.Out().Printf("state_reused\t%t", result.StateReused)
+		u.Err().Println("Run again with --remote --step 2 --auth-url <redirect-url>")
+
+		return false, nil
+	case 2:
+		if authCode != "" {
+			return false, usage("--auth-code is not valid with --remote (state check is mandatory)")
+		}
+
+		if authURL == "" {
+			return false, usage("remote step 2 requires --auth-url")
+		}
+	}
+
+	return true, nil
 }
 
 func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []googleauth.Service, scopes []string) error {
