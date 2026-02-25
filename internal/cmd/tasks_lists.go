@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/api/tasks/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 type TasksListsCmd struct {

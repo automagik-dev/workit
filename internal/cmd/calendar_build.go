@@ -93,7 +93,7 @@ func buildConferenceData(withMeet bool) *calendar.ConferenceData {
 	}
 	return &calendar.ConferenceData{
 		CreateRequest: &calendar.CreateConferenceRequest{
-			RequestId: fmt.Sprintf("gogcli-%d", time.Now().UnixNano()),
+			RequestId: fmt.Sprintf("workit-%d", time.Now().UnixNano()),
 			ConferenceSolutionKey: &calendar.ConferenceSolutionKey{
 				Type: "hangoutsMeet",
 			},

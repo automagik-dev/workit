@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPLOY_DIR="/opt/gog-auth-server"
+DEPLOY_DIR="/opt/wk-auth-server"
 
 echo "Building auth-server..."
 cd "$SCRIPT_DIR"
@@ -15,8 +15,8 @@ sudo chmod 755 "$DEPLOY_DIR/auth-server"
 
 echo "Starting with PM2..."
 cd "$DEPLOY_DIR"
-pm2 stop gog-auth-server 2>/dev/null || true
-pm2 delete gog-auth-server 2>/dev/null || true
+pm2 stop wk-auth-server 2>/dev/null || true
+pm2 delete wk-auth-server 2>/dev/null || true
 pm2 start ecosystem.config.js
 pm2 save
 

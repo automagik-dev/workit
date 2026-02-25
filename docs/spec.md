@@ -1,4 +1,4 @@
-# gogcli spec
+# workit spec
 
 ## Goal
 
@@ -36,7 +36,7 @@ This replaces the existing separate CLIs (`gmcli`, `gccli`, `gdcli`) and the Pyt
 ## CLI framework
 
 - `github.com/alecthomas/kong`
-- Root command: `gog`
+- Root command: `wk`
 - Global flag:
   - `--color=auto|always|never` (default `auto`)
   - `--json` (JSON output to stdout)
@@ -52,9 +52,9 @@ Notes:
 
 Environment:
 
-- `GOG_COLOR=auto|always|never` (default `auto`, overridden by `--color`)
-- `GOG_JSON=1` (default JSON output; overridden by flags)
-- `GOG_PLAIN=1` (default plain output; overridden by flags)
+- `WK_COLOR=auto|always|never` (default `auto`, overridden by `--color`)
+- `WK_JSON=1` (default JSON output; overridden by flags)
+- `WK_PLAIN=1` (default plain output; overridden by flags)
 
 ## Output (TTY-aware colors)
 
@@ -73,13 +73,13 @@ Implementation: `internal/ui/ui.go`.
 ### OAuth client credentials (non-secret-ish)
 
 - Stored on disk in the per-user config directory:
-  - `$(os.UserConfigDir())/gogcli/credentials.json` (default client)
-  - `$(os.UserConfigDir())/gogcli/credentials-<client>.json` (named clients)
+  - `$(os.UserConfigDir())/workit/credentials.json` (default client)
+  - `$(os.UserConfigDir())/workit/credentials-<client>.json` (named clients)
 - Written with mode `0600`.
 - Command:
-  - `gog auth credentials <credentials.json>`
-  - `gog --client <name> auth credentials <credentials.json>`
-  - `gog auth credentials list`
+  - `wk auth credentials <credentials.json>`
+  - `wk --client <name> auth credentials <credentials.json>`
+  - `wk auth credentials list`
 - Supports Google’s downloaded JSON format:
   - `installed.client_id/client_secret` or `web.client_id/client_secret`
 
@@ -88,18 +88,18 @@ Implementation: `internal/config/*`.
 ### Refresh tokens (secrets)
 
 - Stored in OS credential store via `github.com/99designs/keyring`.
-- Key namespace is `gogcli` (keyring `ServiceName`).
+- Key namespace is `workit` (keyring `ServiceName`).
 - Key format: `token:<client>:<email>` (default client uses `token:default:<email>`)
 - Legacy key format: `token:<email>` (migrated on first read)
 - Stored payload is JSON (refresh token + metadata like selected services/scopes).
 - Fallback: if no OS credential store is available, keyring may use its encrypted "file" backend:
-  - Directory: `$(os.UserConfigDir())/gogcli/keyring/` (one file per key)
-  - Password: prompts on TTY; for non-interactive runs set `GOG_KEYRING_PASSWORD`
+  - Directory: `$(os.UserConfigDir())/workit/keyring/` (one file per key)
+  - Password: prompts on TTY; for non-interactive runs set `WK_KEYRING_PASSWORD`
 
 Current minimal management commands (implemented):
 
-- `gog auth tokens list` (keys only)
-- `gog auth tokens delete <email>`
+- `wk auth tokens list` (keys only)
+- `wk auth tokens delete <email>`
 
 Implementation: `internal/secrets/store.go`.
 
@@ -108,7 +108,7 @@ Implementation: `internal/secrets/store.go`.
 - Desktop OAuth 2.0 flow using local HTTP redirect on an ephemeral port.
 - Supports a browserless/manual flow (paste redirect URL) for headless environments.
 - Supports a remote/server-friendly 2-step manual flow:
-  - Step 1 prints an auth URL (`gog auth add ... --remote --step 1`)
+  - Step 1 prints an auth URL (`wk auth add ... --remote --step 1`)
   - Step 2 exchanges the pasted redirect URL and requires `state` validation (`--remote --step 2 --auth-url ...`)
 - Refresh token issuance:
   - requests `access_type=offline`
@@ -119,11 +119,11 @@ Scope selection note:
 
 - The consent screen shows the scopes the CLI requested.
 - Users cannot selectively un-check individual requested scopes in the consent screen; they either approve all requested scopes or cancel.
-- To request fewer scopes, choose fewer services via `gog auth add --services ...` or use `gog auth add --readonly` where applicable.
+- To request fewer scopes, choose fewer services via `wk auth add --services ...` or use `wk auth add --readonly` where applicable.
 
 ## Config layout
 
-- Base config dir: `$(os.UserConfigDir())/gogcli/`
+- Base config dir: `$(os.UserConfigDir())/workit/`
 - Files:
   - `config.json` (JSON5; comments and trailing commas allowed)
   - `credentials.json` (OAuth client id/secret; default client)
@@ -138,15 +138,15 @@ We intentionally avoid storing refresh tokens in plain JSON on disk.
 
 Environment:
 
-- `GOG_ACCOUNT=you@gmail.com` (email or alias; used when `--account` is not set; otherwise uses keyring default or a single stored token)
-- `GOG_CLIENT=work` (select OAuth client bucket; see `--client`)
-- `GOG_KEYRING_PASSWORD=...` (used when keyring falls back to encrypted file backend in non-interactive environments)
-- `GOG_KEYRING_BACKEND={auto|keychain|file}` (force backend; use `file` to avoid Keychain prompts and pair with `GOG_KEYRING_PASSWORD` for non-interactive)
-- `GOG_TIMEZONE=America/New_York` (default output timezone; IANA name or `UTC`; `local` forces local timezone)
-- `GOG_ENABLE_COMMANDS=calendar,tasks` (optional allowlist of top-level commands)
+- `WK_ACCOUNT=you@gmail.com` (email or alias; used when `--account` is not set; otherwise uses keyring default or a single stored token)
+- `WK_CLIENT=work` (select OAuth client bucket; see `--client`)
+- `WK_KEYRING_PASSWORD=...` (used when keyring falls back to encrypted file backend in non-interactive environments)
+- `WK_KEYRING_BACKEND={auto|keychain|file}` (force backend; use `file` to avoid Keychain prompts and pair with `WK_KEYRING_PASSWORD` for non-interactive)
+- `WK_TIMEZONE=America/New_York` (default output timezone; IANA name or `UTC`; `local` forces local timezone)
+- `WK_ENABLE_COMMANDS=calendar,tasks` (optional allowlist of top-level commands)
 - `config.json` can also set `keyring_backend` (JSON5; env vars take precedence)
 - `config.json` can also set `default_timezone` (IANA name or `UTC`)
-- `config.json` can also set `account_aliases` for `gog auth alias` (JSON5)
+- `config.json` can also set `account_aliases` for `wk auth alias` (JSON5)
 - `config.json` can also set `account_clients` (email -> client) and `client_domains` (domain -> client)
 
 Flag aliases:
@@ -157,163 +157,163 @@ Flag aliases:
 
 ### Implemented
 
-- `gog auth credentials <credentials.json|->`
-- `gog auth credentials list`
-- `gog --client <name> auth credentials <credentials.json|->`
-- `gog auth add <email> [--services user|all|gmail,calendar,classroom,drive,docs,contacts,tasks,sheets,people,groups] [--readonly] [--drive-scope full|readonly|file] [--manual] [--remote] [--step 1|2] [--auth-url URL] [--timeout DURATION] [--force-consent]`
-- `gog auth services [--markdown]`
-- `gog auth keep <email> --key <service-account.json>` (Google Keep; Workspace only)
-- `gog auth list`
-- `gog auth alias list`
-- `gog auth alias set <alias> <email>`
-- `gog auth alias unset <alias>`
-- `gog auth status`
-- `gog auth remove <email>`
-- `gog auth tokens list`
-- `gog auth tokens delete <email>`
-- `gog config get <key>`
-- `gog config keys`
-- `gog config list`
-- `gog config path`
-- `gog config set <key> <value>`
-- `gog config unset <key>`
-- `gog version`
-- `gog drive ls [--parent ID] [--max N] [--page TOKEN] [--query Q] [--[no-]all-drives]`
-- `gog drive search <text> [--raw-query] [--max N] [--page TOKEN] [--[no-]all-drives]`
-- `gog drive get <fileId>`
-- `gog drive download <fileId> [--out PATH] [--format F]` (`--format` only applies to Google Workspace files)
-- `gog drive upload <localPath> [--name N] [--parent ID] [--convert] [--convert-to doc|sheet|slides]`
-- `gog drive mkdir <name> [--parent ID]`
-- `gog drive delete <fileId> [--permanent]`
-- `gog drive move <fileId> --parent ID`
-- `gog drive rename <fileId> <newName>`
-- `gog drive share <fileId> --to anyone|user|domain [--email addr] [--domain example.com] [--role reader|writer] [--discoverable]`
-- `gog drive permissions <fileId> [--max N] [--page TOKEN]`
-- `gog drive unshare <fileId> <permissionId>`
-- `gog drive url <fileIds...>`
-- `gog drive drives [--max N] [--page TOKEN] [--query Q]`
-- `gog calendar calendars`
-- `gog calendar acl <calendarId>`
-- `gog calendar events <calendarId> [--from RFC3339] [--to RFC3339] [--max N] [--page TOKEN] [--query Q] [--weekday]`
-- `gog calendar event|get <calendarId> <eventId>`
-- `GOG_CALENDAR_WEEKDAY=1` defaults `--weekday` for `gog calendar events`
-- `gog calendar create <calendarId> --summary S --from DT --to DT [--description D] [--location L] [--attendees a@b.com,c@d.com] [--all-day] [--event-type TYPE]`
-- `gog calendar update <calendarId> <eventId> [--summary S] [--from DT] [--to DT] [--description D] [--location L] [--attendees ...] [--add-attendee ...] [--all-day] [--event-type TYPE]`
-- `gog calendar delete <calendarId> <eventId>`
-- `gog calendar freebusy <calendarIds> --from RFC3339 --to RFC3339`
-- `gog calendar respond <calendarId> <eventId> --status accepted|declined|tentative [--send-updates all|none|externalOnly]`
-- `gog time now [--timezone TZ]`
-- `gog classroom courses [--state ...] [--max N] [--page TOKEN]`
-- `gog classroom courses get <courseId>`
-- `gog classroom courses create --name NAME [--owner me] [--state ACTIVE|...]`
-- `gog classroom courses update <courseId> [--name ...] [--state ...]`
-- `gog classroom courses delete <courseId>`
-- `gog classroom courses archive <courseId>`
-- `gog classroom courses unarchive <courseId>`
-- `gog classroom courses join <courseId> [--role student|teacher] [--user me]`
-- `gog classroom courses leave <courseId> [--role student|teacher] [--user me]`
-- `gog classroom courses url <courseId...>`
-- `gog classroom students <courseId> [--max N] [--page TOKEN]`
-- `gog classroom students get <courseId> <userId>`
-- `gog classroom students add <courseId> <userId> [--enrollment-code CODE]`
-- `gog classroom students remove <courseId> <userId>`
-- `gog classroom teachers <courseId> [--max N] [--page TOKEN]`
-- `gog classroom teachers get <courseId> <userId>`
-- `gog classroom teachers add <courseId> <userId>`
-- `gog classroom teachers remove <courseId> <userId>`
-- `gog classroom roster <courseId> [--students] [--teachers]`
-- `gog classroom coursework <courseId> [--state ...] [--topic TOPIC_ID] [--scan-pages N] [--max N] [--page TOKEN]`
-- `gog classroom coursework get <courseId> <courseworkId>`
-- `gog classroom coursework create <courseId> --title TITLE [--type ASSIGNMENT|...]`
-- `gog classroom coursework update <courseId> <courseworkId> [--title ...]`
-- `gog classroom coursework delete <courseId> <courseworkId>`
-- `gog classroom coursework assignees <courseId> <courseworkId> [--mode ...] [--add-student ...]`
-- `gog classroom materials <courseId> [--state ...] [--topic TOPIC_ID] [--scan-pages N] [--max N] [--page TOKEN]`
-- `gog classroom materials get <courseId> <materialId>`
-- `gog classroom materials create <courseId> --title TITLE`
-- `gog classroom materials update <courseId> <materialId> [--title ...]`
-- `gog classroom materials delete <courseId> <materialId>`
-- `gog classroom submissions <courseId> <courseworkId> [--state ...] [--max N] [--page TOKEN]`
-- `gog classroom submissions get <courseId> <courseworkId> <submissionId>`
-- `gog classroom submissions turn-in <courseId> <courseworkId> <submissionId>`
-- `gog classroom submissions reclaim <courseId> <courseworkId> <submissionId>`
-- `gog classroom submissions return <courseId> <courseworkId> <submissionId>`
-- `gog classroom submissions grade <courseId> <courseworkId> <submissionId> [--draft N] [--assigned N]`
-- `gog classroom announcements <courseId> [--state ...] [--max N] [--page TOKEN]`
-- `gog classroom announcements get <courseId> <announcementId>`
-- `gog classroom announcements create <courseId> --text TEXT`
-- `gog classroom announcements update <courseId> <announcementId> [--text ...]`
-- `gog classroom announcements delete <courseId> <announcementId>`
-- `gog classroom announcements assignees <courseId> <announcementId> [--mode ...]`
-- `gog classroom topics <courseId> [--max N] [--page TOKEN]`
-- `gog classroom topics get <courseId> <topicId>`
-- `gog classroom topics create <courseId> --name NAME`
-- `gog classroom topics update <courseId> <topicId> --name NAME`
-- `gog classroom topics delete <courseId> <topicId>`
-- `gog classroom invitations [--course ID] [--user ID]`
-- `gog classroom invitations get <invitationId>`
-- `gog classroom invitations create <courseId> <userId> --role STUDENT|TEACHER|OWNER`
-- `gog classroom invitations accept <invitationId>`
-- `gog classroom invitations delete <invitationId>`
-- `gog classroom guardians <studentId> [--max N] [--page TOKEN]`
-- `gog classroom guardians get <studentId> <guardianId>`
-- `gog classroom guardians delete <studentId> <guardianId>`
-- `gog classroom guardian-invitations <studentId> [--state ...] [--max N] [--page TOKEN]`
-- `gog classroom guardian-invitations get <studentId> <invitationId>`
-- `gog classroom guardian-invitations create <studentId> --email EMAIL`
-- `gog classroom profile [userId]`
-- `gog gmail search <query> [--max N] [--page TOKEN]`
-- `gog gmail messages search <query> [--max N] [--page TOKEN] [--include-body]`
-- `gog gmail thread get <threadId> [--download]`
-- `gog gmail thread modify <threadId> [--add ...] [--remove ...]`
-- `gog gmail get <messageId> [--format full|metadata|raw] [--headers ...]`
-- `gog gmail attachment <messageId> <attachmentId> [--out PATH] [--name NAME]`
-- `gog gmail url <threadIds...>`
-- `gog gmail labels list`
-- `gog gmail labels get <labelIdOrName>`
-- `gog gmail labels create <name>`
-- `gog gmail labels modify <threadIds...> [--add ...] [--remove ...]`
-- `gog gmail send --to a@b.com --subject S [--body B] [--body-html H] [--cc ...] [--bcc ...] [--reply-to-message-id <messageId>] [--reply-to addr] [--attach <file>...]`
-- `gog gmail drafts list [--max N] [--page TOKEN]`
-- `gog gmail drafts get <draftId> [--download]`
-- `gog gmail drafts create --subject S [--to a@b.com] [--body B] [--body-html H] [--cc ...] [--bcc ...] [--reply-to-message-id <messageId>] [--reply-to addr] [--attach <file>...]`
-- `gog gmail drafts update <draftId> --subject S [--to a@b.com] [--body B] [--body-html H] [--cc ...] [--bcc ...] [--reply-to-message-id <messageId>] [--reply-to addr] [--attach <file>...]`
-- `gog gmail drafts send <draftId>`
-- `gog gmail drafts delete <draftId>`
-- `gog gmail watch start|status|renew|stop|serve`
-- `gog gmail history --since <historyId>`
-- `gog chat spaces list [--max N] [--page TOKEN]`
-- `gog chat spaces find <displayName> [--max N]`
-- `gog chat spaces create <displayName> [--member email,...]`
-- `gog chat messages list <space> [--max N] [--page TOKEN] [--order ORDER] [--thread THREAD] [--unread]`
-- `gog chat messages send <space> --text TEXT [--thread THREAD]`
-- `gog chat threads list <space> [--max N] [--page TOKEN]`
-- `gog chat dm space <email>`
-- `gog chat dm send <email> --text TEXT [--thread THREAD]`
-- `gog tasks lists [--max N] [--page TOKEN]`
-- `gog tasks lists create <title>`
-- `gog tasks list <tasklistId> [--max N] [--page TOKEN]`
-- `gog tasks get <tasklistId> <taskId>`
-- `gog tasks add <tasklistId> --title T [--notes N] [--due RFC3339|YYYY-MM-DD] [--repeat daily|weekly|monthly|yearly] [--repeat-count N] [--repeat-until DT] [--parent ID] [--previous ID]`
-- `gog tasks update <tasklistId> <taskId> [--title T] [--notes N] [--due RFC3339|YYYY-MM-DD] [--status needsAction|completed]`
-- `gog tasks done <tasklistId> <taskId>`
-- `gog tasks undo <tasklistId> <taskId>`
-- `gog tasks delete <tasklistId> <taskId>`
-- `gog tasks clear <tasklistId>`
-- `gog contacts search <query> [--max N]`
-- `gog contacts list [--max N] [--page TOKEN]`
-- `gog contacts get <people/...|email>`
-- `gog contacts create --given NAME [--family NAME] [--email addr] [--phone num]`
-- `gog contacts update <people/...> [--given NAME] [--family NAME] [--email addr] [--phone num] [--birthday YYYY-MM-DD] [--notes TEXT] [--from-file PATH|-] [--ignore-etag]`
-- `gog contacts delete <people/...>`
-- `gog contacts directory list [--max N] [--page TOKEN]`
-- `gog contacts directory search <query> [--max N] [--page TOKEN]`
-- `gog contacts other list [--max N] [--page TOKEN]`
-- `gog contacts other search <query> [--max N]`
-- `gog people me`
-- `gog people get <people/...|userId>`
-- `gog people search <query> [--max N] [--page TOKEN]`
-- `gog people relations [<people/...|userId>] [--type TYPE]`
+- `wk auth credentials <credentials.json|->`
+- `wk auth credentials list`
+- `wk --client <name> auth credentials <credentials.json|->`
+- `wk auth add <email> [--services user|all|gmail,calendar,classroom,drive,docs,contacts,tasks,sheets,people,groups] [--readonly] [--drive-scope full|readonly|file] [--manual] [--remote] [--step 1|2] [--auth-url URL] [--timeout DURATION] [--force-consent]`
+- `wk auth services [--markdown]`
+- `wk auth keep <email> --key <service-account.json>` (Google Keep; Workspace only)
+- `wk auth list`
+- `wk auth alias list`
+- `wk auth alias set <alias> <email>`
+- `wk auth alias unset <alias>`
+- `wk auth status`
+- `wk auth remove <email>`
+- `wk auth tokens list`
+- `wk auth tokens delete <email>`
+- `wk config get <key>`
+- `wk config keys`
+- `wk config list`
+- `wk config path`
+- `wk config set <key> <value>`
+- `wk config unset <key>`
+- `wk version`
+- `wk drive ls [--parent ID] [--max N] [--page TOKEN] [--query Q] [--[no-]all-drives]`
+- `wk drive search <text> [--raw-query] [--max N] [--page TOKEN] [--[no-]all-drives]`
+- `wk drive get <fileId>`
+- `wk drive download <fileId> [--out PATH] [--format F]` (`--format` only applies to Google Workspace files)
+- `wk drive upload <localPath> [--name N] [--parent ID] [--convert] [--convert-to doc|sheet|slides]`
+- `wk drive mkdir <name> [--parent ID]`
+- `wk drive delete <fileId> [--permanent]`
+- `wk drive move <fileId> --parent ID`
+- `wk drive rename <fileId> <newName>`
+- `wk drive share <fileId> --to anyone|user|domain [--email addr] [--domain example.com] [--role reader|writer] [--discoverable]`
+- `wk drive permissions <fileId> [--max N] [--page TOKEN]`
+- `wk drive unshare <fileId> <permissionId>`
+- `wk drive url <fileIds...>`
+- `wk drive drives [--max N] [--page TOKEN] [--query Q]`
+- `wk calendar calendars`
+- `wk calendar acl <calendarId>`
+- `wk calendar events <calendarId> [--from RFC3339] [--to RFC3339] [--max N] [--page TOKEN] [--query Q] [--weekday]`
+- `wk calendar event|get <calendarId> <eventId>`
+- `WK_CALENDAR_WEEKDAY=1` defaults `--weekday` for `wk calendar events`
+- `wk calendar create <calendarId> --summary S --from DT --to DT [--description D] [--location L] [--attendees a@b.com,c@d.com] [--all-day] [--event-type TYPE]`
+- `wk calendar update <calendarId> <eventId> [--summary S] [--from DT] [--to DT] [--description D] [--location L] [--attendees ...] [--add-attendee ...] [--all-day] [--event-type TYPE]`
+- `wk calendar delete <calendarId> <eventId>`
+- `wk calendar freebusy <calendarIds> --from RFC3339 --to RFC3339`
+- `wk calendar respond <calendarId> <eventId> --status accepted|declined|tentative [--send-updates all|none|externalOnly]`
+- `wk time now [--timezone TZ]`
+- `wk classroom courses [--state ...] [--max N] [--page TOKEN]`
+- `wk classroom courses get <courseId>`
+- `wk classroom courses create --name NAME [--owner me] [--state ACTIVE|...]`
+- `wk classroom courses update <courseId> [--name ...] [--state ...]`
+- `wk classroom courses delete <courseId>`
+- `wk classroom courses archive <courseId>`
+- `wk classroom courses unarchive <courseId>`
+- `wk classroom courses join <courseId> [--role student|teacher] [--user me]`
+- `wk classroom courses leave <courseId> [--role student|teacher] [--user me]`
+- `wk classroom courses url <courseId...>`
+- `wk classroom students <courseId> [--max N] [--page TOKEN]`
+- `wk classroom students get <courseId> <userId>`
+- `wk classroom students add <courseId> <userId> [--enrollment-code CODE]`
+- `wk classroom students remove <courseId> <userId>`
+- `wk classroom teachers <courseId> [--max N] [--page TOKEN]`
+- `wk classroom teachers get <courseId> <userId>`
+- `wk classroom teachers add <courseId> <userId>`
+- `wk classroom teachers remove <courseId> <userId>`
+- `wk classroom roster <courseId> [--students] [--teachers]`
+- `wk classroom coursework <courseId> [--state ...] [--topic TOPIC_ID] [--scan-pages N] [--max N] [--page TOKEN]`
+- `wk classroom coursework get <courseId> <courseworkId>`
+- `wk classroom coursework create <courseId> --title TITLE [--type ASSIGNMENT|...]`
+- `wk classroom coursework update <courseId> <courseworkId> [--title ...]`
+- `wk classroom coursework delete <courseId> <courseworkId>`
+- `wk classroom coursework assignees <courseId> <courseworkId> [--mode ...] [--add-student ...]`
+- `wk classroom materials <courseId> [--state ...] [--topic TOPIC_ID] [--scan-pages N] [--max N] [--page TOKEN]`
+- `wk classroom materials get <courseId> <materialId>`
+- `wk classroom materials create <courseId> --title TITLE`
+- `wk classroom materials update <courseId> <materialId> [--title ...]`
+- `wk classroom materials delete <courseId> <materialId>`
+- `wk classroom submissions <courseId> <courseworkId> [--state ...] [--max N] [--page TOKEN]`
+- `wk classroom submissions get <courseId> <courseworkId> <submissionId>`
+- `wk classroom submissions turn-in <courseId> <courseworkId> <submissionId>`
+- `wk classroom submissions reclaim <courseId> <courseworkId> <submissionId>`
+- `wk classroom submissions return <courseId> <courseworkId> <submissionId>`
+- `wk classroom submissions grade <courseId> <courseworkId> <submissionId> [--draft N] [--assigned N]`
+- `wk classroom announcements <courseId> [--state ...] [--max N] [--page TOKEN]`
+- `wk classroom announcements get <courseId> <announcementId>`
+- `wk classroom announcements create <courseId> --text TEXT`
+- `wk classroom announcements update <courseId> <announcementId> [--text ...]`
+- `wk classroom announcements delete <courseId> <announcementId>`
+- `wk classroom announcements assignees <courseId> <announcementId> [--mode ...]`
+- `wk classroom topics <courseId> [--max N] [--page TOKEN]`
+- `wk classroom topics get <courseId> <topicId>`
+- `wk classroom topics create <courseId> --name NAME`
+- `wk classroom topics update <courseId> <topicId> --name NAME`
+- `wk classroom topics delete <courseId> <topicId>`
+- `wk classroom invitations [--course ID] [--user ID]`
+- `wk classroom invitations get <invitationId>`
+- `wk classroom invitations create <courseId> <userId> --role STUDENT|TEACHER|OWNER`
+- `wk classroom invitations accept <invitationId>`
+- `wk classroom invitations delete <invitationId>`
+- `wk classroom guardians <studentId> [--max N] [--page TOKEN]`
+- `wk classroom guardians get <studentId> <guardianId>`
+- `wk classroom guardians delete <studentId> <guardianId>`
+- `wk classroom guardian-invitations <studentId> [--state ...] [--max N] [--page TOKEN]`
+- `wk classroom guardian-invitations get <studentId> <invitationId>`
+- `wk classroom guardian-invitations create <studentId> --email EMAIL`
+- `wk classroom profile [userId]`
+- `wk gmail search <query> [--max N] [--page TOKEN]`
+- `wk gmail messages search <query> [--max N] [--page TOKEN] [--include-body]`
+- `wk gmail thread get <threadId> [--download]`
+- `wk gmail thread modify <threadId> [--add ...] [--remove ...]`
+- `wk gmail get <messageId> [--format full|metadata|raw] [--headers ...]`
+- `wk gmail attachment <messageId> <attachmentId> [--out PATH] [--name NAME]`
+- `wk gmail url <threadIds...>`
+- `wk gmail labels list`
+- `wk gmail labels get <labelIdOrName>`
+- `wk gmail labels create <name>`
+- `wk gmail labels modify <threadIds...> [--add ...] [--remove ...]`
+- `wk gmail send --to a@b.com --subject S [--body B] [--body-html H] [--cc ...] [--bcc ...] [--reply-to-message-id <messageId>] [--reply-to addr] [--attach <file>...]`
+- `wk gmail drafts list [--max N] [--page TOKEN]`
+- `wk gmail drafts get <draftId> [--download]`
+- `wk gmail drafts create --subject S [--to a@b.com] [--body B] [--body-html H] [--cc ...] [--bcc ...] [--reply-to-message-id <messageId>] [--reply-to addr] [--attach <file>...]`
+- `wk gmail drafts update <draftId> --subject S [--to a@b.com] [--body B] [--body-html H] [--cc ...] [--bcc ...] [--reply-to-message-id <messageId>] [--reply-to addr] [--attach <file>...]`
+- `wk gmail drafts send <draftId>`
+- `wk gmail drafts delete <draftId>`
+- `wk gmail watch start|status|renew|stop|serve`
+- `wk gmail history --since <historyId>`
+- `wk chat spaces list [--max N] [--page TOKEN]`
+- `wk chat spaces find <displayName> [--max N]`
+- `wk chat spaces create <displayName> [--member email,...]`
+- `wk chat messages list <space> [--max N] [--page TOKEN] [--order ORDER] [--thread THREAD] [--unread]`
+- `wk chat messages send <space> --text TEXT [--thread THREAD]`
+- `wk chat threads list <space> [--max N] [--page TOKEN]`
+- `wk chat dm space <email>`
+- `wk chat dm send <email> --text TEXT [--thread THREAD]`
+- `wk tasks lists [--max N] [--page TOKEN]`
+- `wk tasks lists create <title>`
+- `wk tasks list <tasklistId> [--max N] [--page TOKEN]`
+- `wk tasks get <tasklistId> <taskId>`
+- `wk tasks add <tasklistId> --title T [--notes N] [--due RFC3339|YYYY-MM-DD] [--repeat daily|weekly|monthly|yearly] [--repeat-count N] [--repeat-until DT] [--parent ID] [--previous ID]`
+- `wk tasks update <tasklistId> <taskId> [--title T] [--notes N] [--due RFC3339|YYYY-MM-DD] [--status needsAction|completed]`
+- `wk tasks done <tasklistId> <taskId>`
+- `wk tasks undo <tasklistId> <taskId>`
+- `wk tasks delete <tasklistId> <taskId>`
+- `wk tasks clear <tasklistId>`
+- `wk contacts search <query> [--max N]`
+- `wk contacts list [--max N] [--page TOKEN]`
+- `wk contacts get <people/...|email>`
+- `wk contacts create --given NAME [--family NAME] [--email addr] [--phone num]`
+- `wk contacts update <people/...> [--given NAME] [--family NAME] [--email addr] [--phone num] [--birthday YYYY-MM-DD] [--notes TEXT] [--from-file PATH|-] [--ignore-etag]`
+- `wk contacts delete <people/...>`
+- `wk contacts directory list [--max N] [--page TOKEN]`
+- `wk contacts directory search <query> [--max N] [--page TOKEN]`
+- `wk contacts other list [--max N] [--page TOKEN]`
+- `wk contacts other search <query> [--max N]`
+- `wk people me`
+- `wk people get <people/...|userId>`
+- `wk people search <query> [--max N] [--page TOKEN]`
+- `wk people relations [<people/...|userId>] [--type TYPE]`
 
 Date/time input conventions (shared parser):
 
@@ -325,17 +325,17 @@ Date/time input conventions (shared parser):
 
 ### Planned high-level command tree
 
-- `gog auth …`
-  - `gog auth credentials <credentials.json>`
-  - `gog auth credentials list`
-  - `gog --client <name> auth credentials <credentials.json>`
-- `gog gmail …`
-- `gog chat …`
-- `gog calendar …`
-- `gog drive …`
-- `gog contacts …`
-- `gog tasks …`
-- `gog people …`
+- `wk auth …`
+  - `wk auth credentials <credentials.json>`
+  - `wk auth credentials list`
+  - `wk --client <name> auth credentials <credentials.json>`
+- `wk gmail …`
+- `wk chat …`
+- `wk calendar …`
+- `wk drive …`
+- `wk contacts …`
+- `wk tasks …`
+- `wk people …`
 
 Planned service identifiers (canonical):
 
@@ -363,9 +363,9 @@ Planned service identifiers (canonical):
 
 We store a single refresh token per Google account email.
 
-- `gog auth add` requests a union of scopes based on `--services`.
+- `wk auth add` requests a union of scopes based on `--services`.
 - Each API client refreshes an access token for the subset of scopes needed for that service.
-- If you later want additional services, re-run `gog auth add <email> --services ...` (may require `--force-consent` to mint a new refresh token).
+- If you later want additional services, re-run `wk auth add <email> --services ...` (may require `--force-consent` to mint a new refresh token).
 
 - Gmail: `https://mail.google.com/` (or narrower scopes if we decide later)
 - Calendar: `https://www.googleapis.com/auth/calendar`
@@ -396,7 +396,7 @@ We avoid heavy table deps unless we decide we need them.
 
 ## Code layout (current)
 
-- `cmd/gog/main.go` — binary entrypoint
+- `cmd/wk/main.go` — binary entrypoint
 - `internal/cmd/*` — kong command structs
 - `internal/ui/*` — color + printing
 - `internal/config/*` — config paths + credential parsing/writing
@@ -432,11 +432,11 @@ Commands:
 There is an opt-in integration test suite guarded by build tags (not run in CI).
 
 - Requires:
-  - stored `credentials.json` (or `credentials-<client>.json`) via `gog auth credentials ...`
-  - refresh token in keyring via `gog auth add <email>`
+  - stored `credentials.json` (or `credentials-<client>.json`) via `wk auth credentials ...`
+  - refresh token in keyring via `wk auth add <email>`
 - Run:
-  - `GOG_IT_ACCOUNT=you@gmail.com go test -tags=integration ./internal/integration`
-  - optional: `GOG_CLIENT=work` to select a non-default OAuth client
+  - `WK_IT_ACCOUNT=you@gmail.com go test -tags=integration ./internal/integration`
+  - optional: `WK_CLIENT=work` to select a non-default OAuth client
 
 ## CI (GitHub Actions)
 

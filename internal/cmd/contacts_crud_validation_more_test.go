@@ -7,7 +7,7 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func parseContactsKong(t *testing.T, cmd any, args []string) *kong.Context {

@@ -1,6 +1,6 @@
 # Headless OAuth Authentication
 
-gog-cli supports a headless OAuth flow designed for AI agents and automation. Users authenticate on any device (like a mobile phone), and the CLI retrieves the token automatically.
+workit supports a headless OAuth flow designed for AI agents and automation. Users authenticate on any device (like a mobile phone), and the CLI retrieves the token automatically.
 
 ## How It Works
 
@@ -31,14 +31,14 @@ gog-cli supports a headless OAuth flow designed for AI agents and automation. Us
 
 ```bash
 # Standard OAuth with browser popup
-gog auth add you@gmail.com --services=user
+wk auth add you@gmail.com --services=user
 ```
 
 ### Headless Mode (For Agents)
 
 ```bash
 # Generate auth URL without opening browser
-gog auth add you@gmail.com --headless --services=user
+wk auth add you@gmail.com --headless --services=user
 
 # Output:
 # Visit this URL to authorize:
@@ -55,16 +55,16 @@ gog auth add you@gmail.com --headless --services=user
 
 ```bash
 # Just output the URL, don't poll (for async workflows)
-gog auth add you@gmail.com --headless --no-poll --services=user
+wk auth add you@gmail.com --headless --no-poll --services=user
 
 # Later, poll manually:
-gog auth poll abc123xyz
+wk auth poll abc123xyz
 ```
 
 ### JSON Output
 
 ```bash
-gog auth add you@gmail.com --headless --json
+wk auth add you@gmail.com --headless --json
 
 # Output:
 {
@@ -82,16 +82,16 @@ gog auth add you@gmail.com --headless --json
 The callback server URL can be configured in order of precedence:
 
 1. **Flag**: `--callback-server=https://auth.example.com`
-2. **Environment**: `GOG_CALLBACK_SERVER=https://auth.example.com`
+2. **Environment**: `WK_CALLBACK_SERVER=https://auth.example.com`
 3. **Build-time default**: Compiled into binary with `-ldflags`
 
 ### OAuth Credentials
 
 For headless mode, OAuth credentials are resolved in order:
 
-1. **File**: `~/.config/gog/credentials.json` (standard flow)
+1. **File**: `~/.config/workit/credentials.json` (standard flow)
 2. **Build-time defaults**: Compiled into binary with `-ldflags`
-3. **Environment**: `GOG_CLIENT_ID` and `GOG_CLIENT_SECRET`
+3. **Environment**: `WK_CLIENT_ID` and `WK_CLIENT_SECRET`
 
 ## Troubleshooting
 
@@ -99,14 +99,14 @@ For headless mode, OAuth credentials are resolved in order:
 
 Set the callback server URL:
 ```bash
-export GOG_CALLBACK_SERVER=https://auth.namastex.io
+export WK_CALLBACK_SERVER=https://auth.namastex.io
 ```
 
 ### "timeout waiting for token"
 
 The user didn't complete authentication within the timeout (default 5 minutes). Try again with a longer timeout:
 ```bash
-gog auth add you@gmail.com --headless --poll-timeout=10m
+wk auth add you@gmail.com --headless --poll-timeout=10m
 ```
 
 ### "token has already been retrieved"

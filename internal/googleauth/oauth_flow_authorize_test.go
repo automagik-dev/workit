@@ -15,7 +15,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/workit/internal/config"
 )
 
 var errMissingRedirectState = errors.New("missing redirect/state")

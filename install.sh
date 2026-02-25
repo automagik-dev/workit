@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
-# gog-cli Local Developer Install
+# workit Local Developer Install
 #
 # Run this AFTER cloning the repo. It builds the binary and optionally
 # installs it to your PATH (~/.local/bin).
 #
 # Usage:
 #   ./install.sh                  # build + install to ~/.local/bin
-#   ./install.sh --no-install     # build only (binary at bin/gog)
+#   ./install.sh --no-install     # build only (binary at bin/wk)
 #   ./install.sh --force          # overwrite existing install without asking
 #   ./install.sh --help           # show usage
 # ---------------------------------------------------------------------------
@@ -60,8 +60,8 @@ for arg in "$@"; do
       echo "  --help, -h    Show this help message"
       echo ""
       echo "Examples:"
-      echo "  ./install.sh                  # build + install to ~/.local/bin/gog"
-      echo "  ./install.sh --no-install     # build only (binary at ./bin/gog)"
+      echo "  ./install.sh                  # build + install to ~/.local/bin/wk"
+      echo "  ./install.sh --no-install     # build only (binary at ./bin/wk)"
       exit 0
       ;;
     *)
@@ -75,18 +75,18 @@ done
 step "Checking repository"
 
 if [ ! -f "Makefile" ]; then
-  fail "Makefile not found. Please run this script from the gog-cli repo root."
+  fail "Makefile not found. Please run this script from the workit repo root."
 fi
 
-if [ ! -d "cmd/gog" ]; then
-  fail "cmd/gog/ directory not found. Please run this script from the gog-cli repo root."
+if [ ! -d "cmd/wk" ]; then
+  fail "cmd/wk/ directory not found. Please run this script from the workit repo root."
 fi
 
 if [ ! -f "go.mod" ]; then
-  fail "go.mod not found. Please run this script from the gog-cli repo root."
+  fail "go.mod not found. Please run this script from the workit repo root."
 fi
 
-ok "Repository root detected (Makefile, cmd/gog/, go.mod present)"
+ok "Repository root detected (Makefile, cmd/wk/, go.mod present)"
 
 # -- Step 2: Check Go is installed and version is sufficient ---------------
 
@@ -129,28 +129,28 @@ ok "Dev tools installed to .tools/"
 
 # -- Step 4: Build the binary via Makefile ---------------------------------
 
-step "Building gog binary"
+step "Building wk binary"
 
 if ! make build; then
   fail "make build failed. Check the output above for errors."
 fi
 
-if [ ! -f "bin/gog" ]; then
-  fail "Build appeared to succeed but bin/gog was not created."
+if [ ! -f "bin/wk" ]; then
+  fail "Build appeared to succeed but bin/wk was not created."
 fi
 
-ok "Binary built at bin/gog"
+ok "Binary built at bin/wk"
 
 # -- Step 5: Verify the binary works ---------------------------------------
 
 step "Verifying binary"
 
-GOG_VERSION_OUTPUT="$(./bin/gog --version 2>&1 || true)"
+WK_VERSION_OUTPUT="$(./bin/wk --version 2>&1 || true)"
 
-if [ -z "$GOG_VERSION_OUTPUT" ]; then
-  warn "bin/gog --version produced no output (binary may still be functional)"
+if [ -z "$WK_VERSION_OUTPUT" ]; then
+  warn "bin/wk --version produced no output (binary may still be functional)"
 else
-  ok "bin/gog --version: ${GOG_VERSION_OUTPUT}"
+  ok "bin/wk --version: ${WK_VERSION_OUTPUT}"
 fi
 
 # -- Step 6: Optionally install to ~/.local/bin ----------------------------
@@ -158,7 +158,7 @@ fi
 if [ "$DO_INSTALL" = true ]; then
   step "Installing to ${INSTALL_DIR}"
 
-  TARGET="${INSTALL_DIR}/gog"
+  TARGET="${INSTALL_DIR}/wk"
 
   # Check if target already exists
   if [ -f "$TARGET" ] && [ "$FORCE" = false ]; then
@@ -168,14 +168,14 @@ if [ "$DO_INSTALL" = true ]; then
     printf "${YELLOW}Overwrite? [y/N]${NC} "
     read -r REPLY
     if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-      info "Skipped installation to PATH. Binary is available at ./bin/gog"
+      info "Skipped installation to PATH. Binary is available at ./bin/wk"
       DO_INSTALL=false
     fi
   fi
 
   if [ "$DO_INSTALL" = true ]; then
     mkdir -p "$INSTALL_DIR"
-    cp bin/gog "$TARGET"
+    cp bin/wk "$TARGET"
     chmod +x "$TARGET"
 
     ok "Installed to ${TARGET}"
@@ -196,7 +196,7 @@ if [ "$DO_INSTALL" = true ]; then
     fi
   fi
 else
-  info "Skipping PATH installation (--no-install). Binary is at ./bin/gog"
+  info "Skipping PATH installation (--no-install). Binary is at ./bin/wk"
 fi
 
 # -- Step 7: Print next steps ----------------------------------------------
@@ -208,31 +208,31 @@ printf "${BOLD}1. Set up OAuth credentials${NC}\n"
 echo "   You need Google OAuth client credentials to authenticate."
 echo ""
 echo "   Option A -- Credentials file:"
-echo "     mkdir -p ~/.config/gog && chmod 700 ~/.config/gog"
-echo "     cat > ~/.config/gog/credentials.env << 'CRED'"
-echo "     GOG_CLIENT_ID=your-client-id"
-echo "     GOG_CLIENT_SECRET=your-client-secret"
-echo "     GOG_CALLBACK_SERVER=https://your-callback-server.example.com"
+echo "     mkdir -p ~/.config/workit && chmod 700 ~/.config/workit"
+echo "     cat > ~/.config/workit/credentials.env << 'CRED'"
+echo "     WK_CLIENT_ID=your-client-id"
+echo "     WK_CLIENT_SECRET=your-client-secret"
+echo "     WK_CALLBACK_SERVER=https://your-callback-server.example.com"
 echo "     CRED"
 echo ""
 echo "   Option B -- Environment variables:"
-echo "     export GOG_CLIENT_ID=\"your-client-id\""
-echo "     export GOG_CLIENT_SECRET=\"your-client-secret\""
+echo "     export WK_CLIENT_ID=\"your-client-id\""
+echo "     export WK_CLIENT_SECRET=\"your-client-secret\""
 echo ""
 echo "   Option C -- JSON credentials file (standard Google format):"
-echo "     gog auth credentials ~/path/to/client_secret.json"
+echo "     wk auth credentials ~/path/to/client_secret.json"
 echo ""
 printf "${BOLD}2. Authenticate a Google account${NC}\n"
-echo "   gog auth add you@gmail.com --headless --services=user"
+echo "   wk auth add you@gmail.com --headless --services=user"
 echo ""
 printf "${BOLD}3. Verify everything works${NC}\n"
-echo "   gog auth list --check"
-echo "   gog gmail labels list --account you@gmail.com"
+echo "   wk auth list --check"
+echo "   wk gmail labels list --account you@gmail.com"
 echo ""
 printf "${BOLD}4. For headless/server environments${NC}\n"
-echo "   export GOG_KEYRING_BACKEND=file"
-echo "   export GOG_KEYRING_PASSWORD=\"your-secure-password\""
+echo "   export WK_KEYRING_BACKEND=file"
+echo "   export WK_KEYRING_PASSWORD=\"your-secure-password\""
 echo ""
 info "Full documentation: see INSTALL.md in this repository."
 echo ""
-ok "gog-cli setup complete."
+ok "workit setup complete."

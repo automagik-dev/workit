@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/api/people/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 const (

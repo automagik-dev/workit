@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/tracking"
+	"github.com/namastexlabs/workit/internal/tracking"
 )
 
 func setupTrackingEnv(t *testing.T) {
@@ -16,8 +16,8 @@ func setupTrackingEnv(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg"))
-	t.Setenv("GOG_KEYRING_BACKEND", "file")
-	t.Setenv("GOG_KEYRING_PASSWORD", "testpass")
+	t.Setenv("WK_KEYRING_BACKEND", "file")
+	t.Setenv("WK_KEYRING_PASSWORD", "testpass")
 }
 
 func TestGmailTrackSetupAndStatus(t *testing.T) {

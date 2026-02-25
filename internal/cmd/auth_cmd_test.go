@@ -13,8 +13,8 @@ import (
 
 	"github.com/99designs/keyring"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 type memSecretsStore struct {
@@ -224,7 +224,7 @@ func TestAuthTokensList_FiltersNonTokenKeys(t *testing.T) {
 func TestAuthStatus_JSON(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("GOG_KEYRING_BACKEND", "file")
+	t.Setenv("WK_KEYRING_BACKEND", "file")
 
 	out := captureStdout(t, func() {
 		_ = captureStderr(t, func() {
@@ -307,7 +307,7 @@ func TestAuthTokensImport_NoInput(t *testing.T) {
 	origKeychain := ensureKeychainAccess
 	t.Cleanup(func() { ensureKeychainAccess = origKeychain })
 
-	t.Setenv("GOG_KEYRING_BACKEND", "keychain")
+	t.Setenv("WK_KEYRING_BACKEND", "keychain")
 	ensureKeychainAccess = func() error {
 		return errors.New("keychain locked")
 	}
@@ -334,7 +334,7 @@ func TestAuthTokensImport_FileBackendSkipsKeychain(t *testing.T) {
 		ensureKeychainAccess = origKeychain
 	})
 
-	t.Setenv("GOG_KEYRING_BACKEND", "file")
+	t.Setenv("WK_KEYRING_BACKEND", "file")
 	ensureKeychainAccess = func() error {
 		return errors.New("keychain locked")
 	}

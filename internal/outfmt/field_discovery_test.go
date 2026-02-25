@@ -280,7 +280,7 @@ func TestSelectFlagExplicitlySet_AfterDoubleDash(t *testing.T) {
 func TestPrintFieldDiscovery_Output(t *testing.T) {
 	var buf bytes.Buffer
 	fields := []string{"id", "name", "size", "mimeType"}
-	PrintFieldDiscovery(&buf, fields, "gog drive ls")
+	PrintFieldDiscovery(&buf, fields, "wk drive ls")
 
 	out := buf.String()
 
@@ -295,7 +295,7 @@ func TestPrintFieldDiscovery_Output(t *testing.T) {
 	}
 
 	// Hint should use first 3 fields.
-	if !strings.Contains(out, `Usage: gog drive ls --json --select "id,name,size"`) {
+	if !strings.Contains(out, `Usage: wk drive ls --json --select "id,name,size"`) {
 		t.Errorf("expected usage hint with first 3 fields, got:\n%s", out)
 	}
 }
@@ -303,10 +303,10 @@ func TestPrintFieldDiscovery_Output(t *testing.T) {
 func TestPrintFieldDiscovery_FewFields(t *testing.T) {
 	var buf bytes.Buffer
 	fields := []string{"id", "name"}
-	PrintFieldDiscovery(&buf, fields, "gog drive ls")
+	PrintFieldDiscovery(&buf, fields, "wk drive ls")
 
 	out := buf.String()
-	if !strings.Contains(out, `Usage: gog drive ls --json --select "id,name"`) {
+	if !strings.Contains(out, `Usage: wk drive ls --json --select "id,name"`) {
 		t.Errorf("expected usage hint with all fields, got:\n%s", out)
 	}
 }
@@ -316,7 +316,7 @@ func TestPrintFieldDiscovery_EmptyCommand(t *testing.T) {
 	PrintFieldDiscovery(&buf, []string{}, "")
 
 	out := buf.String()
-	if !strings.Contains(out, `Usage: gog <command> --json --select "field1,field2"`) {
+	if !strings.Contains(out, `Usage: wk <command> --json --select "field1,field2"`) {
 		t.Errorf("expected generic usage hint, got:\n%s", out)
 	}
 }

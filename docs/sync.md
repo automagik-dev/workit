@@ -1,21 +1,21 @@
 # Google Drive Sync
 
-gog-cli provides bidirectional sync between local folders and Google Drive, similar to Google Drive for Desktop but for Linux and headless environments.
+workit provides bidirectional sync between local folders and Google Drive, similar to Google Drive for Desktop but for Linux and headless environments.
 
 ## Quick Start
 
 ```bash
 # 1. Authenticate
-gog auth add you@gmail.com --services=drive
+wk auth add you@gmail.com --services=drive
 
 # 2. Initialize sync folder
-gog sync init ~/Documents/work --drive-folder="Work Files"
+wk sync init ~/Documents/work --drive-folder="Work Files"
 
 # 3. Start sync (foreground)
-gog sync start ~/Documents/work --account=you@gmail.com
+wk sync start ~/Documents/work --account=you@gmail.com
 
 # Or start as daemon
-gog sync start ~/Documents/work --daemon --account=you@gmail.com
+wk sync start ~/Documents/work --daemon --account=you@gmail.com
 ```
 
 ## Commands
@@ -23,7 +23,7 @@ gog sync start ~/Documents/work --daemon --account=you@gmail.com
 ### Initialize Sync
 
 ```bash
-gog sync init <local-path> --drive-folder=<name-or-id> [--drive-id=<shared-drive-id>]
+wk sync init <local-path> --drive-folder=<name-or-id> [--drive-id=<shared-drive-id>]
 ```
 
 Creates a sync configuration linking a local folder to a Google Drive folder.
@@ -32,19 +32,19 @@ Creates a sync configuration linking a local folder to a Google Drive folder.
 
 ```bash
 # Sync with My Drive folder
-gog sync init ~/projects/docs --drive-folder="Project Docs"
+wk sync init ~/projects/docs --drive-folder="Project Docs"
 
 # Sync with a Shared Drive folder
-gog sync init ~/team/assets --drive-folder="Assets" --drive-id=0AGrKFSfP...
+wk sync init ~/team/assets --drive-folder="Assets" --drive-id=0AGrKFSfP...
 
 # Using folder ID directly
-gog sync init ~/backup --drive-folder=1a2b3c4d5e...
+wk sync init ~/backup --drive-folder=1a2b3c4d5e...
 ```
 
 ### List Configurations
 
 ```bash
-gog sync list
+wk sync list
 ```
 
 Shows all configured sync folders:
@@ -58,7 +58,7 @@ ID  LOCAL PATH           DRIVE FOLDER    CREATED              LAST SYNC
 ### Start Sync
 
 ```bash
-gog sync start <local-path> --account=<email> [--daemon] [--conflict=<strategy>]
+wk sync start <local-path> --account=<email> [--daemon] [--conflict=<strategy>]
 ```
 
 Starts the sync engine for a configured folder.
@@ -71,19 +71,19 @@ Starts the sync engine for a configured folder.
 
 ```bash
 # Foreground (Ctrl+C to stop)
-gog sync start ~/projects --account=you@gmail.com
+wk sync start ~/projects --account=you@gmail.com
 
 # Background daemon
-gog sync start ~/projects --daemon --account=you@gmail.com
+wk sync start ~/projects --daemon --account=you@gmail.com
 
 # With conflict strategy
-gog sync start ~/projects --daemon --account=you@gmail.com --conflict=local-wins
+wk sync start ~/projects --daemon --account=you@gmail.com --conflict=local-wins
 ```
 
 ### Stop Sync
 
 ```bash
-gog sync stop
+wk sync stop
 ```
 
 Stops the running sync daemon.
@@ -91,7 +91,7 @@ Stops the running sync daemon.
 ### Check Status
 
 ```bash
-gog sync status
+wk sync status
 ```
 
 Shows sync status for all configurations:
@@ -106,14 +106,14 @@ ID  LOCAL PATH  TOTAL  SYNCED  PENDING  CONFLICT  ERROR  LAST SYNC
 ### Remove Configuration
 
 ```bash
-gog sync remove <local-path>
+wk sync remove <local-path>
 ```
 
 Removes a sync configuration (does not delete files).
 
 ## Conflict Resolution
 
-When both local and remote files are modified between syncs, a conflict occurs. gog-cli supports three resolution strategies:
+When both local and remote files are modified between syncs, a conflict occurs. workit supports three resolution strategies:
 
 ### Rename (Default)
 
@@ -125,7 +125,7 @@ report.docx           → downloaded from Drive (remote version)
 ```
 
 ```bash
-gog sync start ~/docs --account=you@gmail.com --conflict=rename
+wk sync start ~/docs --account=you@gmail.com --conflict=rename
 ```
 
 ### Local Wins
@@ -133,7 +133,7 @@ gog sync start ~/docs --account=you@gmail.com --conflict=rename
 Uploads local version, overwrites remote:
 
 ```bash
-gog sync start ~/docs --account=you@gmail.com --conflict=local-wins
+wk sync start ~/docs --account=you@gmail.com --conflict=local-wins
 ```
 
 ### Remote Wins
@@ -141,7 +141,7 @@ gog sync start ~/docs --account=you@gmail.com --conflict=local-wins
 Downloads remote version, overwrites local:
 
 ```bash
-gog sync start ~/docs --account=you@gmail.com --conflict=remote-wins
+wk sync start ~/docs --account=you@gmail.com --conflict=remote-wins
 ```
 
 ## How Sync Works
@@ -176,7 +176,7 @@ gog sync start ~/docs --account=you@gmail.com --conflict=remote-wins
 
 ### Google Docs/Sheets/Slides
 
-Native Google formats (Docs, Sheets, Slides) are **not synced** as they don't have binary content. Use `gog drive download --export-as=docx` for exports.
+Native Google formats (Docs, Sheets, Slides) are **not synced** as they don't have binary content. Use `wk drive download --export-as=docx` for exports.
 
 ## Daemon Management
 
@@ -184,14 +184,14 @@ Native Google formats (Docs, Sheets, Slides) are **not synced** as they don't ha
 
 When running as daemon, the PID is stored at:
 ```
-~/.config/gog/sync.pid
+~/.config/workit/sync.pid
 ```
 
 ### Log File
 
 Daemon logs are written to:
 ```
-~/.config/gog/sync.log
+~/.config/workit/sync.log
 ```
 
 ### Auto-restart
@@ -200,13 +200,13 @@ For production use, consider using systemd to auto-restart the daemon:
 
 ```ini
 [Unit]
-Description=gog sync daemon
+Description=wk sync daemon
 After=network.target
 
 [Service]
 Type=simple
 User=youruser
-ExecStart=/usr/local/bin/gog sync start /path/to/folder --account=you@gmail.com
+ExecStart=/usr/local/bin/wk sync start /path/to/folder --account=you@gmail.com
 Restart=on-failure
 RestartSec=5
 
@@ -219,7 +219,7 @@ WantedBy=multi-user.target
 All commands support `--json` for machine-readable output:
 
 ```bash
-gog sync status --json
+wk sync status --json
 ```
 
 ```json
@@ -248,7 +248,7 @@ gog sync status --json
 
 Sync state is stored in SQLite at:
 ```
-~/.config/gog/sync.db
+~/.config/workit/sync.db
 ```
 
 Tables:
@@ -268,8 +268,8 @@ Tables:
 
 | Variable | Description |
 |----------|-------------|
-| `GOG_SYNC_POLL_INTERVAL` | Drive polling interval (default: 5s) |
-| `GOG_KEYRING_BACKEND` | Keyring backend for tokens |
+| `WK_SYNC_POLL_INTERVAL` | Drive polling interval (default: 5s) |
+| `WK_KEYRING_BACKEND` | Keyring backend for tokens |
 
 ## Troubleshooting
 
@@ -277,25 +277,25 @@ Tables:
 
 Initialize the folder first:
 ```bash
-gog sync init <path> --drive-folder=<name>
+wk sync init <path> --drive-folder=<name>
 ```
 
 ### "daemon already running"
 
 Stop the existing daemon:
 ```bash
-gog sync stop
+wk sync stop
 ```
 
 ### "account flag is required"
 
 Specify which account to use:
 ```bash
-gog sync start ~/folder --account=you@gmail.com
+wk sync start ~/folder --account=you@gmail.com
 ```
 
 ### Files not syncing
 
-1. Check the sync log: `cat ~/.config/gog/sync.log`
+1. Check the sync log: `cat ~/.config/workit/sync.log`
 2. Verify the path isn't ignored (not hidden, not in node_modules, etc.)
-3. Ensure Drive API access with: `gog drive list --account=you@gmail.com`
+3. Ensure Drive API access with: `wk drive list --account=you@gmail.com`

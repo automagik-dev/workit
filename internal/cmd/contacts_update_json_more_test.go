@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func TestContactsUpdate_FromFile_JSON_CanClearFields(t *testing.T) {

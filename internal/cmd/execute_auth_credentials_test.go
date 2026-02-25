@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/workit/internal/config"
 )
 
 func TestExecute_AuthCredentials_JSON(t *testing.T) {

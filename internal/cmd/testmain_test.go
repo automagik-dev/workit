@@ -7,7 +7,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	root, err := os.MkdirTemp("", "gogcli-tests-*")
+	root, err := os.MkdirTemp("", "workit-tests-*")
 	if err != nil {
 		panic(err)
 	}

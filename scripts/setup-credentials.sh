@@ -1,51 +1,51 @@
 #!/bin/bash
-# gog-cli Setup Script
-# Configures OAuth credentials for gog-cli on any server
+# workit Setup Script
+# Configures OAuth credentials for workit on any server
 #
 # Usage:
 #   ./scripts/setup-credentials.sh
 #   ./scripts/setup-credentials.sh --non-interactive --env-file .env --force
-#   curl -sL https://raw.githubusercontent.com/automagik-genie/gog-cli/main/scripts/setup-credentials.sh | bash -s -- --non-interactive --force
+#   curl -sL https://raw.githubusercontent.com/automagik-genie/workit/main/scripts/setup-credentials.sh | bash -s -- --non-interactive --force
 #   OR
-#   curl -sL https://raw.githubusercontent.com/automagik-genie/gog-cli/main/scripts/setup-credentials.sh | bash
+#   curl -sL https://raw.githubusercontent.com/automagik-genie/workit/main/scripts/setup-credentials.sh | bash
 
 set -euo pipefail
 
 usage() {
 	cat <<'EOF'
-gog-cli credentials setup
+workit credentials setup
 
-Writes a local credentials file (default: ~/.config/gog/credentials.env) suitable for:
-- `source ~/.config/gog/credentials.env`
+Writes a local credentials file (default: ~/.config/workit/credentials.env) suitable for:
+- `source ~/.config/workit/credentials.env`
 - systemd `EnvironmentFile=...`
 
 Options:
-  --config-dir DIR        Config dir (default: $GOG_CONFIG_DIR or ~/.config/gog)
+  --config-dir DIR        Config dir (default: $WK_CONFIG_DIR or ~/.config/workit)
   --env-file PATH         Optional .env to source (default: ./.env if present)
   --non-interactive       Do not prompt; fail if values are missing
   --force                 Overwrite existing credentials.env without prompting
   --keyring-backend NAME  Keyring backend (default: file)
-  --callback-server URL   Callback server (default: $GOG_CALLBACK_SERVER or https://gogoauth.namastex.io)
+  --callback-server URL   Callback server (default: $WK_CALLBACK_SERVER or https://gogoauth.namastex.io)
   --client-id VALUE       OAuth client id (discouraged: use env/.env instead)
   --client-secret VALUE   OAuth client secret (discouraged: use env/.env instead)
   -h, --help              Show help
 
 Inputs (preferred):
-  GOG_CLIENT_ID, GOG_CLIENT_SECRET, GOG_CALLBACK_SERVER
+  WK_CLIENT_ID, WK_CLIENT_SECRET, WK_CALLBACK_SERVER
 
 Security note:
   Do not commit secrets. Keep them in a local .env (gitignored) or injected by your runtime.
 EOF
 }
 
-CONFIG_DIR="${GOG_CONFIG_DIR:-$HOME/.config/gog}"
+CONFIG_DIR="${WK_CONFIG_DIR:-$HOME/.config/workit}"
 ENV_FILE=""
 NON_INTERACTIVE="0"
 FORCE="0"
-KEYRING_BACKEND="${GOG_KEYRING_BACKEND:-file}"
-CLIENT_ID="${GOG_CLIENT_ID:-}"
-CLIENT_SECRET="${GOG_CLIENT_SECRET:-}"
-CALLBACK_SERVER="${GOG_CALLBACK_SERVER:-https://gogoauth.namastex.io}"
+KEYRING_BACKEND="${WK_KEYRING_BACKEND:-file}"
+CLIENT_ID="${WK_CLIENT_ID:-}"
+CLIENT_SECRET="${WK_CLIENT_SECRET:-}"
+CALLBACK_SERVER="${WK_CALLBACK_SERVER:-https://gogoauth.namastex.io}"
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -88,7 +88,7 @@ done
 
 CRED_FILE="$CONFIG_DIR/credentials.env"
 
-echo "🔧 gog-cli Credentials Setup"
+echo "🔧 workit Credentials Setup"
 echo ""
 
 env_quote() {
@@ -116,13 +116,13 @@ if [[ -z "$ENV_FILE" && -f ".env" ]]; then
 	ENV_FILE=".env"
 fi
 
-# Load env file (if present). This updates GOG_* env vars; refresh defaults after.
+# Load env file (if present). This updates WK_* env vars; refresh defaults after.
 load_env_file "$ENV_FILE"
 
-CLIENT_ID="${CLIENT_ID:-${GOG_CLIENT_ID:-}}"
-CLIENT_SECRET="${CLIENT_SECRET:-${GOG_CLIENT_SECRET:-}}"
-CALLBACK_SERVER="${CALLBACK_SERVER:-${GOG_CALLBACK_SERVER:-https://gogoauth.namastex.io}}"
-KEYRING_BACKEND="${KEYRING_BACKEND:-${GOG_KEYRING_BACKEND:-file}}"
+CLIENT_ID="${CLIENT_ID:-${WK_CLIENT_ID:-}}"
+CLIENT_SECRET="${CLIENT_SECRET:-${WK_CLIENT_SECRET:-}}"
+CALLBACK_SERVER="${CALLBACK_SERVER:-${WK_CALLBACK_SERVER:-https://gogoauth.namastex.io}}"
+KEYRING_BACKEND="${KEYRING_BACKEND:-${WK_KEYRING_BACKEND:-file}}"
 
 # Create config directory
 mkdir -p "$CONFIG_DIR"
@@ -167,21 +167,21 @@ fi
 
 if [[ -z "${CLIENT_ID:-}" || -z "${CLIENT_SECRET:-}" ]]; then
 	echo "ERROR: Missing OAuth client credentials." >&2
-	echo "Set GOG_CLIENT_ID and GOG_CLIENT_SECRET in the environment (or in a local .env file)." >&2
+	echo "Set WK_CLIENT_ID and WK_CLIENT_SECRET in the environment (or in a local .env file)." >&2
 	exit 1
 fi
 
 # Write credentials file
 umask 077
 cat > "$CRED_FILE" << EOF
-# gog-cli OAuth Credentials
+# workit OAuth Credentials
 # Generated: $(date -Iseconds)
 # Source this file or use with systemd EnvironmentFile=
 
-GOG_CLIENT_ID=$(env_quote "$CLIENT_ID")
-GOG_CLIENT_SECRET=$(env_quote "$CLIENT_SECRET")
-GOG_CALLBACK_SERVER=$(env_quote "$CALLBACK_SERVER")
-GOG_KEYRING_BACKEND=$(env_quote "$KEYRING_BACKEND")
+WK_CLIENT_ID=$(env_quote "$CLIENT_ID")
+WK_CLIENT_SECRET=$(env_quote "$CLIENT_SECRET")
+WK_CALLBACK_SERVER=$(env_quote "$CALLBACK_SERVER")
+WK_KEYRING_BACKEND=$(env_quote "$KEYRING_BACKEND")
 EOF
 
 chmod 600 "$CRED_FILE"
@@ -191,7 +191,7 @@ echo "✅ Credentials saved to: $CRED_FILE"
 echo ""
 echo "To use:"
 echo "  source $CRED_FILE"
-echo "  gog auth add you@gmail.com --headless"
+echo "  wk auth add you@gmail.com --headless"
 echo ""
 echo "For systemd services, add to your unit file:"
 echo "  EnvironmentFile=$CRED_FILE"

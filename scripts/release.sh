@@ -34,7 +34,7 @@ if rg -q "^## ${version} - Unreleased" "$changelog"; then
   exit 2
 fi
 
-notes_file="$(mktemp -t gogcli-release-notes)"
+notes_file="$(mktemp -t workit-release-notes)"
 awk -v ver="$version" '
   $0 ~ "^## "ver" " {print "## "ver; in_section=1; next}
   in_section && /^## / {exit}

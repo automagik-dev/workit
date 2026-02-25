@@ -13,7 +13,7 @@ import (
 	"google.golang.org/api/docs/v1"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func newDocsServiceForTest(t *testing.T, h http.HandlerFunc) (*docs.Service, func()) {

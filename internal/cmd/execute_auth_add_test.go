@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 func TestExecute_AuthAdd_JSON(t *testing.T) {

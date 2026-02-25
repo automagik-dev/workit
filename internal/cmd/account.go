@@ -4,8 +4,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 var openSecretsStoreForAccount = secrets.OpenDefault
@@ -32,7 +32,7 @@ func requireAccount(flags *RootFlags) (string, error) {
 			return v, nil
 		}
 	}
-	if v := strings.TrimSpace(os.Getenv("GOG_ACCOUNT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("WK_ACCOUNT")); v != "" {
 		if resolved, ok, err := resolveAccountAlias(v); err != nil {
 			return "", err
 		} else if ok {
@@ -76,7 +76,7 @@ func requireAccount(flags *RootFlags) (string, error) {
 		}
 	}
 
-	return "", usage("missing --account (or set GOG_ACCOUNT, set default via `gog auth manage`, or store exactly one token)")
+	return "", usage("missing --account (or set WK_ACCOUNT, set default via `wk auth manage`, or store exactly one token)")
 }
 
 func resolveAccountAlias(value string) (string, bool, error) {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/99designs/keyring"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/workit/internal/config"
 )
 
 func setupKeyringEnv(t *testing.T) {
@@ -15,8 +15,8 @@ func setupKeyringEnv(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg"))
-	t.Setenv("GOG_KEYRING_BACKEND", "file")
-	t.Setenv("GOG_KEYRING_PASSWORD", "testpass")
+	t.Setenv("WK_KEYRING_BACKEND", "file")
+	t.Setenv("WK_KEYRING_PASSWORD", "testpass")
 }
 
 func TestSetAndGetSecret_FileBackend(t *testing.T) {

@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
-// TestAuthPollCmd_AutoSave_NoEmail verifies that `gog auth poll <state>` without
+// TestAuthPollCmd_AutoSave_NoEmail verifies that `wk auth poll <state>` without
 // --email infers the email via fetchAuthorizedEmail and stores the token.
 func TestAuthPollCmd_AutoSave_NoEmail(t *testing.T) {
 	origPoll := pollForToken
@@ -159,7 +159,7 @@ func TestAuthPollCmd_AutoSave_UserinfoFailure(t *testing.T) {
 		t.Fatalf("expected WARNING in stderr, got: %q", stderr)
 	}
 	// Check re-poll command hint
-	if !strings.Contains(stderr, "gog auth poll") || !strings.Contains(stderr, "--email") {
+	if !strings.Contains(stderr, "wk auth poll") || !strings.Contains(stderr, "--email") {
 		t.Fatalf("expected re-poll command hint in stderr, got: %q", stderr)
 	}
 
@@ -389,7 +389,7 @@ func TestAuthAddCmd_PollTimeoutSoftFailure_Text(t *testing.T) {
 	if !strings.Contains(stderr, "timeout-state-2") {
 		t.Fatalf("expected state in stderr, got: %q", stderr)
 	}
-	if !strings.Contains(stderr, "gog auth poll") {
+	if !strings.Contains(stderr, "wk auth poll") {
 		t.Fatalf("expected poll hint in stderr, got: %q", stderr)
 	}
 }

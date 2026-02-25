@@ -32,15 +32,15 @@ func TestSanitizeWorkerName(t *testing.T) {
 }
 
 func TestDefaultWorkerName(t *testing.T) {
-	if got := DefaultWorkerName(""); got != "gog-email-tracker" {
+	if got := DefaultWorkerName(""); got != "wk-email-tracker" {
 		t.Fatalf("unexpected default name: %q", got)
 	}
 
-	if got := DefaultWorkerName("  "); got != "gog-email-tracker" {
+	if got := DefaultWorkerName("  "); got != "wk-email-tracker" {
 		t.Fatalf("unexpected whitespace name: %q", got)
 	}
 
-	if got := DefaultWorkerName("Test@Example.com"); !strings.HasPrefix(got, "gog-email-tracker-") {
+	if got := DefaultWorkerName("Test@Example.com"); !strings.HasPrefix(got, "wk-email-tracker-") {
 		t.Fatalf("unexpected prefixed name: %q", got)
 	}
 }

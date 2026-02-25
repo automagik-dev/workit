@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/api/gmail/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/googleauth"
 )
 
 func NewGmail(ctx context.Context, email string) (*gmail.Service, error) {

@@ -14,11 +14,11 @@ func WrapOAuthError(err error) error {
 	msg := err.Error()
 	switch {
 	case strings.Contains(msg, "unauthorized_client"):
-		return fmt.Errorf("%w (hint: refresh token expired — re-run 'gog auth add <email>')", err)
+		return fmt.Errorf("%w (hint: refresh token expired — re-run 'wk auth add <email>')", err)
 	case strings.Contains(msg, "invalid_grant"):
-		return fmt.Errorf("%w (hint: token revoked or invalid — re-run 'gog auth add <email>')", err)
+		return fmt.Errorf("%w (hint: token revoked or invalid — re-run 'wk auth add <email>')", err)
 	case strings.Contains(msg, "invalid_client"):
-		return fmt.Errorf("%w (hint: client_id/secret invalid — check 'gog auth credentials list')", err)
+		return fmt.Errorf("%w (hint: client_id/secret invalid — check 'wk auth credentials list')", err)
 	}
 	return err
 }

@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/api/sheets/v4"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 type SheetsFormatCmd struct {

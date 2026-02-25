@@ -49,9 +49,9 @@ When users authenticate via the headless OAuth flow:
 
 | Variable | Description |
 |----------|-------------|
-| `GOG_CLIENT_ID` | OAuth client ID |
-| `GOG_CLIENT_SECRET` | OAuth client secret |
-| `GOG_REDIRECT_URL` | OAuth redirect URL |
+| `WK_CLIENT_ID` | OAuth client ID |
+| `WK_CLIENT_SECRET` | OAuth client secret |
+| `WK_REDIRECT_URL` | OAuth redirect URL |
 
 Command-line flags take precedence over environment variables.
 
@@ -70,9 +70,9 @@ go build -o auth-server .
 ```bash
 docker build -t auth-server .
 docker run -p 8080:8080 \
-  -e GOG_CLIENT_ID="your-client-id" \
-  -e GOG_CLIENT_SECRET="your-client-secret" \
-  -e GOG_REDIRECT_URL="https://auth.example.com/callback" \
+  -e WK_CLIENT_ID="your-client-id" \
+  -e WK_CLIENT_SECRET="your-client-secret" \
+  -e WK_REDIRECT_URL="https://auth.example.com/callback" \
   auth-server
 ```
 
@@ -88,9 +88,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - GOG_CLIENT_ID=${GOG_CLIENT_ID}
-      - GOG_CLIENT_SECRET=${GOG_CLIENT_SECRET}
-      - GOG_REDIRECT_URL=https://auth.namastex.io/callback
+      - WK_CLIENT_ID=${WK_CLIENT_ID}
+      - WK_CLIENT_SECRET=${WK_CLIENT_SECRET}
+      - WK_REDIRECT_URL=https://auth.namastex.io/callback
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]

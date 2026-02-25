@@ -10,8 +10,8 @@ import (
 )
 
 // setupTestConfig writes a config file to the platform-specific config dir.
-// On Linux: XDG_CONFIG_HOME/gogcli/config.json
-// On macOS: HOME/Library/Application Support/gogcli/config.json
+// On Linux: XDG_CONFIG_HOME/workit/config.json
+// On macOS: HOME/Library/Application Support/workit/config.json
 func setupTestConfig(t *testing.T, content string) {
 	t.Helper()
 
@@ -24,7 +24,7 @@ func setupTestConfig(t *testing.T, content string) {
 		t.Fatalf("UserConfigDir: %v", err)
 	}
 
-	dir := filepath.Join(cfgDir, "gogcli")
+	dir := filepath.Join(cfgDir, "workit")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatalf("mkdir config dir: %v", err)
 	}
@@ -45,7 +45,7 @@ func clearTestConfig(t *testing.T) {
 
 func TestResolveAuthMode_ExplicitHeadless(t *testing.T) {
 	clearTestConfig(t)
-	t.Setenv("GOG_CALLBACK_SERVER", "https://example.com")
+	t.Setenv("WK_CALLBACK_SERVER", "https://example.com")
 
 	result := ResolveAuthMode(context.Background(), true, false, "")
 	if result.Mode != AuthModeHeadless {
@@ -86,7 +86,7 @@ func TestResolveAuthMode_ConfigBrowser(t *testing.T) {
 func TestResolveAuthMode_ConfigHeadless(t *testing.T) {
 	setupTestConfig(t, `{"auth_mode":"headless","callback_server":"https://test.example.com"}`)
 	// Clear env so config callback_server is used
-	t.Setenv("GOG_CALLBACK_SERVER", "")
+	t.Setenv("WK_CALLBACK_SERVER", "")
 
 	result := ResolveAuthMode(context.Background(), false, false, "")
 	if result.Mode != AuthModeHeadless {
@@ -104,7 +104,7 @@ func TestResolveAuthMode_ConfigHeadless(t *testing.T) {
 
 func TestResolveAuthMode_ConfigHeadless_NoCallbackServer(t *testing.T) {
 	setupTestConfig(t, `{"auth_mode":"headless"}`)
-	t.Setenv("GOG_CALLBACK_SERVER", "")
+	t.Setenv("WK_CALLBACK_SERVER", "")
 
 	result := ResolveAuthMode(context.Background(), false, false, "")
 	// Should fall back to browser when callback server not resolvable
@@ -128,7 +128,7 @@ func TestResolveAuthMode_ConfigManual(t *testing.T) {
 
 func TestResolveAuthMode_AutoDetect_NoTTY_ReachableServer(t *testing.T) {
 	clearTestConfig(t)
-	t.Setenv("GOG_CALLBACK_SERVER", "")
+	t.Setenv("WK_CALLBACK_SERVER", "")
 
 	// Mock non-terminal
 	orig := isTerminal
@@ -162,7 +162,7 @@ func TestResolveAuthMode_AutoDetect_NoTTY_ReachableServer(t *testing.T) {
 
 func TestResolveAuthMode_AutoDetect_WithTTY(t *testing.T) {
 	clearTestConfig(t)
-	t.Setenv("GOG_CALLBACK_SERVER", "")
+	t.Setenv("WK_CALLBACK_SERVER", "")
 
 	// Mock terminal
 	orig := isTerminal
@@ -179,7 +179,7 @@ func TestResolveAuthMode_AutoDetect_WithTTY(t *testing.T) {
 
 func TestResolveAuthMode_FlagOverridesConfig(t *testing.T) {
 	setupTestConfig(t, `{"auth_mode":"browser"}`)
-	t.Setenv("GOG_CALLBACK_SERVER", "https://example.com")
+	t.Setenv("WK_CALLBACK_SERVER", "https://example.com")
 
 	// Explicit headless flag should override config=browser
 	result := ResolveAuthMode(context.Background(), true, false, "")

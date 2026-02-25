@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func TestGmailURLCmd_JSON(t *testing.T) {

@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/authclient"
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/authclient"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 var (
@@ -492,10 +492,10 @@ type AuthAddCmd struct {
 	Headless       bool          `name:"headless" help:"Headless auth flow for agents (outputs URL, polls callback server)"`
 	CallbackServer string        `name:"callback-server" help:"Callback server URL for headless auth"`
 	PollTimeout    time.Duration `name:"poll-timeout" help:"Timeout for polling callback server" default:"5m"`
-	NoPoll         bool          `name:"no-poll" help:"In headless mode, output URL without polling (use 'gog auth poll' later)"`
+	NoPoll         bool          `name:"no-poll" help:"In headless mode, output URL without polling (use 'wk auth poll' later)"`
 
 	ForceConsent bool   `name:"force-consent" help:"Force consent screen to obtain a refresh token"`
-	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"all"`
+	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: wk auth service-account set)" default:"all"`
 	Readonly     bool   `name:"readonly" help:"Use read-only scopes where available (still includes OIDC identity scopes)"`
 	DriveScope   string `name:"drive-scope" help:"Drive scope mode: full|readonly|file" enum:"full,readonly,file" default:"full"`
 }
@@ -741,7 +741,7 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 	// If no-poll, return now
 	if c.NoPoll {
 		if !outfmt.IsJSON(ctx) {
-			u.Err().Println("Use 'gog auth poll <state>' to save the token.")
+			u.Err().Println("Use 'wk auth poll <state>' to save the token.")
 		}
 		return nil
 	}
@@ -767,7 +767,7 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 			u.Err().Printf("State: %s", info.State)
 			u.Err().Printf("Poll URL: %s", info.PollURL)
 			u.Err().Println("")
-			u.Err().Println("Use 'gog auth poll <state>' to save the token after authorizing.")
+			u.Err().Println("Use 'wk auth poll <state>' to save the token after authorizing.")
 			return nil
 		}
 		return googleauth.WrapOAuthError(err)
@@ -907,7 +907,7 @@ func (c *AuthPollCmd) Run(ctx context.Context) error {
 		u.Out().Printf("refresh_token\t%s", refreshToken)
 		u.Err().Println("")
 		u.Err().Println("WARNING: Could not infer email from token (userinfo failed).")
-		u.Err().Printf("To store the token, re-run: gog auth poll %s --email <email>", c.State)
+		u.Err().Printf("To store the token, re-run: wk auth poll %s --email <email>", c.State)
 		return nil
 	}
 
@@ -1391,7 +1391,7 @@ func (c *AuthRemoveCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 type AuthManageCmd struct {
 	ForceConsent bool          `name:"force-consent" help:"Force consent screen when adding accounts"`
-	ServicesCSV  string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: gog auth service-account set)" default:"all"`
+	ServicesCSV  string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: wk auth service-account set)" default:"all"`
 	Timeout      time.Duration `name:"timeout" help:"Server timeout duration" default:"10m"`
 }
 
@@ -1470,7 +1470,7 @@ func (c *AuthKeepCmd) Run(ctx context.Context, _ *RootFlags) error {
 	}
 	u.Out().Printf("email\t%s", email)
 	u.Out().Printf("path\t%s", destPath)
-	u.Out().Println("Keep service account configured. Use: gog keep list --account " + email)
+	u.Out().Println("Keep service account configured. Use: wk keep list --account " + email)
 	return nil
 }
 
@@ -1495,7 +1495,7 @@ func parseAuthServices(servicesCSV string) ([]googleauth.Service, error) {
 			return nil, err
 		}
 		if svc == googleauth.ServiceKeep {
-			return nil, usage("Keep auth is Workspace-only and requires a service account. Use: gog auth service-account set <email> --key <service-account.json>")
+			return nil, usage("Keep auth is Workspace-only and requires a service account. Use: wk auth service-account set <email> --key <service-account.json>")
 		}
 		if _, ok := seen[svc]; ok {
 			continue

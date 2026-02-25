@@ -9,8 +9,8 @@ import (
 	"github.com/alecthomas/kong"
 	ggoogleapi "google.golang.org/api/googleapi"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	gogapi "github.com/namastexlabs/gog-cli/internal/googleapi"
+	"github.com/namastexlabs/workit/internal/config"
+	gogapi "github.com/namastexlabs/workit/internal/googleapi"
 )
 
 var errNope = errors.New("nope")
@@ -29,7 +29,7 @@ func TestFormat_AuthRequired(t *testing.T) {
 		t.Fatalf("expected message")
 	}
 
-	if !containsAll(got, "gog auth add", "a@b.com", "gmail") {
+	if !containsAll(got, "wk auth add", "a@b.com", "gmail") {
 		t.Fatalf("unexpected: %q", got)
 	}
 }
@@ -38,14 +38,14 @@ func TestFormat_CredentialsMissing(t *testing.T) {
 	err := &config.CredentialsMissingError{Path: "/tmp/creds.json", Cause: errNope}
 	got := Format(err)
 
-	if !containsAll(got, "gog auth credentials", "/tmp/creds.json") {
+	if !containsAll(got, "wk auth credentials", "/tmp/creds.json") {
 		t.Fatalf("unexpected: %q", got)
 	}
 }
 
 func TestFormat_KeyNotFound(t *testing.T) {
 	got := Format(keyring.ErrKeyNotFound)
-	if !containsAll(got, "Secret not found", "gog auth add") {
+	if !containsAll(got, "Secret not found", "wk auth add") {
 		t.Fatalf("unexpected: %q", got)
 	}
 }

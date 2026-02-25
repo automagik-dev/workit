@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func TestAuthTokensExportImport_JSON(t *testing.T) {

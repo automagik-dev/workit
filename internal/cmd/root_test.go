@@ -244,9 +244,9 @@ func TestExtractEnableCommands(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.env != "" {
-				t.Setenv("GOG_ENABLE_COMMANDS", tt.env)
+				t.Setenv("WK_ENABLE_COMMANDS", tt.env)
 			} else {
-				t.Setenv("GOG_ENABLE_COMMANDS", "")
+				t.Setenv("WK_ENABLE_COMMANDS", "")
 			}
 			got := extractEnableCommands(tt.args)
 			if got != tt.want {
@@ -287,7 +287,7 @@ func TestGenerateInput_RespectsEnableCommands(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear any env-level enable-commands to isolate flag behavior.
-			t.Setenv("GOG_ENABLE_COMMANDS", "")
+			t.Setenv("WK_ENABLE_COMMANDS", "")
 
 			err := captureStderr(t, func() {
 				_ = captureStdout(t, func() {

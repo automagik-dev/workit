@@ -6,7 +6,7 @@ import (
 )
 
 func TestAutoJSON_Version_DefaultsToJSONWhenEnabled(t *testing.T) {
-	t.Setenv("GOG_AUTO_JSON", "1")
+	t.Setenv("WK_AUTO_JSON", "1")
 
 	out := captureStdout(t, func() {
 		_ = captureStderr(t, func() {
@@ -40,7 +40,7 @@ func TestJQ_AutoEnablesJSONMode(t *testing.T) {
 	if trimmed == "" {
 		t.Fatalf("expected non-empty output")
 	}
-	// `gog version --json` produces {"version":"0.12.0-dev","commit":"","date":""}
+	// `wk version --json` produces {"version":"0.12.0-dev","commit":"","date":""}
 	// After jq ".version" the output should be a quoted JSON string: "0.12.0-dev"
 	// Without auto-JSON, the version command produces plain "0.12.0-dev" (unquoted).
 	// We verify jq was active by checking the output is the JSON-quoted string.
@@ -67,7 +67,7 @@ func TestJQ_RejectsWithPlain(t *testing.T) {
 }
 
 func TestAutoJSON_Version_RespectsExplicitPlainFlag(t *testing.T) {
-	t.Setenv("GOG_AUTO_JSON", "1")
+	t.Setenv("WK_AUTO_JSON", "1")
 
 	out := captureStdout(t, func() {
 		_ = captureStderr(t, func() {

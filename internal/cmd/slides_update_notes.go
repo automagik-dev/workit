@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/api/slides/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 type SlidesUpdateNotesCmd struct {

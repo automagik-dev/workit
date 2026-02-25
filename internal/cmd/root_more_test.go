@@ -59,7 +59,7 @@ func TestHelpDescription(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
-	t.Setenv("GOG_KEYRING_BACKEND", "auto")
+	t.Setenv("WK_KEYRING_BACKEND", "auto")
 
 	out := helpDescription()
 	if !strings.Contains(out, "Config:") {

@@ -11,8 +11,8 @@ import (
 
 	"google.golang.org/api/calendar/v3"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 const (
@@ -190,7 +190,7 @@ func (c *CalendarProposeTimeCmd) Run(ctx context.Context, flags *RootFlags) erro
 	} else {
 		u.Out().Printf("")
 		u.Out().Printf("Tip: To notify the organizer, decline with a comment:")
-		u.Out().Printf("  gog calendar propose-time %s %s --decline --comment \"Can we do 5pm instead?\"", calendarID, eventID)
+		u.Out().Printf("  wk calendar propose-time %s %s --decline --comment \"Can we do 5pm instead?\"", calendarID, eventID)
 	}
 
 	// Open browser if requested

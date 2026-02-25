@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func warnTasksDueTime(u *ui.UI, due string) {

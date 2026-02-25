@@ -62,7 +62,7 @@ type DrivePoller struct {
 
 // DefaultPollInterval returns the poll interval from environment or default.
 func DefaultPollInterval() time.Duration {
-	if envVal := os.Getenv("GOG_SYNC_POLL_INTERVAL"); envVal != "" {
+	if envVal := os.Getenv("WK_SYNC_POLL_INTERVAL"); envVal != "" {
 		if d, err := time.ParseDuration(envVal); err == nil {
 			return d
 		}

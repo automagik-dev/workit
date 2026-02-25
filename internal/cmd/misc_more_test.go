@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/outfmt"
 )
 
 func TestCompletionCmdRun(t *testing.T) {
@@ -37,7 +37,7 @@ func TestVersionStringVariantsMore(t *testing.T) {
 	branch = ""
 	commit = ""
 	date = ""
-	if got := VersionString(); got != "1.2.3" {
+	if got := VersionString(); got != "Workit 1.2.3" {
 		t.Fatalf("unexpected version: %q", got)
 	}
 
@@ -89,8 +89,8 @@ func TestLoadTrackingConfigForAccount(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg"))
-	t.Setenv("GOG_KEYRING_BACKEND", "file")
-	t.Setenv("GOG_KEYRING_PASSWORD", "testpass")
+	t.Setenv("WK_KEYRING_BACKEND", "file")
+	t.Setenv("WK_KEYRING_PASSWORD", "testpass")
 
 	flags := &RootFlags{Account: "a@b.com"}
 	account, cfg, err := loadTrackingConfigForAccount(flags)

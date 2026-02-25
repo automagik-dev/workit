@@ -18,9 +18,9 @@ import (
 	"golang.org/x/net/html/charset"
 	"google.golang.org/api/gmail/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 // HTML stripping patterns for cleaner text output.
@@ -84,7 +84,7 @@ func (c *GmailThreadGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	var attachDir string
 	if c.Download {
 		if strings.TrimSpace(c.OutputDir.Dir) == "" {
-			// Default: current directory, not gogcli config dir.
+			// Default: current directory, not workit config dir.
 			attachDir = "."
 		} else {
 			expanded, err := config.ExpandPath(c.OutputDir.Dir)

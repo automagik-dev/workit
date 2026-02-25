@@ -9,9 +9,9 @@ import (
 
 	"google.golang.org/api/people/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/googleapi"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 const calendarUsersRequestTimeout = 20 * time.Second
@@ -132,7 +132,7 @@ func (c *CalendarUsersCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	u.Err().Println("\nTip: Use any email above as a calendar ID, e.g.:")
 	if firstEmail != "" {
-		u.Err().Printf("  gog calendar events %s", firstEmail)
+		u.Err().Printf("  wk calendar events %s", firstEmail)
 	}
 
 	return nil

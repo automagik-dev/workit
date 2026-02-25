@@ -309,15 +309,15 @@ func TestResolveOutputLocation_EnvVar(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	// Save and restore GOG_TIMEZONE
-	orig := os.Getenv("GOG_TIMEZONE")
-	defer os.Setenv("GOG_TIMEZONE", orig)
+	// Save and restore WK_TIMEZONE
+	orig := os.Getenv("WK_TIMEZONE")
+	defer os.Setenv("WK_TIMEZONE", orig)
 
 	envTZ := pickNonLocalTimezone(t)
 	flagTZ := pickTimezoneExcluding(t, envTZ)
 
-	// Test GOG_TIMEZONE takes effect when no flag provided
-	os.Setenv("GOG_TIMEZONE", envTZ)
+	// Test WK_TIMEZONE takes effect when no flag provided
+	os.Setenv("WK_TIMEZONE", envTZ)
 	loc, err := resolveOutputLocation("", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -354,13 +354,13 @@ func TestResolveOutputLocation_EnvVar(t *testing.T) {
 	}
 
 	// Test invalid env var returns error
-	os.Setenv("GOG_TIMEZONE", "Invalid/Zone")
+	os.Setenv("WK_TIMEZONE", "Invalid/Zone")
 	_, err = resolveOutputLocation("", false)
 	if err == nil {
-		t.Fatal("expected error for invalid GOG_TIMEZONE")
+		t.Fatal("expected error for invalid WK_TIMEZONE")
 	}
-	if !strings.Contains(err.Error(), "GOG_TIMEZONE") {
-		t.Errorf("error should mention GOG_TIMEZONE: %v", err)
+	if !strings.Contains(err.Error(), "WK_TIMEZONE") {
+		t.Errorf("error should mention WK_TIMEZONE: %v", err)
 	}
 }
 
@@ -368,10 +368,10 @@ func TestGetConfiguredTimezone(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	// Save and restore GOG_TIMEZONE
-	orig := os.Getenv("GOG_TIMEZONE")
-	defer os.Setenv("GOG_TIMEZONE", orig)
-	os.Setenv("GOG_TIMEZONE", "")
+	// Save and restore WK_TIMEZONE
+	orig := os.Getenv("WK_TIMEZONE")
+	defer os.Setenv("WK_TIMEZONE", orig)
+	os.Setenv("WK_TIMEZONE", "")
 
 	tests := []struct {
 		name      string
@@ -421,7 +421,7 @@ func TestGetConfiguredTimezone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("GOG_TIMEZONE", tt.env)
+			os.Setenv("WK_TIMEZONE", tt.env)
 			loc, err := getConfiguredTimezone(tt.flag)
 
 			if tt.wantErr {

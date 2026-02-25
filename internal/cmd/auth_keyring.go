@@ -7,26 +7,26 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 type AuthKeyringCmd struct {
 	Backend  string `arg:"" optional:"" name:"backend" help:"Keyring backend: auto|keychain|file"`
-	Backend2 string `arg:"" optional:"" name:"backend2" help:"(compat) Use: gog auth keyring set <backend>"`
+	Backend2 string `arg:"" optional:"" name:"backend2" help:"(compat) Use: wk auth keyring set <backend>"`
 }
 
 func (c *AuthKeyringCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
 
-	const keyringPasswordEnv = "GOG_KEYRING_PASSWORD" //nolint:gosec // env var name, not a credential
+	const keyringPasswordEnv = "WK_KEYRING_PASSWORD" //nolint:gosec // env var name, not a credential
 
 	backend := strings.ToLower(strings.TrimSpace(c.Backend))
 	backend2 := strings.ToLower(strings.TrimSpace(c.Backend2))
 
-	// Backwards compat for earlier suggestion: `gog auth keyring set <backend>`.
+	// Backwards compat for earlier suggestion: `wk auth keyring set <backend>`.
 	if backend == "set" {
 		backend = backend2
 		backend2 = ""
@@ -54,7 +54,7 @@ func (c *AuthKeyringCmd) Run(ctx context.Context, flags *RootFlags) error {
 		u.Out().Printf("path\t%s", path)
 		u.Out().Printf("keyring_backend\t%s", info.Value)
 		u.Out().Printf("source\t%s", info.Source)
-		u.Err().Println("Hint: gog auth keyring <auto|keychain|file>")
+		u.Err().Println("Hint: wk auth keyring <auto|keychain|file>")
 		return nil
 	}
 
@@ -93,11 +93,11 @@ func (c *AuthKeyringCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	// Env var wins; warn so it doesn't look "broken".
-	if v := strings.TrimSpace(os.Getenv("GOG_KEYRING_BACKEND")); v != "" &&
+	if v := strings.TrimSpace(os.Getenv("WK_KEYRING_BACKEND")); v != "" &&
 		u != nil &&
 		!outfmt.IsJSON(ctx) &&
 		!outfmt.IsPlain(ctx) {
-		u.Err().Printf("NOTE: GOG_KEYRING_BACKEND=%s overrides config.json", v)
+		u.Err().Printf("NOTE: WK_KEYRING_BACKEND=%s overrides config.json", v)
 	}
 
 	if backend == strFile &&
@@ -105,7 +105,7 @@ func (c *AuthKeyringCmd) Run(ctx context.Context, flags *RootFlags) error {
 		!outfmt.IsJSON(ctx) &&
 		!outfmt.IsPlain(ctx) {
 		if v := strings.TrimSpace(os.Getenv(keyringPasswordEnv)); v != "" {
-			u.Err().Println("GOG_KEYRING_PASSWORD found in environment.")
+			u.Err().Println("WK_KEYRING_PASSWORD found in environment.")
 		} else if !term.IsTerminal(int(os.Stdin.Fd())) {
 			u.Err().Printf("NOTE: file keyring backend in non-interactive context requires %s", keyringPasswordEnv)
 		} else {

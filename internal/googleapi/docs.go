@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/api/docs/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/googleauth"
 )
 
 func NewDocs(ctx context.Context, email string) (*docs.Service, error) {

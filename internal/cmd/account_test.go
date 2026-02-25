@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 type fakeSecretsStore struct {
@@ -38,7 +38,7 @@ func (s *fakeSecretsStore) MergeToken(client string, email string, tok secrets.T
 }
 
 func TestRequireAccount_PrefersFlag(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "env@example.com")
+	t.Setenv("WK_ACCOUNT", "env@example.com")
 	flags := &RootFlags{Account: "flag@example.com"}
 	got, err := requireAccount(flags)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestRequireAccount_PrefersFlag(t *testing.T) {
 }
 
 func TestRequireAccount_UsesEnv(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "env@example.com")
+	t.Setenv("WK_ACCOUNT", "env@example.com")
 	flags := &RootFlags{}
 	got, err := requireAccount(flags)
 	if err != nil {
@@ -91,7 +91,7 @@ func TestRequireAccount_ResolvesAliasEnv(t *testing.T) {
 		t.Fatalf("write config: %v", err)
 	}
 
-	t.Setenv("GOG_ACCOUNT", "work")
+	t.Setenv("WK_ACCOUNT", "work")
 	flags := &RootFlags{}
 	got, err := requireAccount(flags)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestRequireAccount_ResolvesAliasEnv(t *testing.T) {
 }
 
 func TestRequireAccount_AutoUsesDefault(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "")
+	t.Setenv("WK_ACCOUNT", "")
 	flags := &RootFlags{Account: "auto"}
 
 	prev := openSecretsStoreForAccount
@@ -122,7 +122,7 @@ func TestRequireAccount_AutoUsesDefault(t *testing.T) {
 }
 
 func TestRequireAccount_Missing(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "")
+	t.Setenv("WK_ACCOUNT", "")
 	flags := &RootFlags{}
 	_, err := requireAccount(flags)
 	if err == nil {
@@ -131,7 +131,7 @@ func TestRequireAccount_Missing(t *testing.T) {
 }
 
 func TestRequireAccount_UsesKeyringDefaultAccount(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "")
+	t.Setenv("WK_ACCOUNT", "")
 	flags := &RootFlags{}
 
 	prev := openSecretsStoreForAccount
@@ -150,7 +150,7 @@ func TestRequireAccount_UsesKeyringDefaultAccount(t *testing.T) {
 }
 
 func TestRequireAccount_UsesSingleStoredToken(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "")
+	t.Setenv("WK_ACCOUNT", "")
 	flags := &RootFlags{}
 
 	prev := openSecretsStoreForAccount
@@ -171,7 +171,7 @@ func TestRequireAccount_UsesSingleStoredToken(t *testing.T) {
 }
 
 func TestRequireAccount_MissingWhenMultipleTokensAndNoDefault(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "")
+	t.Setenv("WK_ACCOUNT", "")
 	flags := &RootFlags{}
 
 	prev := openSecretsStoreForAccount

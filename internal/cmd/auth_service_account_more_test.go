@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 func TestAuthServiceAccountSet_AndList_Text(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 // dryRunExit prints the intended operation and exits successfully (exit code 0).

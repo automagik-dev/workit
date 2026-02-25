@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/outfmt"
 )
 
 type AgentExitCodesCmd struct{}

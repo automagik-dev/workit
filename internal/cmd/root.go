@@ -12,13 +12,13 @@ import (
 	"github.com/alecthomas/kong"
 	"golang.org/x/term"
 
-	"github.com/namastexlabs/gog-cli/internal/authclient"
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/errfmt"
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/authclient"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/errfmt"
+	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 const (
@@ -70,6 +70,7 @@ type CLI struct {
 	Groups     GroupsCmd             `cmd:"" aliases:"group" help:"Google Groups"`
 	Drive      DriveCmd              `cmd:"" aliases:"drv" help:"Google Drive"`
 	Docs       DocsCmd               `cmd:"" aliases:"doc" help:"Google Docs (export via Drive)"`
+	Docx       DocxCmd               `cmd:"" help:"DOCX document operations (local files)"`
 	Slides     SlidesCmd             `cmd:"" aliases:"slide" help:"Google Slides"`
 	Calendar   CalendarCmd           `cmd:"" aliases:"cal" help:"Google Calendar"`
 	Classroom  ClassroomCmd          `cmd:"" aliases:"class" help:"Google Classroom"`
@@ -84,6 +85,8 @@ type CLI struct {
 	Forms      FormsCmd              `cmd:"" aliases:"form" help:"Google Forms"`
 	AppScript  AppScriptCmd          `cmd:"" name:"appscript" aliases:"script,apps-script" help:"Google Apps Script"`
 	Sync       SyncCmd               `cmd:"" help:"Google Drive sync"`
+	Templates  TemplatesCmd          `cmd:"" help:"Manage document templates"`
+	Setup      SetupCmd              `cmd:"" help:"Validate environment dependencies"`
 	Config     ConfigCmd             `cmd:"" help:"Manage configuration"`
 	ExitCodes  AgentExitCodesCmd     `cmd:"" name:"exit-codes" aliases:"exitcodes" help:"Print stable exit codes (alias for 'agent exit-codes')"`
 	Agent      AgentCmd              `cmd:"" help:"Agent-friendly helpers"`
@@ -190,7 +193,7 @@ func Execute(args []string) (err error) {
 
 	// Opt-in "agent mode": default to JSON when stdout is piped/non-TTY.
 	// We intentionally do this after parsing so `--plain` can override it.
-	if envBool("GOG_AUTO_JSON") && !cli.JSON && !cli.Plain && !term.IsTerminal(int(os.Stdout.Fd())) {
+	if envBool("WK_AUTO_JSON") && !cli.JSON && !cli.Plain && !term.IsTerminal(int(os.Stdout.Fd())) {
 		cli.JSON = true
 	}
 
@@ -360,12 +363,12 @@ func newParser(description string) (*kong.Kong, *CLI, error) {
 	envMode := outfmt.FromEnv()
 	vars := kong.Vars{
 		"auth_services":    googleauth.UserServiceCSV(),
-		"color":            envOr("GOG_COLOR", "auto"),
-		"calendar_weekday": envOr("GOG_CALENDAR_WEEKDAY", "false"),
-		"client":           envOr("GOG_CLIENT", ""),
-		"enabled_commands": envOr("GOG_ENABLE_COMMANDS", ""),
-		"command_tier":     envOr("GOG_COMMAND_TIER", "complete"),
-		"read_only":        boolString(envBool("GOG_READ_ONLY")),
+		"color":            envOr("WK_COLOR", "auto"),
+		"calendar_weekday": envOr("WK_CALENDAR_WEEKDAY", "false"),
+		"client":           envOr("WK_CLIENT", ""),
+		"enabled_commands": envOr("WK_ENABLE_COMMANDS", ""),
+		"command_tier":     envOr("WK_COMMAND_TIER", "complete"),
+		"read_only":        boolString(envBool("WK_READ_ONLY")),
 		"json":             boolString(envMode.JSON),
 		"plain":            boolString(envMode.Plain),
 		"version":          VersionString(),
@@ -374,7 +377,7 @@ func newParser(description string) (*kong.Kong, *CLI, error) {
 	cli := &CLI{}
 	parser, err := kong.New(
 		cli,
-		kong.Name("gog"),
+		kong.Name("wk"),
 		kong.Description(description),
 		kong.ConfigureHelp(helpOptions()),
 		kong.Help(helpPrinter),
@@ -389,7 +392,7 @@ func newParser(description string) (*kong.Kong, *CLI, error) {
 }
 
 func baseDescription() string {
-	return "Google CLI for Gmail/Calendar/Chat/Classroom/Drive/Contacts/Tasks/Sheets/Docs/Slides/People/Forms/App Script"
+	return "Workit — office toolkit CLI for agents\nGoogle CLI for Gmail/Calendar/Chat/Classroom/Drive/Contacts/Tasks/Sheets/Docs/Slides/People/Forms/App Script"
 }
 
 func helpDescription() string {
@@ -466,7 +469,7 @@ func stripGenerateInputFlag(args []string) []string {
 }
 
 // extractEnableCommands scans the raw arg slice for --enable-commands flag/value,
-// falling back to the GOG_ENABLE_COMMANDS env var.  This allows the generate-input
+// falling back to the WK_ENABLE_COMMANDS env var.  This allows the generate-input
 // pre-parse path to enforce command restrictions without full Kong parsing.
 func extractEnableCommands(args []string) string {
 	for i := 0; i < len(args); i++ {
@@ -481,7 +484,7 @@ func extractEnableCommands(args []string) string {
 			return args[i+1]
 		}
 	}
-	return os.Getenv("GOG_ENABLE_COMMANDS")
+	return os.Getenv("WK_ENABLE_COMMANDS")
 }
 
 // extractCommandTokens pulls non-flag tokens from args (the command path).

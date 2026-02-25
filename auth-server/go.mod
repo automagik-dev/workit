@@ -1,4 +1,4 @@
-module github.com/namastexlabs/gog-cli/auth-server
+module github.com/namastexlabs/workit/auth-server
 
 go 1.25
 

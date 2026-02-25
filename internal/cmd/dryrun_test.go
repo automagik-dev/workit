@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/outfmt"
 )
 
 func TestDryRunExit_JSON_IgnoresResultsOnlyTransform(t *testing.T) {

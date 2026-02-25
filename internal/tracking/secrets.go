@@ -7,7 +7,7 @@ import (
 
 	"github.com/99designs/keyring"
 
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 var (
