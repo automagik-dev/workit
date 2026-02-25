@@ -27,6 +27,10 @@ const (
 	defaultSkillsRepo  = defaultUpdateRepo
 	githubAPIBase      = "https://api.github.com"
 	githubReadmeHeader = "application/vnd.github+json"
+	windowsOS          = "windows"
+	statusUpdated      = "updated"
+	statusSkipped      = "skipped"
+	statusInstalled    = "installed"
 )
 
 // UpdateCmd updates the local wk binary and optional skills repository.
@@ -98,8 +102,8 @@ func (c *UpdateCmd) Run(ctx context.Context) error {
 		RequestedTag: strings.TrimSpace(c.Tag),
 		SkillsRepo:   skillsRepo,
 		SkillsDir:    skillsDir,
-		Binary:       "skipped",
-		Skills:       "skipped",
+		Binary:       statusSkipped,
+		Skills:       statusSkipped,
 	}
 
 	if !c.SkipBinary {
@@ -110,7 +114,7 @@ func (c *UpdateCmd) Run(ctx context.Context) error {
 		result.Tag = tag
 		result.Asset = assetName
 		result.BinaryPath = binaryPath
-		result.Binary = "updated"
+		result.Binary = statusUpdated
 	}
 
 	if !c.SkipSkills {
@@ -131,21 +135,21 @@ func (c *UpdateCmd) Run(ctx context.Context) error {
 	}
 
 	if u := ui.FromContext(ctx); u != nil {
-		if result.Binary == "updated" {
+		if result.Binary == statusUpdated {
 			u.Out().Printf("binary updated: %s (%s)", result.Tag, result.Asset)
 			u.Out().Printf("installed: %s", result.BinaryPath)
 		}
-		if result.Skills != "skipped" {
+		if result.Skills != statusSkipped {
 			u.Out().Printf("skills %s: %s -> %s", result.Skills, result.SkillsRepo, result.SkillsDir)
 		}
 		return nil
 	}
 
-	if result.Binary == "updated" {
+	if result.Binary == statusUpdated {
 		fmt.Fprintf(os.Stdout, "binary updated: %s (%s)\n", result.Tag, result.Asset)
 		fmt.Fprintf(os.Stdout, "installed: %s\n", result.BinaryPath)
 	}
-	if result.Skills != "skipped" {
+	if result.Skills != statusSkipped {
 		fmt.Fprintf(os.Stdout, "skills %s: %s -> %s\n", result.Skills, result.SkillsRepo, result.SkillsDir)
 	}
 
@@ -153,7 +157,7 @@ func (c *UpdateCmd) Run(ctx context.Context) error {
 }
 
 func updateBinary(ctx context.Context, repo, version string) (tag string, assetName string, binaryPath string, err error) {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		return "", "", "", errors.New("wk update binary self-replacement is not supported on windows yet")
 	}
 
@@ -181,8 +185,8 @@ func updateBinary(ctx context.Context, repo, version string) (tag string, assetN
 	defer os.RemoveAll(tmpDir)
 
 	archivePath := filepath.Join(tmpDir, asset.Name)
-	if err := downloadFile(ctx, asset.BrowserDownloadURL, archivePath); err != nil {
-		return "", "", "", err
+	if dlErr := downloadFile(ctx, asset.BrowserDownloadURL, archivePath); dlErr != nil {
+		return "", "", "", dlErr
 	}
 
 	binaries, err := extractBinaries(archivePath)
@@ -265,9 +269,9 @@ func updateSkills(ctx context.Context, repo, dst, ref string) (string, error) {
 	}
 
 	if existed {
-		return "updated", nil
+		return statusUpdated, nil
 	}
-	return "installed", nil
+	return statusInstalled, nil
 }
 
 func fetchRelease(ctx context.Context, repo, version string) (githubRelease, error) {
@@ -343,8 +347,8 @@ func normalizeTag(raw string) string {
 }
 
 func releaseAssetName(tag, goos, goarch string) (string, error) {
-	version := strings.TrimPrefix(strings.TrimSpace(tag), "v")
-	if version == "" {
+	releaseVersion := strings.TrimPrefix(strings.TrimSpace(tag), "v")
+	if releaseVersion == "" {
 		return "", errors.New("release tag is empty")
 	}
 
@@ -355,17 +359,17 @@ func releaseAssetName(tag, goos, goarch string) (string, error) {
 		return "", fmt.Errorf("unsupported architecture %q", goarch)
 	}
 
-	ext := "tar.gz"
+	var ext string
 	switch strings.TrimSpace(goos) {
 	case "linux", "darwin":
 		ext = "tar.gz"
-	case "windows":
+	case windowsOS:
 		ext = "zip"
 	default:
 		return "", fmt.Errorf("unsupported OS %q", goos)
 	}
 
-	return fmt.Sprintf("workit_%s_%s_%s.%s", version, goos, arch, ext), nil
+	return fmt.Sprintf("workit_%s_%s_%s.%s", releaseVersion, goos, arch, ext), nil
 }
 
 func downloadFile(ctx context.Context, url, dst string) error {
@@ -390,6 +394,7 @@ func downloadFile(ctx context.Context, url, dst string) error {
 		return fmt.Errorf("download failed (%d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
+	//nolint:gosec // destination path is controlled by the caller of update flow.
 	f, err := os.Create(dst)
 	if err != nil {
 		return fmt.Errorf("create archive file: %w", err)
@@ -412,6 +417,7 @@ func extractBinaries(archivePath string) (map[string][]byte, error) {
 
 	switch {
 	case strings.HasSuffix(archivePath, ".tar.gz"):
+		//nolint:gosec // archivePath is created in a temp directory by this command.
 		f, err := os.Open(archivePath)
 		if err != nil {
 			return nil, fmt.Errorf("open archive: %w", err)
@@ -465,9 +471,12 @@ func extractBinaries(archivePath string) (map[string][]byte, error) {
 				return nil, fmt.Errorf("open %s in zip archive: %w", base, err)
 			}
 			b, readErr := io.ReadAll(rc)
-			rc.Close()
+			closeErr := rc.Close()
 			if readErr != nil {
 				return nil, fmt.Errorf("read %s from zip archive: %w", base, readErr)
+			}
+			if closeErr != nil {
+				return nil, fmt.Errorf("close %s from zip archive: %w", base, closeErr)
 			}
 			out[base] = b
 		}
@@ -483,7 +492,7 @@ func extractBinaries(archivePath string) (map[string][]byte, error) {
 }
 
 func wantedBinaryNames() []string {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		return []string{"wk.exe", "gog.exe"}
 	}
 	return []string{"wk", "gog"}
@@ -492,7 +501,7 @@ func wantedBinaryNames() []string {
 func installBinaries(binaries map[string][]byte, selfPath string) (string, error) {
 	dir := filepath.Dir(selfPath)
 	wkName := "wk"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		wkName = "wk.exe"
 	}
 	wkPath := filepath.Join(dir, wkName)
@@ -506,7 +515,7 @@ func installBinaries(binaries map[string][]byte, selfPath string) (string, error
 	}
 
 	gogName := "gog"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		gogName = "gog.exe"
 	}
 	if gogBytes, ok := binaries[gogName]; ok {
@@ -529,7 +538,7 @@ func installBinaries(binaries map[string][]byte, selfPath string) (string, error
 
 func writeAtomicExecutable(path string, content []byte) error {
 	tmp := path + ".tmp-" + fmt.Sprintf("%d", os.Getpid())
-	if err := os.WriteFile(tmp, content, 0o755); err != nil {
+	if err := os.WriteFile(tmp, content, 0o600); err != nil {
 		if os.IsPermission(err) {
 			return fmt.Errorf("write %s: %w (try running with permissions that can write this path)", path, err)
 		}
@@ -543,6 +552,10 @@ func writeAtomicExecutable(path string, content []byte) error {
 		}
 		return fmt.Errorf("replace executable %s: %w", path, err)
 	}
+	//nolint:gosec // installed executable must remain executable for users.
+	if err := os.Chmod(path, 0o755); err != nil {
+		return fmt.Errorf("set executable mode on %s: %w", path, err)
+	}
 
 	return nil
 }
@@ -553,9 +566,9 @@ func copyDir(src, dst string) error {
 			return walkErr
 		}
 
-		rel, err := filepath.Rel(src, path)
-		if err != nil {
-			return fmt.Errorf("compute relative path: %w", err)
+		rel, relErr := filepath.Rel(src, path)
+		if relErr != nil {
+			return fmt.Errorf("compute relative path: %w", relErr)
 		}
 		if rel == "." {
 			return nil
@@ -563,8 +576,8 @@ func copyDir(src, dst string) error {
 		target := filepath.Join(dst, rel)
 
 		if info.IsDir() {
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return fmt.Errorf("create directory %s: %w", target, err)
+			if mkErr := os.MkdirAll(target, 0o750); mkErr != nil {
+				return fmt.Errorf("create directory %s: %w", target, mkErr)
 			}
 			return nil
 		}
@@ -573,14 +586,16 @@ func copyDir(src, dst string) error {
 			return fmt.Errorf("unsupported symlink in skills repo: %s", path)
 		}
 
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return fmt.Errorf("create parent directory %s: %w", filepath.Dir(target), err)
+		if mkErr := os.MkdirAll(filepath.Dir(target), 0o750); mkErr != nil {
+			return fmt.Errorf("create parent directory %s: %w", filepath.Dir(target), mkErr)
 		}
+		//nolint:gosec // source path comes from a cloned local repository.
 		in, err := os.Open(path)
 		if err != nil {
 			return fmt.Errorf("open source file %s: %w", path, err)
 		}
 
+		//nolint:gosec // target path is derived from controlled repo content.
 		out, err := os.Create(target)
 		if err != nil {
 			_ = in.Close()
@@ -589,11 +604,11 @@ func copyDir(src, dst string) error {
 
 		if _, err := io.Copy(out, in); err != nil {
 			_ = in.Close()
-			out.Close()
+			_ = out.Close()
 			return fmt.Errorf("copy %s to %s: %w", path, target, err)
 		}
 		if err := in.Close(); err != nil {
-			out.Close()
+			_ = out.Close()
 			return fmt.Errorf("close source file %s: %w", path, err)
 		}
 		if err := out.Close(); err != nil {
