@@ -62,18 +62,6 @@ fi
 
 make ci
 
-formula_path="../homebrew-tap/Formula/workit.rb"
-if [[ ! -f "$formula_path" ]]; then
-  echo "missing formula at $formula_path" >&2
-  exit 2
-fi
-
-formula_version="$(awk -F '\"' '/^[[:space:]]*version /{print $2; exit}' "$formula_path" | xargs)"
-if [[ "$formula_version" != "$version" ]]; then
-  echo "formula version mismatch: $formula_version" >&2
-  exit 2
-fi
-
 tmp_assets_dir="$(mktemp -d -t workit-release-assets)"
 gh release download "v$version" -p checksums.txt -D "$tmp_assets_dir" >/dev/null
 checksums_file="$tmp_assets_dir/checksums.txt"
@@ -83,47 +71,28 @@ sha_for_asset() {
   awk -v n="$name" '$2==n {print $1}' "$checksums_file"
 }
 
-formula_sha_for_url() {
-  local url_substr="$1"
-  awk -v s="$url_substr" '
-    index($0, s) {found=1; next}
-    found && $1=="sha256" {gsub(/"/, "", $2); print $2; exit}
-  ' "$formula_path"
-}
+required_assets=(
+  "workit_${version}_darwin_amd64.tar.gz"
+  "workit_${version}_darwin_arm64.tar.gz"
+  "workit_${version}_linux_amd64.tar.gz"
+  "workit_${version}_linux_arm64.tar.gz"
+  "workit_${version}_windows_amd64.zip"
+  "workit_${version}_windows_arm64.zip"
+)
 
-darwin_amd64_expected="$(sha_for_asset "workit_${version}_darwin_amd64.tar.gz")"
-darwin_arm64_expected="$(sha_for_asset "workit_${version}_darwin_arm64.tar.gz")"
-linux_amd64_expected="$(sha_for_asset "workit_${version}_linux_amd64.tar.gz")"
-linux_arm64_expected="$(sha_for_asset "workit_${version}_linux_arm64.tar.gz")"
+for asset in "${required_assets[@]}"; do
+  if [[ -z "$(sha_for_asset "$asset")" ]]; then
+    echo "missing release asset checksum entry: $asset" >&2
+    exit 2
+  fi
+done
 
-darwin_amd64_formula="$(formula_sha_for_url "workit_#{version}_darwin_amd64.tar.gz")"
-darwin_arm64_formula="$(formula_sha_for_url "workit_#{version}_darwin_arm64.tar.gz")"
-linux_amd64_formula="$(formula_sha_for_url "workit_#{version}_linux_amd64.tar.gz")"
-linux_arm64_formula="$(formula_sha_for_url "workit_#{version}_linux_arm64.tar.gz")"
-
-if [[ "$darwin_amd64_formula" != "$darwin_amd64_expected" ]]; then
-  echo "formula sha mismatch (darwin_amd64): $darwin_amd64_formula (expected $darwin_amd64_expected)" >&2
-  exit 2
-fi
-if [[ "$darwin_arm64_formula" != "$darwin_arm64_expected" ]]; then
-  echo "formula sha mismatch (darwin_arm64): $darwin_arm64_formula (expected $darwin_arm64_expected)" >&2
-  exit 2
-fi
-if [[ "$linux_amd64_formula" != "$linux_amd64_expected" ]]; then
-  echo "formula sha mismatch (linux_amd64): $linux_amd64_formula (expected $linux_amd64_expected)" >&2
-  exit 2
-fi
-if [[ "$linux_arm64_formula" != "$linux_arm64_expected" ]]; then
-  echo "formula sha mismatch (linux_arm64): $linux_arm64_formula (expected $linux_arm64_expected)" >&2
-  exit 2
-fi
-
-brew update >/dev/null
-brew upgrade workit || brew install steipete/tap/workit
-brew test steipete/tap/workit
-wk --version
+tmp_bin_dir="$(mktemp -d -t workit-install-bin)"
+WK_BIN_DIR="$tmp_bin_dir" WK_SKIP_SKILLS=1 WK_VERSION="$version" bash scripts/install.sh
+"$tmp_bin_dir/wk" --version
 
 rm -rf "$tmp_assets_dir"
+rm -rf "$tmp_bin_dir"
 rm -f "$notes_file"
 
-echo "Release v$version verified (CI, GitHub release notes/assets, Homebrew install/test)."
+echo "Release v$version verified (CI, release notes/assets, installer smoke test)."

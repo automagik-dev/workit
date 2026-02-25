@@ -5,7 +5,7 @@ import (
 
 	"google.golang.org/api/people/v1"
 
-	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/googleapi"
 )
 
 var (

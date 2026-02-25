@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/api/calendar/v3"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func printCalendarEventWithTimezone(u *ui.UI, event *calendar.Event, calendarTimezone string, loc *time.Location) {

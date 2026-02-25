@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/input"
-	"github.com/namastexlabs/workit/internal/tracking"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/input"
+	"github.com/automagik-dev/workit/internal/tracking"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 type GmailTrackSetupCmd struct {

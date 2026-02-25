@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/outfmt"
 )
 
 type AgentExitCodesCmd struct{}

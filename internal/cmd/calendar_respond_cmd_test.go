@@ -13,7 +13,7 @@ import (
 	"google.golang.org/api/calendar/v3"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestCalendarRespondCmd_Text(t *testing.T) {

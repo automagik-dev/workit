@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/outfmt"
 )
 
 func TestAgentExitCodes_JSON(t *testing.T) {

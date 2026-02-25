@@ -12,7 +12,7 @@ import (
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestGmailSettings_TextPaths(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/outfmt"
 )
 
 // AgentHelpCmd displays help topics for agent integration.

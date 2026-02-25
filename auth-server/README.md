@@ -90,7 +90,7 @@ services:
     environment:
       - WK_CLIENT_ID=${WK_CLIENT_ID}
       - WK_CLIENT_SECRET=${WK_CLIENT_SECRET}
-      - WK_REDIRECT_URL=https://auth.namastex.io/callback
+      - WK_REDIRECT_URL=https://auth.automagik.dev/callback
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
@@ -104,10 +104,10 @@ services:
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name auth.namastex.io;
+    server_name auth.automagik.dev;
 
-    ssl_certificate /etc/letsencrypt/live/auth.namastex.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/auth.namastex.io/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/auth.automagik.dev/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/auth.automagik.dev/privkey.pem;
 
     location / {
         proxy_pass http://localhost:8080;

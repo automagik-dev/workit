@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/googleapi"
 )
 
 const peopleMeResource = "people/me"

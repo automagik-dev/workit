@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/api/idtoken"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestGmailWatchServeCmd_UsesStoredHook(t *testing.T) {

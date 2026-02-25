@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func warnTasksDueTime(u *ui.UI, due string) {

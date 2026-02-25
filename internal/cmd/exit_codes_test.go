@@ -8,8 +8,8 @@ import (
 	"github.com/99designs/keyring"
 	ggoogleapi "google.golang.org/api/googleapi"
 
-	"github.com/namastexlabs/workit/internal/config"
-	gogapi "github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/config"
+	gogapi "github.com/automagik-dev/workit/internal/googleapi"
 )
 
 func TestStableExitCode_PreservesExistingExitError(t *testing.T) {

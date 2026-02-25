@@ -1,4 +1,4 @@
-module github.com/namastexlabs/workit/auth-server
+module github.com/automagik-dev/workit/auth-server
 
 go 1.25
 

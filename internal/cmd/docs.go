@@ -14,9 +14,9 @@ import (
 	"google.golang.org/api/drive/v3"
 	gapi "google.golang.org/api/googleapi"
 
-	"github.com/namastexlabs/workit/internal/googleapi"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 var newDocsService = googleapi.NewDocs

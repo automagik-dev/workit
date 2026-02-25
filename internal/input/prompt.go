@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func PromptLine(ctx context.Context, prompt string) (string, error) {

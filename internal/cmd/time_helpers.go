@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/api/calendar/v3"
 
-	"github.com/namastexlabs/workit/internal/timeparse"
+	"github.com/automagik-dev/workit/internal/timeparse"
 )
 
 // TimeRangeFlags provides common time range options for calendar commands.

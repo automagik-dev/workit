@@ -7,7 +7,7 @@ import (
 
 	"github.com/99designs/keyring"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 func setupKeyringEnv(t *testing.T) {

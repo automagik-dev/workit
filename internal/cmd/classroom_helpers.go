@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/api/classroom/v1"
 
-	"github.com/namastexlabs/workit/internal/googleapi"
-	"github.com/namastexlabs/workit/internal/timeparse"
+	"github.com/automagik-dev/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/timeparse"
 )
 
 func wrapClassroomError(err error) error {

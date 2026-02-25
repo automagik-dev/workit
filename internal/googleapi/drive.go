@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
-	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/automagik-dev/workit/internal/googleauth"
 )
 
 func NewDrive(ctx context.Context, email string) (*drive.Service, error) {

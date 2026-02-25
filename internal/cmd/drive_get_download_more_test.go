@@ -15,8 +15,8 @@ import (
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func TestDriveGetCmd_TextWithDetailsAndJSON(t *testing.T) {

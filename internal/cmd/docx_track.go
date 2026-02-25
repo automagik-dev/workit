@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/namastexlabs/workit/internal/docx"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/docx"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // DocxTrackCmd creates tracked replacements in a DOCX file.

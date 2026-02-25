@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 // GetDaemonStatus checks if the daemon is running.

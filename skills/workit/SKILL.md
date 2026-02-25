@@ -53,6 +53,29 @@ Load `safety.md` before risky actions. Load `setup.md` for auth/account setup.
 | table, rows, cells, add row, update cell, delete row | `docx-tables.md` |
 | pdf, convert, export, to-pdf, libreoffice | `docx-convert.md` |
 
+### Agent helpers & config
+
+| User intent / keywords | Load file |
+|---|---|
+| agent, help topics, exit codes, schema, generate-input, flags | `agent.md` |
+| config, configuration, config path, config set, config get | `config.md` |
+| templates, template list, template add, template inspect, placeholder | `templates.md` |
+
+## Top-level shortcuts
+
+Common shorthand patterns — no routing needed:
+
+| Shortcut | Expands to |
+|---|---|
+| `wk send` | `wk gmail send` |
+| `wk ls` | `wk drive ls` |
+| `wk cat` | `wk docx cat` |
+| `wk search` | `wk gmail search` |
+| `wk events` | `wk calendar list` |
+| `wk upload` | `wk drive upload` |
+| `wk download` | `wk drive download` |
+| `wk share` | `wk drive share` |
+
 ## DOCX quick reference
 
 All DOCX commands work on local files. No Google account or network access required.

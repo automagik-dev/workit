@@ -1,6 +1,6 @@
 package cmd
 
-import "github.com/namastexlabs/workit/internal/googleapi"
+import "github.com/automagik-dev/workit/internal/googleapi"
 
 var newClassroomService = googleapi.NewClassroom
 

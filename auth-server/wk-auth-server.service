@@ -1,27 +1,26 @@
 [Unit]
 Description=Workit OAuth Callback Server
 After=network.target
-Documentation=https://github.com/namastexlabs/workit
+Documentation=https://github.com/automagik-dev/workit
+StartLimitIntervalSec=300
+StartLimitBurst=3
 
 [Service]
 Type=simple
-User=genie
-Group=genie
-WorkingDirectory=/home/genie/workspace/repos/workit/auth-server
+User=wk-auth-server
+Group=wk-auth-server
 
-# Load credentials from env file
-EnvironmentFile=/home/genie/.config/workit/credentials.env
+# Optional overrides for WK_* variables.
+EnvironmentFile=-/etc/default/wk-auth-server
 
-# Server config
-Environment=PORT=8089
-Environment=REDIRECT_URL=https://wkauth.namastex.io/callback
+# Validate startup inputs so misconfiguration does not spin in tight restart loops.
+ExecStartPre=/bin/sh -ec 'cred_file="${WK_CREDENTIALS_FILE:-}"; if [ -n "$cred_file" ] && [ -r "$cred_file" ]; then exit 0; fi; [ -n "${WK_CLIENT_ID:-}" ] && [ -n "${WK_CLIENT_SECRET:-}" ]'
+ExecStartPre=/bin/sh -ec 'home="${WK_AUTH_SERVER_HOME:-/opt/wk-auth-server}"; bin="${WK_AUTH_SERVER_BIN:-${home}/auth-server}"; [ -x "$bin" ]'
 
-ExecStart=/home/genie/workspace/repos/workit/auth-server/auth-server \
-    --port=${PORT} \
-    --redirect-url=${REDIRECT_URL}
+ExecStart=/bin/sh -ec 'home="${WK_AUTH_SERVER_HOME:-/opt/wk-auth-server}"; bin="${WK_AUTH_SERVER_BIN:-${home}/auth-server}"; port="${WK_AUTH_SERVER_PORT:-8089}"; redirect="${WK_REDIRECT_URL:-https://auth.automagik.dev/callback}"; cred_file="${WK_CREDENTIALS_FILE:-}"; if [ -n "$cred_file" ] && [ -r "$cred_file" ]; then exec "$bin" --port="$port" --redirect-url="$redirect" --credentials-file="$cred_file"; fi; exec "$bin" --port="$port" --redirect-url="$redirect"'
 
-Restart=always
-RestartSec=5
+Restart=on-failure
+RestartSec=10s
 
 # Security hardening
 NoNewPrivileges=yes

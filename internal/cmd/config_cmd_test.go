@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 func TestConfigCmd_JSONParity(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
-	"github.com/namastexlabs/workit/internal/googleapi"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/sync"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/sync"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // SyncCmd is the top-level command for Drive sync operations.

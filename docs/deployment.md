@@ -1,19 +1,19 @@
 # workit Deployment Guide
 
-## Quick Install (Namastex Servers)
+## Quick Install (Automagik Servers)
 
 ```bash
 # One-liner install with embedded credentials
-curl -sL https://raw.githubusercontent.com/automagik-genie/workit/main/scripts/install.sh | bash
+curl -sL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
 ```
 
 Or manually:
 
 ```bash
-git clone https://github.com/automagik-genie/workit.git
+git clone https://github.com/automagik-dev/workit.git
 cd workit
 ./scripts/setup-credentials.sh  # Creates ~/.config/workit/credentials.env
-make build-namastex             # Builds with embedded OAuth credentials
+make build-automagik            # Builds with embedded OAuth credentials
 cp bin/wk ~/.local/bin/
 ```
 
@@ -52,7 +52,7 @@ source ~/.config/workit/credentials.env
 
 ```
 ┌─────────────────┐     ┌──────────────────────────┐     ┌─────────────────┐
-│  Agent (wk)    │────▶│  gogoauth.namastex.io    │◀────│  User's Phone   │
+│  Agent (wk)    │────▶│  auth.automagik.dev    │◀────│  User's Phone   │
 │  --headless     │     │  (callback server)       │     │  (OAuth login)  │
 └─────────────────┘     └──────────────────────────┘     └─────────────────┘
         │                         │
@@ -99,12 +99,12 @@ wk drive list
 | Command | Description |
 |---------|-------------|
 | `make build` | Standard build (credentials from env vars) |
-| `make build-namastex` | Build with Namastex credentials embedded |
+| `make build-automagik` | Build with internal credentials embedded |
 | `make build-internal` | Build with custom credentials (pass via args) |
 
 ## Credentials
 
 **Project:** felipe-bot (felipe-bot-485616)  
 **OAuth Client:** workit-headless  
-**Callback URL:** https://gogoauth.namastex.io/callback  
-**Audience:** Internal (namastex.ai domain only)
+**Callback URL:** https://auth.automagik.dev/callback  
+**Audience:** Internal deployments

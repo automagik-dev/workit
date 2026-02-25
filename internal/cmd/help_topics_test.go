@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/outfmt"
 )
 
 func TestHelpTopics_ListTopics_NoArg(t *testing.T) {

@@ -3,20 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>wk — Google in your terminal</title>
+    <title>workit — Google in your terminal</title>
     <meta
       name="description"
-      content="wk: a single CLI for Gmail, Calendar, Drive, Contacts, Tasks, Sheets, Docs, Slides, and People."
+      content="workit: a single CLI for Gmail, Calendar, Drive, Contacts, Tasks, Sheets, Docs, Slides, and People."
     />
     <meta name="theme-color" content="#0b0b11" />
-    <meta property="og:title" content="wk — Google in your terminal" />
+    <meta property="og:title" content="workit — Google in your terminal" />
     <meta
       property="og:description"
       content="One CLI for Gmail, Calendar, Drive, Contacts, Tasks, Sheets, Docs, Slides, and People."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://workit.sh/" />
+    <meta property="og:url" content="https://automagik-dev.github.io/" />
     <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://automagik-dev.github.io/" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -48,7 +49,7 @@
           <a href="#quickstart">Quickstart</a>
           <a href="#features">Features</a>
           <a href="#examples">Examples</a>
-          <a class="nav__cta" href="https://github.com/namastexlabs/workit">GitHub</a>
+          <a class="nav__cta" href="https://github.com/automagik-dev/workit">GitHub</a>
         </nav>
       </div>
     </header>
@@ -82,7 +83,7 @@
 
             <div class="hero__actions">
               <a class="btn btn--primary" href="#install">Install</a>
-              <a class="btn btn--ghost" href="https://github.com/namastexlabs/workit#quick-start">Readme</a>
+              <a class="btn btn--ghost" href="https://github.com/automagik-dev/workit#readme">Readme</a>
             </div>
 
             <p class="note">
@@ -98,11 +99,11 @@
                   <span class="dot dot--y"></span>
                   <span class="dot dot--g"></span>
                 </span>
-                <span class="term__title">workit.sh</span>
+                <span class="term__title">workit</span>
               </div>
               <div class="term__body">
                 <pre class="term__pre"><code id="demo">
-$ brew install namastexlabs/tap/workit
+$ curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
 $ wk auth credentials ~/Downloads/client_secret.json
 $ wk auth add you@gmail.com
 
@@ -110,6 +111,7 @@ $ export WK_ACCOUNT=you@gmail.com
 $ wk gmail labels list
 $ wk calendar calendars --max 5 --json | jq '.calendars[].summary'
 $ wk drive ls --query "mimeType='application/pdf'" --max 3
+$ wk update
 </code></pre>
               </div>
             </div>
@@ -136,20 +138,17 @@ $ wk drive ls --query "mimeType='application/pdf'" --max 3
         <div class="wrap section__grid">
           <div>
             <h2>Install</h2>
-            <p class="muted">Homebrew tap, or build from source.</p>
+            <p class="muted">Install once with a single command. Use <code>wk update</code> to stay current.</p>
           </div>
 
           <div class="cols">
             <div class="card block">
-              <h3>Homebrew</h3>
-              <pre class="code"><code>brew install namastexlabs/tap/workit</code></pre>
+              <h3>Install</h3>
+              <pre class="code"><code>curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash</code></pre>
             </div>
             <div class="card block">
-              <h3>From source</h3>
-              <pre class="code"><code>git clone https://github.com/namastexlabs/workit.git
-cd workit
-make
-./bin/wk --help</code></pre>
+              <h3>Update</h3>
+              <pre class="code"><code>wk update</code></pre>
             </div>
           </div>
         </div>
@@ -169,7 +168,7 @@ make
               <div class="step__n">1</div>
               <div class="step__b">
                 <h3>Store credentials</h3>
-                <p>Save your downloaded client JSON into wk’s config.</p>
+                <p>Save your downloaded client JSON into workit's config.</p>
                 <pre class="code"><code>wk auth credentials ~/Downloads/client_secret_....json</code></pre>
               </div>
             </div>
@@ -264,8 +263,8 @@ wk slides export &lt;presentationId&gt; --format pptx --out ./deck.pptx</code></
           </div>
 
           <div class="footerline">
-            <a class="btn btn--primary" href="https://github.com/namastexlabs/workit">Go to GitHub</a>
-            <a class="btn btn--ghost" href="https://github.com/namastexlabs/workit/blob/main/CHANGELOG.md">Changelog</a>
+            <a class="btn btn--primary" href="https://github.com/automagik-dev/workit">Go to GitHub</a>
+            <a class="btn btn--ghost" href="https://github.com/automagik-dev/workit/blob/HEAD/CHANGELOG.md">Changelog</a>
           </div>
         </div>
       </section>
@@ -279,15 +278,15 @@ wk slides export &lt;presentationId&gt; --format pptx --out ./deck.pptx</code></
             <span>wk</span>
           </div>
           <div class="sitefoot__small">
-            <span>Built by <a href="https://steipete.me">Peter Steinberger</a>.</span>
+            <span>Built by the Automagik team.</span>
             <span class="sep" aria-hidden="true">·</span>
-            <a href="https://github.com/namastexlabs/workit/blob/main/LICENSE">MIT</a>
+            <a href="https://github.com/automagik-dev/workit/blob/HEAD/LICENSE">MIT</a>
           </div>
         </div>
         <div class="sitefoot__right">
-          <a href="https://github.com/namastexlabs/workit">Source</a>
-          <a href="https://github.com/namastexlabs/workit#installation">Install</a>
-          <a href="https://github.com/namastexlabs/workit#commands">Commands</a>
+          <a href="https://github.com/automagik-dev/workit">Source</a>
+          <a href="https://github.com/automagik-dev/workit#installation">Install</a>
+          <a href="https://github.com/automagik-dev/workit#commands">Commands</a>
         </div>
       </div>
 

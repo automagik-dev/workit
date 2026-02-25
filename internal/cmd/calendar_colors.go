@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 type CalendarColorsCmd struct{}

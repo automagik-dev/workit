@@ -83,9 +83,9 @@ linters:
           json: snake
           yaml: snake
         overrides:
-          - pkg: github.com/namastexlabs/workit/internal/cmd
+          - pkg: github.com/automagik-dev/workit/internal/cmd
             ignore: true
-          - pkg: github.com/namastexlabs/workit/internal/googleauth
+          - pkg: github.com/automagik-dev/workit/internal/googleauth
             ignore: true
     wsl_v5:
       allow-first-in-block: true
@@ -157,4 +157,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/namastexlabs/workit
+        - github.com/automagik-dev/workit

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/namastexlabs/workit/internal/cmd"
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/cmd"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 func main() {

@@ -3,8 +3,8 @@ SHELL := /bin/bash
 # `make` should build the binary by default.
 .DEFAULT_GOAL := build
 
-.PHONY: build build-gog wk workit wk-help workit-help help fmt fmt-check lint lint-full test ci tools
-.PHONY: worker-ci build-internal deadcode race coverage
+.PHONY: build build-gog wk workit gog wk-help workit-help help fmt fmt-check lint lint-full test ci tools
+.PHONY: worker-ci build-internal build-automagik deadcode race coverage
 
 BIN_DIR := $(CURDIR)/bin
 BIN := $(BIN_DIR)/wk
@@ -17,10 +17,7 @@ BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 COMMIT := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo "")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 COVERAGE_MIN ?= 70
-LDFLAGS := -X github.com/namastexlabs/workit/internal/cmd.version=$(VERSION) -X github.com/namastexlabs/workit/internal/cmd.branch=$(BRANCH) -X github.com/namastexlabs/workit/internal/cmd.commit=$(COMMIT) -X github.com/namastexlabs/workit/internal/cmd.date=$(DATE)
-WK_CLIENT_ID_VAL := $(if $(WK_CLIENT_ID),$(WK_CLIENT_ID),$(GOG_CLIENT_ID))
-WK_CLIENT_SECRET_VAL := $(if $(WK_CLIENT_SECRET),$(WK_CLIENT_SECRET),$(GOG_CLIENT_SECRET))
-WK_CALLBACK_SERVER_VAL := $(if $(WK_CALLBACK_SERVER),$(WK_CALLBACK_SERVER),$(GOG_CALLBACK_SERVER))
+LDFLAGS := -X github.com/automagik-dev/workit/internal/cmd.version=$(VERSION) -X github.com/automagik-dev/workit/internal/cmd.branch=$(BRANCH) -X github.com/automagik-dev/workit/internal/cmd.commit=$(COMMIT) -X github.com/automagik-dev/workit/internal/cmd.date=$(DATE)
 
 TOOLS_DIR := $(CURDIR)/.tools
 GOFUMPT := $(TOOLS_DIR)/gofumpt
@@ -30,10 +27,16 @@ DEADCODE_BASELINE := .deadcode-baseline.txt
 GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint
 LINT_NEW_FROM ?= origin/main
 
+# Canonical build-time env contract uses WK_*.
+# Legacy fallback: honor GOG_* only when WK_* is unset.
+WK_CLIENT_ID ?= $(GOG_CLIENT_ID)
+WK_CLIENT_SECRET ?= $(GOG_CLIENT_SECRET)
+WK_CALLBACK_SERVER ?= $(GOG_CALLBACK_SERVER)
+
 # Allow passing CLI args as extra "targets":
 #   make workit -- --help
 #   make workit -- gmail --help
-ifneq ($(filter workit wk,$(MAKECMDGOALS)),)
+ifneq ($(filter workit wk gog,$(MAKECMDGOALS)),)
 RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(RUN_ARGS):;@:)
 endif
@@ -49,33 +52,39 @@ build-gog:
 
 # Build with internal defaults for headless OAuth (credentials baked in).
 # Usage: make build-internal WK_CLIENT_ID=... WK_CLIENT_SECRET=... WK_CALLBACK_SERVER=...
-# Legacy fallback: if WK_* is unset, uses matching GOG_* variable.
+# Legacy fallback: GOG_* is still honored when WK_* is not set.
 build-internal:
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS) \
-		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$(WK_CLIENT_ID_VAL)' \
-		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$(WK_CLIENT_SECRET_VAL)' \
-		-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$(WK_CALLBACK_SERVER_VAL)'" \
+		-X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=$(WK_CLIENT_ID)' \
+		-X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=$(WK_CLIENT_SECRET)' \
+		-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$(WK_CALLBACK_SERVER)'" \
 		-o $(BIN) $(CMD)
 
-# Build with credentials from ~/.config/workit/credentials.env
-# (falls back to legacy ~/.config/gog/credentials.env)
-# Usage: make build-namastex
-build-namastex:
+# Build with credentials from ~/.config/workit/credentials.env (WK_* primary contract).
+# Legacy fallback: accepts GOG_* keys and ~/.config/gog/credentials.env.
+# Usage: make build-automagik
+build-automagik:
 	@mkdir -p $(BIN_DIR)
 	@if [ -f "$(HOME)/.config/workit/credentials.env" ]; then \
 		. $(HOME)/.config/workit/credentials.env && \
+		wk_client_id="$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}" && \
+		wk_client_secret="$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}" && \
+		wk_callback_server="$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}" && \
 		go build -ldflags "$(LDFLAGS) \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}'" \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=$$wk_client_id' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=$$wk_client_secret' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$$wk_callback_server'" \
 			-o $(BIN) $(CMD); \
 	elif [ -f "$(HOME)/.config/gog/credentials.env" ]; then \
 		. $(HOME)/.config/gog/credentials.env && \
+		wk_client_id="$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}" && \
+		wk_client_secret="$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}" && \
+		wk_callback_server="$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}" && \
 		go build -ldflags "$(LDFLAGS) \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}'" \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=$$wk_client_id' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=$$wk_client_secret' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$$wk_callback_server'" \
 			-o $(BIN) $(CMD); \
 	else \
 		echo "Missing credentials file: $(HOME)/.config/workit/credentials.env"; \
@@ -101,6 +110,15 @@ workit: build
 		$(BIN) $(ARGS); \
 	fi
 
+gog: build-gog
+	@if [ -n "$(RUN_ARGS)" ]; then \
+		$(BIN_GOG) $(RUN_ARGS); \
+	elif [ -z "$(ARGS)" ]; then \
+		$(BIN_GOG) --help; \
+	else \
+		$(BIN_GOG) $(ARGS); \
+	fi
+
 wk-help: build
 	@$(BIN) --help
 
@@ -117,11 +135,11 @@ tools:
 	@GOBIN=$(TOOLS_DIR) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
 
 fmt: tools
-	@$(GOIMPORTS) -local github.com/namastexlabs/workit -w .
+	@$(GOIMPORTS) -local github.com/automagik-dev/workit -w .
 	@$(GOFUMPT) -w .
 
 fmt-check: tools
-	@$(GOIMPORTS) -local github.com/namastexlabs/workit -w .
+	@$(GOIMPORTS) -local github.com/automagik-dev/workit -w .
 	@$(GOFUMPT) -w .
 	@git diff --exit-code -- '*.go' go.mod go.sum
 

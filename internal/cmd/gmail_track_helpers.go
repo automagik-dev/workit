@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/namastexlabs/workit/internal/tracking"
+	"github.com/automagik-dev/workit/internal/tracking"
 )
 
 func loadTrackingConfigForAccount(flags *RootFlags) (string, *tracking.Config, error) {

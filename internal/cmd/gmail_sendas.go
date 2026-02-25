@@ -11,8 +11,8 @@ import (
 	"github.com/alecthomas/kong"
 	"google.golang.org/api/gmail/v1"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 type GmailSendAsCmd struct {

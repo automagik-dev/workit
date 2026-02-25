@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/authclient"
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/authclient"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 func resolveClientOverride(flags *RootFlags, cmdClient string) string {

@@ -10,10 +10,10 @@ import (
 
 	keepapi "google.golang.org/api/keep/v1"
 
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/googleapi"
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/googleapi"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 var newKeepServiceWithSA = googleapi.NewKeepWithServiceAccount

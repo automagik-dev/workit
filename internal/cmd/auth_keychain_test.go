@@ -5,7 +5,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/namastexlabs/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/secrets"
 )
 
 func TestAuthAddCmd_ChecksKeychainFirst(t *testing.T) {

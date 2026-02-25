@@ -14,7 +14,7 @@ import (
 	keepapi "google.golang.org/api/keep/v1"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/config"
 )
 
 func writeKeepSA(t *testing.T, email string) string {

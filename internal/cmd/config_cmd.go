@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/outfmt"
 )
 
 type ConfigCmd struct {

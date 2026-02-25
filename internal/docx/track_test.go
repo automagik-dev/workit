@@ -7,7 +7,7 @@ import (
 
 	"github.com/beevik/etree"
 
-	"github.com/namastexlabs/workit/internal/docx"
+	"github.com/automagik-dev/workit/internal/docx"
 )
 
 func TestTrackReplace(t *testing.T) {

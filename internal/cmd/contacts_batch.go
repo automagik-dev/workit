@@ -10,8 +10,8 @@ import (
 
 	peopleapi "google.golang.org/api/people/v1"
 
-	"github.com/namastexlabs/workit/internal/outfmt"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/outfmt"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // ContactsBatchCmd groups batch contact operations.

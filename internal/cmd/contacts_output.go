@@ -3,7 +3,7 @@ package cmd
 import (
 	"context"
 
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 func writeDeleteResult(ctx context.Context, u *ui.UI, resourceName string) error {

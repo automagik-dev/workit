@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/namastexlabs/workit/internal/config"
-	"github.com/namastexlabs/workit/internal/docx"
-	"github.com/namastexlabs/workit/internal/ui"
+	"github.com/automagik-dev/workit/internal/config"
+	"github.com/automagik-dev/workit/internal/docx"
+	"github.com/automagik-dev/workit/internal/ui"
 )
 
 // DocxCreateCmd creates a DOCX from a template + values or from markdown.

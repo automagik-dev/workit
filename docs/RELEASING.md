@@ -1,12 +1,10 @@
 ---
-summary: "Release checklist for workit (GitHub release + Homebrew tap)"
+summary: "Release checklist for workit (GitHub release + installer smoke test)"
 ---
 
 # Releasing `workit`
 
-This playbook mirrors the Homebrew + GitHub flow used in `../camsnap`.
-
-Always do **all** steps below (CI + changelog + tag + GitHub release artifacts + tap update + Homebrew sanity install). No partial releases.
+Always do **all** steps below (CI + changelog + tag + GitHub release artifacts + installer sanity install). No partial releases.
 
 Shortcut scripts (preferred, keep notes non-empty):
 ```sh
@@ -15,9 +13,8 @@ scripts/verify-release.sh X.Y.Z
 ```
 
 Assumptions:
-- Repo: `namastexlabs/workit`
-- Tap repo: `../homebrew-tap` (tap: `steipete/tap`)
-- Homebrew formula name: `workit` (installs the `wk` binary)
+- Repo: `automagik-dev/workit`
+- Installer script: `scripts/install.sh`
 
 ## Branch model and protections
 
@@ -40,7 +37,6 @@ Recommended required checks:
 - Clean working tree on `main`.
 - Go toolchain installed (Go version comes from `go.mod`).
 - `make` works locally.
-- Access to the tap repo (e.g. `steipete/homebrew-tap`).
 
 ## 1) Verify build is green
 ```sh
@@ -86,42 +82,13 @@ If the workflow needs a rerun:
 gh workflow run release.yml -f tag=vX.Y.Z
 ```
 
-## 5) Update (or add) the Homebrew formula
-In the tap repo (assumed sibling at `../homebrew-tap`), create/update `Formula/workit.rb`.
-
-Recommended formula shape (build-from-source, no binary assets needed):
-- `version "X.Y.Z"`
-- `url "https://github.com/namastexlabs/workit/archive/refs/tags/vX.Y.Z.tar.gz"`
-- `sha256 "<sha256>"`
-- `depends_on "go" => :build`
-- Build:
-  - `system "go", "build", *std_go_args(ldflags: "-s -w"), "./cmd/wk"`
-
-Compute the SHA256 for the tag tarball:
+## 5) Sanity-check installer and update flow
 ```sh
-curl -L -o /tmp/workit.tar.gz https://github.com/namastexlabs/workit/archive/refs/tags/vX.Y.Z.tar.gz
-shasum -a 256 /tmp/workit.tar.gz
-```
-
-Commit + push in the tap repo:
-```sh
-cd ../homebrew-tap
-git add Formula/workit.rb
-git commit -m "workit vX.Y.Z"
-git push origin main
-```
-
-## 6) Sanity-check install from tap
-```sh
-brew update
-brew uninstall workit || true
-brew untap steipete/tap || true
-brew tap steipete/tap
-brew install steipete/tap/workit
-brew test steipete/tap/workit
+curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
+wk --version
+wk update
 
 wk --help
-wk --version
 wk version --json
 ```
 
