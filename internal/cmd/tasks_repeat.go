@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/timeparse"
+	"github.com/namastexlabs/workit/internal/timeparse"
 )
 
 type repeatUnit int

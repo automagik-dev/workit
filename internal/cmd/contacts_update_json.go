@@ -11,8 +11,8 @@ import (
 
 	"google.golang.org/api/people/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 // contactsUpdateMaskFields matches the documented updatePersonFields values for
@@ -295,7 +295,7 @@ func parseContactsUpdateJSON(data []byte) (*people.Person, map[string]json.RawMe
 		return nil, nil, usage("empty JSON input")
 	}
 
-	// Support wrapped format from `gog contacts get --json`: {"contact": {...}}.
+	// Support wrapped format from `wk contacts get --json`: {"contact": {...}}.
 	var outer map[string]json.RawMessage
 	if err := json.Unmarshal(data, &outer); err != nil {
 		return nil, nil, fmt.Errorf("parse JSON: %w", err)
@@ -333,7 +333,7 @@ func contactsUpdateMaskFromKeys(keys map[string]json.RawMessage) ([]string, erro
 	}
 	if len(unsupported) > 0 {
 		sort.Strings(unsupported)
-		return nil, usage("JSON contains unsupported keys for contacts update: " + strings.Join(unsupported, ", ") + ". Include only fields you want to change (for example: urls, biographies, addresses, organizations, ...). Tip: start from `gog contacts get ... --json` and delete keys you don't want to update.")
+		return nil, usage("JSON contains unsupported keys for contacts update: " + strings.Join(unsupported, ", ") + ". Include only fields you want to change (for example: urls, biographies, addresses, organizations, ...). Tip: start from `wk contacts get ... --json` and delete keys you don't want to update.")
 	}
 	sort.Strings(update)
 	return update, nil
@@ -373,9 +373,9 @@ func (c *ContactsUpdateCmd) updateFromJSON(ctx context.Context, svc *people.Serv
 	curETag := firstNonEmpty(contactSourceETag(cur), strings.TrimSpace(cur.Etag))
 	inputETag := firstNonEmpty(contactSourceETag(inputPerson), strings.TrimSpace(inputPerson.Etag))
 	if inputETag == "" {
-		u.Err().Println("warning: JSON input is missing an etag; consider starting from `gog contacts get ... --json`")
+		u.Err().Println("warning: JSON input is missing an etag; consider starting from `wk contacts get ... --json`")
 	} else if !c.IgnoreETag && curETag != "" && inputETag != curETag {
-		return usage("etag mismatch (contact changed). Re-run `gog contacts get ... --json`, re-apply edits, retry (or pass --ignore-etag).")
+		return usage("etag mismatch (contact changed). Re-run `wk contacts get ... --json`, re-apply edits, retry (or pass --ignore-etag).")
 	}
 
 	if strings.TrimSpace(inputPerson.ResourceName) != "" && strings.TrimSpace(inputPerson.ResourceName) != resourceName {

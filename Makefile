@@ -3,19 +3,21 @@ SHELL := /bin/bash
 # `make` should build the binary by default.
 .DEFAULT_GOAL := build
 
-.PHONY: build gog gogcli gog-help gogcli-help help fmt fmt-check lint lint-full test ci tools
+.PHONY: build build-gog wk workit wk-help workit-help help fmt fmt-check lint lint-full test ci tools
 .PHONY: worker-ci build-internal deadcode race coverage
 
 BIN_DIR := $(CURDIR)/bin
-BIN := $(BIN_DIR)/gog
-CMD := ./cmd/gog
+BIN := $(BIN_DIR)/wk
+BIN_GOG := $(BIN_DIR)/gog
+CMD := ./cmd/wk
+CMD_GOG := ./cmd/gog
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 COMMIT := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo "")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 COVERAGE_MIN ?= 70
-LDFLAGS := -X github.com/namastexlabs/gog-cli/internal/cmd.version=$(VERSION) -X github.com/namastexlabs/gog-cli/internal/cmd.branch=$(BRANCH) -X github.com/namastexlabs/gog-cli/internal/cmd.commit=$(COMMIT) -X github.com/namastexlabs/gog-cli/internal/cmd.date=$(DATE)
+LDFLAGS := -X github.com/namastexlabs/workit/internal/cmd.version=$(VERSION) -X github.com/namastexlabs/workit/internal/cmd.branch=$(BRANCH) -X github.com/namastexlabs/workit/internal/cmd.commit=$(COMMIT) -X github.com/namastexlabs/workit/internal/cmd.date=$(DATE)
 
 TOOLS_DIR := $(CURDIR)/.tools
 GOFUMPT := $(TOOLS_DIR)/gofumpt
@@ -26,9 +28,9 @@ GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint
 LINT_NEW_FROM ?= origin/main
 
 # Allow passing CLI args as extra "targets":
-#   make gogcli -- --help
-#   make gogcli -- gmail --help
-ifneq ($(filter gogcli gog,$(MAKECMDGOALS)),)
+#   make workit -- --help
+#   make workit -- gmail --help
+ifneq ($(filter workit wk,$(MAKECMDGOALS)),)
 RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(RUN_ARGS):;@:)
 endif
@@ -37,34 +39,48 @@ build:
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS)" -o $(BIN) $(CMD)
 
-# Build with internal defaults for headless OAuth (credentials baked in)
+# Build the deprecated "gog" backward-compat alias binary.
+build-gog:
+	@mkdir -p $(BIN_DIR)
+	@go build -ldflags "$(LDFLAGS)" -o $(BIN_GOG) $(CMD_GOG)
+
+# Build with internal defaults for headless OAuth (credentials baked in).
 # Usage: make build-internal GOG_CLIENT_ID=... GOG_CLIENT_SECRET=... GOG_CALLBACK_SERVER=...
+# Note: env var names kept as GOG_* for backward compat with existing CI secrets.
 build-internal:
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS) \
-		-X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientID=$(GOG_CLIENT_ID)' \
-		-X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientSecret=$(GOG_CLIENT_SECRET)' \
-		-X 'github.com/namastexlabs/gog-cli/internal/config.DefaultCallbackServer=$(GOG_CALLBACK_SERVER)'" \
+		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$(GOG_CLIENT_ID)' \
+		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$(GOG_CLIENT_SECRET)' \
+		-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$(GOG_CALLBACK_SERVER)'" \
 		-o $(BIN) $(CMD)
 
-# Build with credentials from ~/.config/gog/credentials.env
+# Build with credentials from ~/.config/workit/credentials.env
+# (falls back to legacy ~/.config/gog/credentials.env)
 # Usage: make build-namastex
 build-namastex:
 	@mkdir -p $(BIN_DIR)
-	@if [ -f "$(HOME)/.config/gog/credentials.env" ]; then \
+	@if [ -f "$(HOME)/.config/workit/credentials.env" ]; then \
+		. $(HOME)/.config/workit/credentials.env && \
+		go build -ldflags "$(LDFLAGS) \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${GOG_CLIENT_ID}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${GOG_CLIENT_SECRET}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${GOG_CALLBACK_SERVER}'" \
+			-o $(BIN) $(CMD); \
+	elif [ -f "$(HOME)/.config/gog/credentials.env" ]; then \
 		. $(HOME)/.config/gog/credentials.env && \
 		go build -ldflags "$(LDFLAGS) \
-			-X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientID=$${GOG_CLIENT_ID}' \
-			-X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientSecret=$${GOG_CLIENT_SECRET}' \
-			-X 'github.com/namastexlabs/gog-cli/internal/config.DefaultCallbackServer=$${GOG_CALLBACK_SERVER}'" \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${GOG_CLIENT_ID}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${GOG_CLIENT_SECRET}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${GOG_CALLBACK_SERVER}'" \
 			-o $(BIN) $(CMD); \
 	else \
-		echo "❌ Missing credentials file: $(HOME)/.config/gog/credentials.env"; \
+		echo "Missing credentials file: $(HOME)/.config/workit/credentials.env"; \
 		echo "   Run: ./scripts/setup-credentials.sh"; \
 		exit 1; \
 	fi
 
-gog: build
+wk: build
 	@if [ -n "$(RUN_ARGS)" ]; then \
 		$(BIN) $(RUN_ARGS); \
 	elif [ -z "$(ARGS)" ]; then \
@@ -73,7 +89,7 @@ gog: build
 		$(BIN) $(ARGS); \
 	fi
 
-gogcli: build
+workit: build
 	@if [ -n "$(RUN_ARGS)" ]; then \
 		$(BIN) $(RUN_ARGS); \
 	elif [ -z "$(ARGS)" ]; then \
@@ -82,13 +98,13 @@ gogcli: build
 		$(BIN) $(ARGS); \
 	fi
 
-gog-help: build
+wk-help: build
 	@$(BIN) --help
 
-gogcli-help: build
+workit-help: build
 	@$(BIN) --help
 
-help: gog-help
+help: wk-help
 
 tools:
 	@mkdir -p $(TOOLS_DIR)
@@ -98,11 +114,11 @@ tools:
 	@GOBIN=$(TOOLS_DIR) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
 
 fmt: tools
-	@$(GOIMPORTS) -local github.com/namastexlabs/gog-cli -w .
+	@$(GOIMPORTS) -local github.com/namastexlabs/workit -w .
 	@$(GOFUMPT) -w .
 
 fmt-check: tools
-	@$(GOIMPORTS) -local github.com/namastexlabs/gog-cli -w .
+	@$(GOIMPORTS) -local github.com/namastexlabs/workit -w .
 	@$(GOFUMPT) -w .
 	@git diff --exit-code -- '*.go' go.mod go.sum
 

@@ -11,23 +11,23 @@ import (
 
 	"google.golang.org/api/calendar/v3"
 
-	"github.com/namastexlabs/gog-cli/internal/authclient"
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/googleapi"
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/authclient"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/namastexlabs/workit/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 func integrationAccount(t *testing.T) string {
 	t.Helper()
 
-	if v := strings.TrimSpace(os.Getenv("GOG_IT_ACCOUNT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("WK_IT_ACCOUNT")); v != "" {
 		return v
 	}
 
 	store, err := secrets.OpenDefault()
 	if err != nil {
-		t.Skipf("open secrets store (set GOG_IT_ACCOUNT to avoid keyring prompts): %v", err)
+		t.Skipf("open secrets store (set WK_IT_ACCOUNT to avoid keyring prompts): %v", err)
 	}
 
 	if v, err := store.GetDefaultAccount(config.DefaultClientName); err == nil && strings.TrimSpace(v) != "" {
@@ -42,7 +42,7 @@ func integrationAccount(t *testing.T) string {
 		return tokens[0].Email
 	}
 
-	t.Skip("set GOG_IT_ACCOUNT (or set a default account via `gog auth manage`, or store exactly one token)")
+	t.Skip("set WK_IT_ACCOUNT (or set a default account via `wk auth manage`, or store exactly one token)")
 	return ""
 }
 
@@ -162,9 +162,9 @@ func TestClassroomSmoke(t *testing.T) {
 
 func TestCalendarSendUpdates(t *testing.T) {
 	account := integrationAccount(t)
-	attendee := strings.TrimSpace(os.Getenv("GOG_IT_ATTENDEE"))
+	attendee := strings.TrimSpace(os.Getenv("WK_IT_ATTENDEE"))
 	if attendee == "" {
-		t.Skip("set GOG_IT_ATTENDEE to test --send-updates with attendees")
+		t.Skip("set WK_IT_ATTENDEE to test --send-updates with attendees")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -178,7 +178,7 @@ func TestCalendarSendUpdates(t *testing.T) {
 	// Create event with attendee
 	start := time.Now().Add(time.Hour).Truncate(time.Minute)
 	event := &calendar.Event{
-		Summary:   "gogcli-send-updates-test",
+		Summary:   "workit-send-updates-test",
 		Start:     &calendar.EventDateTime{DateTime: start.Format(time.RFC3339)},
 		End:       &calendar.EventDateTime{DateTime: start.Add(time.Hour).Format(time.RFC3339)},
 		Attendees: []*calendar.EventAttendee{{Email: attendee}},
@@ -192,7 +192,7 @@ func TestCalendarSendUpdates(t *testing.T) {
 
 	// Update with SendUpdates
 	_, err = svc.Events.Patch("primary", created.Id, &calendar.Event{
-		Summary: "gogcli-send-updates-test-UPDATED",
+		Summary: "workit-send-updates-test-UPDATED",
 	}).SendUpdates("all").Do()
 	if err != nil {
 		t.Fatalf("Patch with SendUpdates: %v", err)

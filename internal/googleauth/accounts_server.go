@@ -19,8 +19,8 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/secrets"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/secrets"
 )
 
 // AccountInfo represents an account for the UI
@@ -226,7 +226,7 @@ func (ms *ManageServer) handleListAccounts(w http.ResponseWriter, r *http.Reques
 func (ms *ManageServer) handleAuthStart(w http.ResponseWriter, r *http.Request) {
 	creds, err := readClientCredentials(ms.client)
 	if err != nil {
-		http.Error(w, "OAuth credentials not configured. Run: gog auth credentials <file>", http.StatusInternalServerError)
+		http.Error(w, "OAuth credentials not configured. Run: wk auth credentials <file>", http.StatusInternalServerError)
 		return
 	}
 
@@ -270,7 +270,7 @@ func (ms *ManageServer) handleAuthUpgrade(w http.ResponseWriter, r *http.Request
 
 	creds, err := readClientCredentials(ms.client)
 	if err != nil {
-		http.Error(w, "OAuth credentials not configured. Run: gog auth credentials <file>", http.StatusInternalServerError)
+		http.Error(w, "OAuth credentials not configured. Run: wk auth credentials <file>", http.StatusInternalServerError)
 		return
 	}
 

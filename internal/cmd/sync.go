@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/api/drive/v3"
 
-	"github.com/namastexlabs/gog-cli/internal/googleapi"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/sync"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/sync"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 // SyncCmd is the top-level command for Drive sync operations.
@@ -337,7 +337,7 @@ func (c *SyncStartCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 
 	if cfg == nil {
-		return fmt.Errorf("sync config not found: %s (use 'gog sync init' first)", localPath)
+		return fmt.Errorf("sync config not found: %s (use 'wk sync init' first)", localPath)
 	}
 
 	// Get authenticated Drive service

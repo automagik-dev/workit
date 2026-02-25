@@ -134,7 +134,7 @@ func SelectFlagExplicitlySet(args []string) bool {
 
 // PrintFieldDiscovery writes available JSON field names and a usage hint to w
 // (intended to be stderr). The commandExample is used in the hint line, e.g.
-// "gog drive ls".
+// "wk drive ls".
 func PrintFieldDiscovery(w io.Writer, fields []string, commandExample string) {
 	fmt.Fprintln(w, "Available fields:")
 
@@ -153,6 +153,6 @@ func PrintFieldDiscovery(w io.Writer, fields []string, commandExample string) {
 
 		fmt.Fprintf(w, "Usage: %s --json --select \"%s\"\n", commandExample, strings.Join(sample, ","))
 	} else {
-		fmt.Fprintln(w, "Usage: gog <command> --json --select \"field1,field2\"")
+		fmt.Fprintln(w, "Usage: wk <command> --json --select \"field1,field2\"")
 	}
 }

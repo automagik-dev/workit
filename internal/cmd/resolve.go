@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/namastexlabs/gog-cli/internal/input"
+	"github.com/namastexlabs/workit/internal/input"
 )
 
 // resolveFileFlag resolves a file:// or fileb:// prefix on a flag value in-place.

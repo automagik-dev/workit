@@ -6,8 +6,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func TestVersionStringVariants(t *testing.T) {
@@ -15,23 +15,23 @@ func TestVersionStringVariants(t *testing.T) {
 	t.Cleanup(func() { version, branch, commit, date = origVersion, origBranch, origCommit, origDate })
 
 	version, branch, commit, date = "v1", "", "", ""
-	if got := VersionString(); got != "v1" {
+	if got := VersionString(); got != "Workit v1" {
 		t.Fatalf("unexpected: %q", got)
 	}
 	version, branch, commit, date = "v1", "main", "", ""
-	if got := VersionString(); got != "v1 (main)" {
+	if got := VersionString(); got != "Workit v1 (main)" {
 		t.Fatalf("unexpected: %q", got)
 	}
 	version, branch, commit, date = "v1", "", "abc", ""
-	if got := VersionString(); got != "v1 (abc)" {
+	if got := VersionString(); got != "Workit v1 (abc)" {
 		t.Fatalf("unexpected: %q", got)
 	}
 	version, branch, commit, date = "v1", "", "", "2025-01-01"
-	if got := VersionString(); got != "v1 (2025-01-01)" {
+	if got := VersionString(); got != "Workit v1 (2025-01-01)" {
 		t.Fatalf("unexpected: %q", got)
 	}
 	version, branch, commit, date = "v1", "main", "abc", "2025-01-01"
-	if got := VersionString(); got != "v1 (main abc 2025-01-01)" {
+	if got := VersionString(); got != "Workit v1 (main abc 2025-01-01)" {
 		t.Fatalf("unexpected: %q", got)
 	}
 }

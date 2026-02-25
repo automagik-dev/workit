@@ -13,8 +13,10 @@ import (
 	"golang.org/x/term"
 )
 
+const buildVersionDev = "dev"
+
 func helpOptions() kong.HelpOptions {
-	mode := strings.ToLower(strings.TrimSpace(os.Getenv("GOG_HELP")))
+	mode := strings.ToLower(strings.TrimSpace(os.Getenv("WK_HELP")))
 	return kong.HelpOptions{
 		NoExpandSubcommands: mode != "full",
 	}
@@ -55,7 +57,7 @@ func helpPrinter(options kong.HelpOptions, ctx *kong.Context) error {
 func injectBuildLine(out string) string {
 	v := strings.TrimSpace(version)
 	if v == "" {
-		v = "dev"
+		v = buildVersionDev
 	}
 	c := strings.TrimSpace(commit)
 	line := fmt.Sprintf("Build: %s", v)
@@ -80,7 +82,7 @@ func injectBuildLine(out string) string {
 }
 
 func helpColorMode(args []string) string {
-	if v := strings.ToLower(strings.TrimSpace(os.Getenv("GOG_COLOR"))); v != "" {
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("WK_COLOR"))); v != "" {
 		return v
 	}
 	for i := 0; i < len(args); i++ {

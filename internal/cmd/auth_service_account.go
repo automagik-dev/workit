@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 type AuthServiceAccountCmd struct {
@@ -113,7 +113,7 @@ func (c *AuthServiceAccountSetCmd) Run(ctx context.Context, flags *RootFlags) er
 	if info.ClientID != "" {
 		u.Out().Printf("client_id\t%s", info.ClientID)
 	}
-	u.Out().Println("Service account configured. Use: gog <cmd> --account " + email)
+	u.Out().Println("Service account configured. Use: wk <cmd> --account " + email)
 	return nil
 }
 

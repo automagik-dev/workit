@@ -1,10 +1,10 @@
 # Infrastructure Setup
 
-This guide covers setting up the infrastructure needed for gog-cli's headless OAuth and sync features.
+This guide covers setting up the infrastructure needed for workit's headless OAuth and sync features.
 
 ## Overview
 
-gog-cli requires:
+workit requires:
 
 1. **Google Cloud Project** with OAuth credentials
 2. **Callback Server** for headless authentication
@@ -15,7 +15,7 @@ gog-cli requires:
 ├────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌─────────────┐      ┌──────────────────┐                      │
-│  │  gog-cli    │─────▶│  Callback Server │                      │
+│  │  workit    │─────▶│  Callback Server │                      │
 │  │  (agents)   │      │  (auth.x.io)     │                      │
 │  └─────────────┘      └──────────────────┘                      │
 │         │                      │                                 │
@@ -95,16 +95,16 @@ The callback server handles OAuth redirects for headless authentication.
 ```bash
 # Build the image
 cd auth-server
-docker build -t gog-auth-server .
+docker build -t wk-auth-server .
 
 # Run
 docker run -d \
-  --name gog-auth \
+  --name wk-auth \
   -p 8080:8080 \
-  -e GOG_CLIENT_ID=your-client-id \
-  -e GOG_CLIENT_SECRET=your-client-secret \
-  -e GOG_REDIRECT_URL=https://auth.yourdomain.com/callback \
-  gog-auth-server
+  -e WK_CLIENT_ID=your-client-id \
+  -e WK_CLIENT_SECRET=your-client-secret \
+  -e WK_REDIRECT_URL=https://auth.yourdomain.com/callback \
+  wk-auth-server
 ```
 
 ### Option B: Direct Binary
@@ -125,18 +125,18 @@ go build -o auth-server .
 ### Option C: Systemd Service
 
 ```ini
-# /etc/systemd/system/gog-auth-server.service
+# /etc/systemd/system/wk-auth-server.service
 [Unit]
-Description=gog OAuth Callback Server
+Description=wk OAuth Callback Server
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
-Environment=GOG_CLIENT_ID=your-client-id
-Environment=GOG_CLIENT_SECRET=your-client-secret
-Environment=GOG_REDIRECT_URL=https://auth.yourdomain.com/callback
-ExecStart=/usr/local/bin/gog-auth-server --port=8080
+Environment=WK_CLIENT_ID=your-client-id
+Environment=WK_CLIENT_SECRET=your-client-secret
+Environment=WK_REDIRECT_URL=https://auth.yourdomain.com/callback
+ExecStart=/usr/local/bin/wk-auth-server --port=8080
 Restart=always
 
 [Install]
@@ -198,10 +198,10 @@ Compile the CLI with your infrastructure defaults:
 
 ```bash
 go build -ldflags "\
-  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientID=your-client-id' \
-  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultClientSecret=your-client-secret' \
-  -X 'github.com/namastexlabs/gog-cli/internal/config.DefaultCallbackServer=https://auth.yourdomain.com'" \
-  -o gog ./cmd/gog
+  -X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=your-client-id' \
+  -X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=your-client-secret' \
+  -X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=https://auth.yourdomain.com'" \
+  -o wk ./cmd/wk
 ```
 
 Users of this binary won't need to configure credentials.
@@ -212,19 +212,19 @@ Users of this binary won't need to configure credentials.
 
 | Variable | Description |
 |----------|-------------|
-| `GOG_CLIENT_ID` | OAuth client ID |
-| `GOG_CLIENT_SECRET` | OAuth client secret |
-| `GOG_CALLBACK_SERVER` | Callback server URL |
-| `GOG_KEYRING_BACKEND` | Token storage backend |
-| `GOG_KEYRING_PASSWORD` | Password for file backend |
+| `WK_CLIENT_ID` | OAuth client ID |
+| `WK_CLIENT_SECRET` | OAuth client secret |
+| `WK_CALLBACK_SERVER` | Callback server URL |
+| `WK_KEYRING_BACKEND` | Token storage backend |
+| `WK_KEYRING_PASSWORD` | Password for file backend |
 
 ### Callback Server
 
 | Variable | Description |
 |----------|-------------|
-| `GOG_CLIENT_ID` | OAuth client ID |
-| `GOG_CLIENT_SECRET` | OAuth client secret |
-| `GOG_REDIRECT_URL` | OAuth redirect URL |
+| `WK_CLIENT_ID` | OAuth client ID |
+| `WK_CLIENT_SECRET` | OAuth client secret |
+| `WK_REDIRECT_URL` | OAuth redirect URL |
 
 ## 6. Testing the Setup
 
@@ -236,7 +236,7 @@ curl https://auth.yourdomain.com/health
 # {"status": "ok"}
 
 # Start auth flow
-gog auth add test@gmail.com --headless --callback-server=https://auth.yourdomain.com
+wk auth add test@gmail.com --headless --callback-server=https://auth.yourdomain.com
 
 # Check token status (replace STATE with actual state)
 curl https://auth.yourdomain.com/status/STATE
@@ -246,12 +246,12 @@ curl https://auth.yourdomain.com/status/STATE
 
 ```bash
 # 1. Start headless auth
-gog auth add you@gmail.com --headless --services=drive
+wk auth add you@gmail.com --headless --services=drive
 
 # 2. Complete OAuth in browser (use URL from output)
 
 # 3. Verify token stored
-gog auth list --check
+wk auth list --check
 ```
 
 ## Security Checklist

@@ -3,7 +3,7 @@ package cmd
 import (
 	"context"
 
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func writeDeleteResult(ctx context.Context, u *ui.UI, resourceName string) error {

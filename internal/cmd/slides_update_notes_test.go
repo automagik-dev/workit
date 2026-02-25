@@ -14,7 +14,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/api/slides/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func updateNotesPresResponse() map[string]any {

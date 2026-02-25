@@ -13,7 +13,7 @@ import (
 	"github.com/99designs/keyring"
 	"golang.org/x/term"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/workit/internal/config"
 )
 
 type Store interface {
@@ -44,13 +44,13 @@ func keyringItem(key string, data []byte) keyring.Item {
 	return keyring.Item{
 		Key:   key,
 		Data:  data,
-		Label: config.AppName, // to show "gogcli" in security dialog instead of "" (empty string)
+		Label: config.AppName, // to show "workit" in security dialog instead of "" (empty string)
 	}
 }
 
 const (
-	keyringPasswordEnv = "GOG_KEYRING_PASSWORD" //nolint:gosec // env var name, not a credential
-	keyringBackendEnv  = "GOG_KEYRING_BACKEND"  //nolint:gosec // env var name, not a credential
+	keyringPasswordEnv = "WK_KEYRING_PASSWORD" //nolint:gosec // env var name, not a credential
+	keyringBackendEnv  = "WK_KEYRING_BACKEND"  //nolint:gosec // env var name, not a credential
 )
 
 var (
@@ -192,7 +192,7 @@ func openKeyring() (keyring.Keyring, error) {
 		// Homebrew upgrades install a new binary with a different hash, causing the
 		// new binary to lose access to existing keychain items. With false, users may
 		// see a one-time keychain prompt after upgrade (click "Always Allow"), but
-		// tokens survive across upgrades. See: https://github.com/namastexlabs/gog-cli/issues/86
+		// tokens survive across upgrades. See: https://github.com/namastexlabs/workit/issues/86
 		KeychainTrustApplication: false,
 		AllowedBackends:          backends,
 		FileDir:                  keyringDir,
@@ -244,7 +244,7 @@ func openKeyringWithTimeout(cfg keyring.Config, timeout time.Duration) (keyring.
 		return res.ring, nil
 	case <-time.After(timeout):
 		return nil, fmt.Errorf("%w after %v (D-Bus SecretService may be unresponsive); "+
-			"set GOG_KEYRING_BACKEND=file and GOG_KEYRING_PASSWORD=<password> to use encrypted file storage instead",
+			"set WK_KEYRING_BACKEND=file and WK_KEYRING_PASSWORD=<password> to use encrypted file storage instead",
 			errKeyringTimeout, timeout)
 	}
 }
@@ -500,6 +500,7 @@ func mergeStringSlice(a, b []string) []string {
 	for _, s := range a {
 		seen[s] = struct{}{}
 	}
+
 	for _, s := range b {
 		seen[s] = struct{}{}
 	}

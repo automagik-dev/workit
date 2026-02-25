@@ -14,8 +14,8 @@ import (
 	"google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 func TestGmailURLCmd_TextAndJSON(t *testing.T) {
@@ -56,7 +56,7 @@ func TestGmailURLCmd_TextAndJSON(t *testing.T) {
 }
 
 func TestGmailURLCmd_MissingAccount(t *testing.T) {
-	t.Setenv("GOG_ACCOUNT", "")
+	t.Setenv("WK_ACCOUNT", "")
 	if err := (&GmailURLCmd{ThreadIDs: []string{"t1"}}).Run(context.Background(), &RootFlags{}); err == nil {
 		t.Fatalf("expected error")
 	}

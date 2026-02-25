@@ -12,8 +12,8 @@ func TestConfigRoundTrip(t *testing.T) {
 	tmpDir := t.TempDir()
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "xdg-config"))
-	t.Setenv("GOG_KEYRING_BACKEND", "file")
-	t.Setenv("GOG_KEYRING_PASSWORD", "test-password")
+	t.Setenv("WK_KEYRING_BACKEND", "file")
+	t.Setenv("WK_KEYRING_PASSWORD", "test-password")
 
 	account := "test@example.com"
 
@@ -24,8 +24,8 @@ func TestConfigRoundTrip(t *testing.T) {
 	cfg := &Config{
 		Enabled:          true,
 		WorkerURL:        "https://test.workers.dev",
-		WorkerName:       "gog-email-tracker-test",
-		DatabaseName:     "gog-email-tracker-test",
+		WorkerName:       "wk-email-tracker-test",
+		DatabaseName:     "wk-email-tracker-test",
 		DatabaseID:       "db-id-123",
 		SecretsInKeyring: true,
 	}

@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+var errOtherPoll = errors.New("something else")
+
 func TestIsPollTimeout(t *testing.T) {
 	// Direct poll timeout error.
 	if !IsPollTimeout(errPollTimeout) {
@@ -19,7 +21,7 @@ func TestIsPollTimeout(t *testing.T) {
 	}
 
 	// Unrelated error.
-	if IsPollTimeout(errors.New("something else")) {
+	if IsPollTimeout(errOtherPoll) {
 		t.Fatal("expected IsPollTimeout(other) = false")
 	}
 

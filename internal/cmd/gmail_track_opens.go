@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/timeparse"
-	"github.com/namastexlabs/gog-cli/internal/tracking"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/timeparse"
+	"github.com/namastexlabs/workit/internal/tracking"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 const trackingUnknown = "unknown"
@@ -32,7 +32,7 @@ func (c *GmailTrackOpensCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return err
 	}
 	if !cfg.IsConfigured() {
-		return fmt.Errorf("tracking not configured; run 'gog gmail track setup' first")
+		return fmt.Errorf("tracking not configured; run 'wk gmail track setup' first")
 	}
 
 	// Query by tracking ID
@@ -117,7 +117,7 @@ func (c *GmailTrackOpensCmd) queryByTrackingID(ctx context.Context, cfg *trackin
 
 func (c *GmailTrackOpensCmd) queryAdmin(ctx context.Context, cfg *tracking.Config, u *ui.UI) error {
 	if strings.TrimSpace(cfg.AdminKey) == "" {
-		return fmt.Errorf("tracking admin key not configured; run 'gog gmail track setup' again")
+		return fmt.Errorf("tracking admin key not configured; run 'wk gmail track setup' again")
 	}
 
 	reqURL, _ := url.Parse(cfg.WorkerURL + "/opens")

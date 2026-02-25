@@ -1,18 +1,18 @@
 #!/bin/bash
-# gog-cli Full Server Setup
-# Installs gog-cli with Namastex OAuth configuration
+# workit Full Server Setup
+# Installs workit with Namastex OAuth configuration
 #
 # Usage:
-#   curl -sL https://raw.githubusercontent.com/automagik-genie/gog-cli/main/scripts/install.sh | bash
+#   curl -sL https://raw.githubusercontent.com/automagik-genie/workit/main/scripts/install.sh | bash
 
 set -e
 
-REPO_URL="https://github.com/automagik-genie/gog-cli.git"
-INSTALL_DIR="${GOG_INSTALL_DIR:-$HOME/gog-cli}"
-CONFIG_DIR="${GOG_CONFIG_DIR:-$HOME/.config/gog}"
+REPO_URL="https://github.com/automagik-genie/workit.git"
+INSTALL_DIR="${WK_INSTALL_DIR:-$HOME/workit}"
+CONFIG_DIR="${WK_CONFIG_DIR:-$HOME/.config/workit}"
 BIN_DIR="${HOME}/.local/bin"
 
-echo "🚀 gog-cli Installation Script"
+echo "🚀 workit Installation Script"
 echo "================================"
 echo ""
 
@@ -29,7 +29,7 @@ if [ -d "$INSTALL_DIR" ]; then
     cd "$INSTALL_DIR"
     git pull --ff-only
 else
-    echo "📦 Cloning gog-cli..."
+    echo "📦 Cloning workit..."
     git clone "$REPO_URL" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
@@ -38,32 +38,24 @@ fi
 mkdir -p "$CONFIG_DIR"
 chmod 700 "$CONFIG_DIR"
 
-# Create credentials file with Namastex defaults
+# Set up credentials via setup-credentials.sh (reads from env or prompts).
 CRED_FILE="$CONFIG_DIR/credentials.env"
 if [ ! -f "$CRED_FILE" ]; then
-    echo "🔐 Creating credentials file..."
-    cat > "$CRED_FILE" << 'EOF'
-# gog-cli OAuth Credentials (Namastex)
-GOG_CLIENT_ID=151804783833-b818q8mtv5tmc2i640cg4h6uq3nm6uj2.apps.googleusercontent.com
-GOG_CLIENT_SECRET=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
-GOG_CALLBACK_SERVER=https://gogoauth.namastex.io
-GOG_KEYRING_BACKEND=file
-EOF
-    chmod 600 "$CRED_FILE"
-    echo "   ✅ Credentials saved to: $CRED_FILE"
+    echo "🔐 Setting up credentials..."
+    bash "$INSTALL_DIR/scripts/setup-credentials.sh" --config-dir "$CONFIG_DIR"
 else
     echo "   ℹ️  Credentials already exist: $CRED_FILE"
 fi
 
 # Build with embedded credentials
 echo ""
-echo "🔨 Building gog-cli with embedded credentials..."
+echo "🔨 Building workit with embedded credentials..."
 make build-namastex
 
 # Install binary
 mkdir -p "$BIN_DIR"
-cp bin/gog "$BIN_DIR/gog"
-chmod +x "$BIN_DIR/gog"
+cp bin/wk "$BIN_DIR/wk"
+chmod +x "$BIN_DIR/wk"
 
 # Add to PATH if needed
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
@@ -77,14 +69,14 @@ echo "✅ Installation complete!"
 echo ""
 echo "Quick start:"
 echo "  # Add account (opens browser for OAuth)"
-echo "  gog auth add you@gmail.com --headless"
+echo "  wk auth add you@gmail.com --headless"
 echo ""
 echo "  # List Gmail labels"
-echo "  gog gmail labels list"
+echo "  wk gmail labels list"
 echo ""
 echo "  # List Drive files"  
-echo "  gog drive list"
+echo "  wk drive list"
 echo ""
 echo "  # Start sync"
-echo "  gog sync init ~/GoogleDrive"
-echo "  gog sync start"
+echo "  wk sync init ~/GoogleDrive"
+echo "  wk sync start"

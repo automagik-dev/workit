@@ -46,12 +46,12 @@ jobs:
 
       - name: Build with explicit version contract ldflags
         run: |
-          go build -ldflags "-X github.com/namastexlabs/gog-cli/internal/cmd.version=${{ steps.vars.outputs.version }} -X github.com/namastexlabs/gog-cli/internal/cmd.branch=${{ steps.vars.outputs.branch }} -X github.com/namastexlabs/gog-cli/internal/cmd.commit=${{ steps.vars.outputs.short_sha }} -X github.com/namastexlabs/gog-cli/internal/cmd.date=${{ steps.vars.outputs.date }}" -o ./bin/gog ./cmd/gog
+          go build -ldflags "-X github.com/namastexlabs/workit/internal/cmd.version=${{ steps.vars.outputs.version }} -X github.com/namastexlabs/workit/internal/cmd.branch=${{ steps.vars.outputs.branch }} -X github.com/namastexlabs/workit/internal/cmd.commit=${{ steps.vars.outputs.short_sha }} -X github.com/namastexlabs/workit/internal/cmd.date=${{ steps.vars.outputs.date }}" -o ./bin/wk ./cmd/wk
 
       - name: Emit version artifact
         run: |
           mkdir -p .artifacts
-          ./bin/gog version --json | tee .artifacts/version.json
+          ./bin/wk version --json | tee .artifacts/version.json
 
       - name: Assert version artifact contract
         run: |

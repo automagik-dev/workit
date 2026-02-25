@@ -11,9 +11,9 @@ import (
 
 	"google.golang.org/api/gmail/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 type GmailAttachmentCmd struct {
@@ -252,7 +252,7 @@ func writeFileAtomic(outPath string, data []byte) error {
 		return err
 	}
 
-	f, err := os.CreateTemp(dir, ".gog-attachment-*")
+	f, err := os.CreateTemp(dir, ".wk-attachment-*")
 	if err != nil {
 		return err
 	}

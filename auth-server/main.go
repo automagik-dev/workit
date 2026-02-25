@@ -30,19 +30,19 @@ func main() {
 	clientID := flag.String("client-id", "", "OAuth client ID")
 	clientSecret := flag.String("client-secret", "", "OAuth client secret")
 	redirectURL := flag.String("redirect-url", "", "OAuth redirect URL (defaults to http://localhost:{port}/callback)")
-	credentialsFile := flag.String("credentials-file", "", "Path to OAuth credentials JSON file (gog format)")
+	credentialsFile := flag.String("credentials-file", "", "Path to OAuth credentials JSON file (workit format)")
 	ttl := flag.Duration("ttl", DefaultTTL, "Token time-to-live")
 	flag.Parse()
 
 	// Allow environment variables to override flags
 	if *clientID == "" {
-		*clientID = os.Getenv("GOG_CLIENT_ID")
+		*clientID = os.Getenv("WK_CLIENT_ID")
 	}
 	if *clientSecret == "" {
-		*clientSecret = os.Getenv("GOG_CLIENT_SECRET")
+		*clientSecret = os.Getenv("WK_CLIENT_SECRET")
 	}
 	if *redirectURL == "" {
-		*redirectURL = os.Getenv("GOG_REDIRECT_URL")
+		*redirectURL = os.Getenv("WK_REDIRECT_URL")
 	}
 
 	// Load credentials from file if specified (fills empty client ID/secret)
@@ -62,10 +62,10 @@ func main() {
 
 	// Validate required configuration
 	if *clientID == "" {
-		log.Fatal("OAuth client ID is required (--client-id, GOG_CLIENT_ID, or --credentials-file)")
+		log.Fatal("OAuth client ID is required (--client-id, WK_CLIENT_ID, or --credentials-file)")
 	}
 	if *clientSecret == "" {
-		log.Fatal("OAuth client secret is required (--client-secret, GOG_CLIENT_SECRET, or --credentials-file)")
+		log.Fatal("OAuth client secret is required (--client-secret, WK_CLIENT_SECRET, or --credentials-file)")
 	}
 
 	// Default redirect URL if not specified

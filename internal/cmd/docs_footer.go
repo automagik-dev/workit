@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/api/docs/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 // DocsFooterCmd gets or sets the default footer of a Google Doc.

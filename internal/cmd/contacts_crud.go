@@ -9,15 +9,15 @@ import (
 	"github.com/alecthomas/kong"
 	"google.golang.org/api/people/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/timeparse"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/timeparse"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 const (
 	contactsReadMask = "names,emailAddresses,phoneNumbers"
-	// contactsGetReadMask is tuned for round-tripping `gog contacts get --json`
-	// into `gog contacts update --from-file`.
+	// contactsGetReadMask is tuned for round-tripping `wk contacts get --json`
+	// into `wk contacts update --from-file`.
 	contactsGetReadMask = contactsReadMask + ",birthdays,urls,biographies,addresses,organizations,metadata"
 )
 
@@ -225,7 +225,7 @@ type ContactsUpdateCmd struct {
 	FromFile     string `name:"from-file" help:"Update from contact JSON file (use - for stdin)"`
 	IgnoreETag   bool   `name:"ignore-etag" help:"Allow updating even if the JSON etag is stale (may overwrite concurrent changes)"`
 
-	// Extra People API fields (not previously exposed by gog)
+	// Extra People API fields (not previously exposed by wk)
 	Birthday string `name:"birthday" help:"Birthday in YYYY-MM-DD (empty clears)"`
 	Notes    string `name:"notes" help:"Notes (stored as People API biography; empty clears)"`
 }

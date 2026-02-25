@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/api/cloudidentity/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/errfmt"
-	"github.com/namastexlabs/gog-cli/internal/googleapi"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/errfmt"
+	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 var newCloudIdentityService = googleapi.NewCloudIdentityGroups
@@ -141,7 +141,7 @@ func wrapCloudIdentityError(err error, account string) error {
 	errStr := err.Error()
 	if strings.Contains(errStr, "insufficientPermissions") ||
 		strings.Contains(errStr, "insufficient authentication scopes") {
-		return errfmt.NewUserFacingError("Insufficient permissions for Cloud Identity API; re-authenticate with the cloud-identity.groups.readonly scope: gog auth add <account> --services groups", err)
+		return errfmt.NewUserFacingError("Insufficient permissions for Cloud Identity API; re-authenticate with the cloud-identity.groups.readonly scope: wk auth add <account> --services groups", err)
 	}
 	if strings.Contains(errStr, "invalid argument") || strings.Contains(errStr, "badRequest") {
 		if isConsumerAccount(account) {

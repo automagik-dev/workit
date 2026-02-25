@@ -114,8 +114,8 @@ func ReadClientCredentialsFor(client string) (ClientCredentials, error) {
 	}
 
 	// 3. Fall back to environment variables
-	envClientID := os.Getenv("GOG_CLIENT_ID")
-	envClientSecret := os.Getenv("GOG_CLIENT_SECRET")
+	envClientID := os.Getenv("WK_CLIENT_ID")
+	envClientSecret := os.Getenv("WK_CLIENT_SECRET")
 
 	if envClientID != "" && envClientSecret != "" {
 		return ClientCredentials{

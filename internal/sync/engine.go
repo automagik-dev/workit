@@ -3,13 +3,14 @@ package sync
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"google.golang.org/api/drive/v3"
+
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 // Engine orchestrates bidirectional sync between a local folder and Google Drive.
@@ -465,7 +466,7 @@ func (e *Engine) processPendingUploads(ctx context.Context) error {
 	}
 
 	total := len(items)
-	log.Printf("Uploading pre-existing files: 0/%d", total)
+	logPendingUploadProgress(ctx, "Uploading pre-existing files: 0/%d", total)
 
 	for i, item := range items {
 		// Check for graceful shutdown between items.
@@ -482,7 +483,7 @@ func (e *Engine) processPendingUploads(ctx context.Context) error {
 				"error":  err.Error(),
 			})
 
-			log.Printf("Uploading pre-existing files: %d/%d (failed: %s)", i+1, total, item.LocalPath)
+			logPendingUploadProgress(ctx, "Uploading pre-existing files: %d/%d (failed: %s)", i+1, total, item.LocalPath)
 
 			continue
 		}
@@ -500,8 +501,14 @@ func (e *Engine) processPendingUploads(ctx context.Context) error {
 			"source":   "initial_scan",
 		})
 
-		log.Printf("Uploading pre-existing files: %d/%d", i+1, total)
+		logPendingUploadProgress(ctx, "Uploading pre-existing files: %d/%d", i+1, total)
 	}
 
 	return nil
+}
+
+func logPendingUploadProgress(ctx context.Context, format string, args ...any) {
+	if u := ui.FromContext(ctx); u != nil {
+		u.Err().Printf(format, args...)
+	}
 }

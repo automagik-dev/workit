@@ -1,20 +1,50 @@
 version: 2
 
-project_name: gogcli
+project_name: workit
 
 changelog:
   disable: true
 
 builds:
+  - id: wk
+    main: ./cmd/wk
+    binary: wk
+    ldflags: >-
+      -s -w
+      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
+    env:
+      - CGO_ENABLED=0
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+  - id: wk_darwin
+    main: ./cmd/wk
+    binary: wk
+    ldflags: >-
+      -s -w
+      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
+    env:
+      - CGO_ENABLED=1
+    targets:
+      - darwin_amd64
+      - darwin_arm64
   - id: gog
     main: ./cmd/gog
     binary: gog
     ldflags: >-
       -s -w
-      -X github.com/namastexlabs/gog-cli/internal/cmd.version={{ .Tag }}
-      -X github.com/namastexlabs/gog-cli/internal/cmd.branch={{ .Branch }}
-      -X github.com/namastexlabs/gog-cli/internal/cmd.commit={{ .ShortCommit }}
-      -X github.com/namastexlabs/gog-cli/internal/cmd.date={{ .Date }}
+      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
     env:
       - CGO_ENABLED=0
     targets:
@@ -27,10 +57,10 @@ builds:
     binary: gog
     ldflags: >-
       -s -w
-      -X github.com/namastexlabs/gog-cli/internal/cmd.version={{ .Tag }}
-      -X github.com/namastexlabs/gog-cli/internal/cmd.branch={{ .Branch }}
-      -X github.com/namastexlabs/gog-cli/internal/cmd.commit={{ .ShortCommit }}
-      -X github.com/namastexlabs/gog-cli/internal/cmd.date={{ .Date }}
+      -X github.com/namastexlabs/workit/internal/cmd.version={{ .Tag }}
+      -X github.com/namastexlabs/workit/internal/cmd.branch={{ .Branch }}
+      -X github.com/namastexlabs/workit/internal/cmd.commit={{ .ShortCommit }}
+      -X github.com/namastexlabs/workit/internal/cmd.date={{ .Date }}
     env:
       - CGO_ENABLED=1
     targets:
@@ -38,7 +68,10 @@ builds:
       - darwin_arm64
 
 archives:
-  - builds:
+  - id: workit
+    builds:
+      - wk
+      - wk_darwin
       - gog
       - gog_darwin
     format: tar.gz

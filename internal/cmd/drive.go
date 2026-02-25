@@ -14,10 +14,10 @@ import (
 	"google.golang.org/api/drive/v3"
 	gapi "google.golang.org/api/googleapi"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/googleapi"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 var newDriveService = googleapi.NewDrive
@@ -1024,7 +1024,7 @@ func buildDriveFilterQuery(q string) string {
 
 // Heuristic detection for Drive query-language input.
 //
-// Motivation: keep `gog drive search foo bar` user-friendly (fullText search)
+// Motivation: keep `wk drive search foo bar` user-friendly (fullText search)
 // while still allowing power-users to paste raw Drive filters.
 func looksLikeDriveQueryLanguage(q string) bool {
 	if strings.EqualFold(q, "sharedWithMe") {

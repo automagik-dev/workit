@@ -301,7 +301,7 @@ func randomBoundary() (string, error) {
 	if _, err := rand.Read(b[:]); err != nil {
 		return "", err
 	}
-	return "gogcli_" + base64.RawURLEncoding.EncodeToString(b[:]), nil
+	return "workit_" + base64.RawURLEncoding.EncodeToString(b[:]), nil
 }
 
 func validateHeaderValue(v string) error {
@@ -321,7 +321,7 @@ func hasHeader(headers map[string]string, name string) bool {
 }
 
 func randomMessageID(from string) (string, error) {
-	domain := "gogcli.local"
+	domain := "workit.local"
 	if addr, err := mail.ParseAddress(strings.TrimSpace(from)); err == nil && addr != nil {
 		if at := strings.LastIndex(addr.Address, "@"); at != -1 && at+1 < len(addr.Address) {
 			domain = strings.TrimSpace(addr.Address[at+1:])

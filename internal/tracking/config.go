@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/workit/internal/config"
 )
 
 var errMissingAccount = errors.New("missing account")

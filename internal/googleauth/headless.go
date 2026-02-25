@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/workit/internal/config"
 )
 
 var (
@@ -57,7 +57,7 @@ func CallbackServerURL(override string) (string, error) {
 		return strings.TrimSpace(override), nil
 	}
 
-	if envURL := os.Getenv("GOG_CALLBACK_SERVER"); strings.TrimSpace(envURL) != "" {
+	if envURL := os.Getenv("WK_CALLBACK_SERVER"); strings.TrimSpace(envURL) != "" {
 		return strings.TrimSpace(envURL), nil
 	}
 

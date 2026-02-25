@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/api/forms/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/googleauth"
+	"github.com/namastexlabs/workit/internal/googleauth"
 )
 
 func NewForms(ctx context.Context, email string) (*forms.Service, error) {

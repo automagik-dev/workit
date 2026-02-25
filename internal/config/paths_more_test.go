@@ -8,6 +8,92 @@ import (
 	"testing"
 )
 
+func TestMigrateConfigDir_MovesLegacy(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	configBase := filepath.Join(home, "xdg-config")
+	oldDir := filepath.Join(configBase, LegacyAppName)
+	newDir := filepath.Join(configBase, AppName)
+
+	// Create legacy dir with a sentinel file.
+	if err := os.MkdirAll(oldDir, 0o700); err != nil {
+		t.Fatalf("mkdir old: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(oldDir, "credentials.json"), []byte(`{"installed":{}}`), 0o600); err != nil {
+		t.Fatalf("write sentinel: %v", err)
+	}
+
+	// New dir should not exist yet.
+	if _, err := os.Stat(newDir); err == nil {
+		t.Fatalf("expected new dir to not exist before migration")
+	}
+
+	if err := MigrateConfigDir(); err != nil {
+		t.Fatalf("MigrateConfigDir: %v", err)
+	}
+
+	// New dir should now exist with the sentinel file.
+	if _, err := os.Stat(filepath.Join(newDir, "credentials.json")); err != nil {
+		t.Fatalf("expected sentinel in new dir: %v", err)
+	}
+
+	// Old dir should be gone (rename).
+	if _, err := os.Stat(oldDir); !os.IsNotExist(err) {
+		t.Fatalf("expected old dir to be removed after migration")
+	}
+}
+
+func TestMigrateConfigDir_NoopWhenNewExists(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	configBase := filepath.Join(home, "xdg-config")
+	oldDir := filepath.Join(configBase, LegacyAppName)
+	newDir := filepath.Join(configBase, AppName)
+
+	// Create both dirs.
+	if err := os.MkdirAll(oldDir, 0o700); err != nil {
+		t.Fatalf("mkdir old: %v", err)
+	}
+
+	if err := os.MkdirAll(newDir, 0o700); err != nil {
+		t.Fatalf("mkdir new: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(oldDir, "old-creds.json"), []byte(`{}`), 0o600); err != nil {
+		t.Fatalf("write old sentinel: %v", err)
+	}
+
+	if err := MigrateConfigDir(); err != nil {
+		t.Fatalf("MigrateConfigDir: %v", err)
+	}
+
+	// Old dir should still exist (no-op because new dir exists).
+	if _, err := os.Stat(filepath.Join(oldDir, "old-creds.json")); err != nil {
+		t.Fatalf("expected old dir to be untouched: %v", err)
+	}
+}
+
+func TestMigrateConfigDir_NoopWhenNeitherExists(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	// Neither dir exists.
+	if err := MigrateConfigDir(); err != nil {
+		t.Fatalf("MigrateConfigDir: %v", err)
+	}
+	// No error, nothing created.
+	configBase := filepath.Join(home, "xdg-config")
+	if _, err := os.Stat(filepath.Join(configBase, AppName)); !os.IsNotExist(err) {
+		t.Fatalf("expected new dir to not exist")
+	}
+}
+
 func TestDerivedPaths(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

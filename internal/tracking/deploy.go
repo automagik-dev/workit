@@ -34,10 +34,10 @@ var (
 func DefaultWorkerName(account string) string {
 	sanitized := SanitizeWorkerName(account)
 	if sanitized == "" {
-		return "gog-email-tracker"
+		return "wk-email-tracker"
 	}
 
-	return "gog-email-tracker-" + sanitized
+	return "wk-email-tracker-" + sanitized
 }
 
 func SanitizeWorkerName(name string) string {
@@ -161,7 +161,7 @@ func writeWranglerConfig(workerDir, workerName, dbName, dbID string) (string, er
 	content = replaceTomlString(content, "database_name", dbName)
 	content = replaceTomlString(content, "database_id", dbID)
 
-	tmpFile, err := os.CreateTemp("", "gog-wrangler-*.toml")
+	tmpFile, err := os.CreateTemp("", "wk-wrangler-*.toml")
 	if err != nil {
 		return "", fmt.Errorf("create temp wrangler config: %w", err)
 	}

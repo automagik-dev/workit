@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/outfmt"
 )
 
 // AgentHelpCmd displays help topics for agent integration.
@@ -117,7 +117,7 @@ func (c *AgentHelpCmd) listTopics(ctx context.Context) error {
 		fmt.Fprintf(os.Stdout, "  %-12s  %s\n", t.Name, t.Summary)
 	}
 	fmt.Fprintln(os.Stdout)
-	fmt.Fprintln(os.Stdout, "Usage: gog agent help <topic>")
+	fmt.Fprintln(os.Stdout, "Usage: wk agent help <topic>")
 
 	return nil
 }
@@ -219,51 +219,51 @@ func levenshtein(a, b string) int {
 // Topic content constants
 // ---------------------------------------------------------------------------
 
-const topicAuth = `Authentication in gog uses OAuth 2.0 to access Google Workspace APIs
+const topicAuth = `Authentication in wk uses OAuth 2.0 to access Google Workspace APIs
 on behalf of a user.
 
 Setup:
   1. Configure OAuth client credentials (client ID + secret).
-     Store them via: gog auth credentials set --client-id=ID --client-secret=SECRET
-     Or set environment variables: GOG_CLIENT_ID and GOG_CLIENT_SECRET
+     Store them via: wk auth credentials set --client-id=ID --client-secret=SECRET
+     Or set environment variables: WK_CLIENT_ID and WK_CLIENT_SECRET
 
   2. Authorize an account:
-     gog auth add --account user@gmail.com
+     wk auth add --account user@gmail.com
      This opens a browser for OAuth consent. The refresh token is stored
      in your OS keychain.
 
   3. Verify auth status:
-     gog auth status
-     gog auth status --account user@gmail.com
+     wk auth status
+     wk auth status --account user@gmail.com
 
 Using accounts:
   Most API commands require --account (or -a) to specify which Google
   account to use:
-    gog drive ls --account user@gmail.com
-    gog gmail labels --account user@gmail.com
+    wk drive ls --account user@gmail.com
+    wk gmail labels --account user@gmail.com
 
-  Set GOG_ACCOUNT to avoid passing --account on every call:
-    export GOG_ACCOUNT=user@gmail.com
+  Set WK_ACCOUNT to avoid passing --account on every call:
+    export WK_ACCOUNT=user@gmail.com
 
 Headless auth:
   For environments without a browser (CI, containers, agents), use the
-  device code flow or a callback server. See: gog auth add --help
+  device code flow or a callback server. See: wk auth add --help
 
 Token storage:
   Tokens are stored in the OS keychain by default. For headless
   environments, set:
-    export GOG_KEYRING_BACKEND=file
-    export GOG_KEYRING_PASSWORD=your-password
+    export WK_KEYRING_BACKEND=file
+    export WK_KEYRING_PASSWORD=your-password
 
 Environment variables:
-  GOG_CLIENT_ID       - OAuth client ID
-  GOG_CLIENT_SECRET   - OAuth client secret
-  GOG_ACCOUNT         - Default account email
-  GOG_CLIENT          - Default OAuth client name
-  GOG_KEYRING_BACKEND - Keyring backend (auto, file, keychain, kwallet, wincred)
-  GOG_KEYRING_PASSWORD - Password for file-based keyring`
+  WK_CLIENT_ID       - OAuth client ID
+  WK_CLIENT_SECRET   - OAuth client secret
+  WK_ACCOUNT         - Default account email
+  WK_CLIENT          - Default OAuth client name
+  WK_KEYRING_BACKEND - Keyring backend (auto, file, keychain, kwallet, wincred)
+  WK_KEYRING_PASSWORD - Password for file-based keyring`
 
-const topicOutput = `gog supports multiple output modes to suit both human and machine consumers.
+const topicOutput = `wk supports multiple output modes to suit both human and machine consumers.
 
 Flags:
   --json, -j         Output JSON to stdout (best for scripting and agents)
@@ -284,8 +284,8 @@ JSON envelope:
 Field selection:
   --select FIELDS     Project JSON output to only the specified fields.
                       Comma-separated; supports dot paths.
-    gog drive ls --json --select "name,id,mimeType"
-    gog gmail messages --json --select "id,snippet,payload.headers"
+    wk drive ls --json --select "name,id,mimeType"
+    wk gmail messages --json --select "id,snippet,payload.headers"
 
   Aliases: --pick, --project, --fields (except in calendar events)
 
@@ -302,29 +302,29 @@ Exit codes:
   10  Configuration error
   130 Cancelled (Ctrl-C)
 
-  Use: gog agent exit-codes --json for the full machine-readable list.
+  Use: wk agent exit-codes --json for the full machine-readable list.
 
 Auto-JSON mode:
-  Set GOG_AUTO_JSON=1 to default to JSON output when stdout is piped
+  Set WK_AUTO_JSON=1 to default to JSON output when stdout is piped
   (non-TTY). --plain can still override.`
 
 const topicAgent = `Agent Integration Guide
 
-gog is designed for zero-shot LLM agent use. Agents should always pass
+wk is designed for zero-shot LLM agent use. Agents should always pass
 --json for machine-parseable output and --account to specify the user.
 
 Recommended invocation pattern:
-  gog <command> --json --account user@gmail.com [flags...]
+  wk <command> --json --account user@gmail.com [flags...]
 
 Discovery:
-  gog agent help <topic>         Concept-level documentation
-  gog agent exit-codes --json    Stable exit codes for automation
-  gog schema --json              Full command/flag schema (machine-readable)
-  gog <command> --help           Per-command usage help
+  wk agent help <topic>         Concept-level documentation
+  wk agent exit-codes --json    Stable exit codes for automation
+  wk schema --json              Full command/flag schema (machine-readable)
+  wk <command> --help           Per-command usage help
 
 Error handling:
-  1. Check exit code first (see: gog agent help errors)
-  2. If exit code is 4 (auth_required), run: gog auth add --account user@
+  1. Check exit code first (see: wk agent help errors)
+  2. If exit code is 4 (auth_required), run: wk auth add --account user@
   3. If exit code is 7 (rate_limited) or 8 (retryable), wait and retry
   4. If exit code is 3 (empty_results), the query succeeded but found nothing
   5. Parse stderr for human-readable error messages
@@ -342,7 +342,7 @@ Flags for agents:
 Stdin input:
   Commands that accept structured input (e.g., gmail send) can read
   from stdin. Pipe JSON directly:
-    echo '{"to":"a@b.com","subject":"Hi"}' | gog gmail send --json
+    echo '{"to":"a@b.com","subject":"Hi"}' | wk gmail send --json
 
 Services available:
   gmail, calendar, drive, docs, slides, sheets, forms, contacts,
@@ -350,7 +350,7 @@ Services available:
 
 const topicPagination = `Pagination
 
-Google APIs return results in pages. gog provides flags to control
+Google APIs return results in pages. wk provides flags to control
 pagination behavior.
 
 Flags:
@@ -368,7 +368,7 @@ How it works:
     }
 
   To fetch the next page, pass the token back:
-    gog drive ls --json --page-token TOKEN_STRING
+    wk drive ls --json --page-token TOKEN_STRING
 
   Repeat until nextPageToken is absent from the response.
 
@@ -386,7 +386,7 @@ Tips for agents:
 
 const topicErrors = `Error Handling
 
-gog uses structured exit codes so agents can branch on failure type
+wk uses structured exit codes so agents can branch on failure type
 without parsing error text.
 
 Exit codes:
@@ -402,7 +402,7 @@ Exit codes:
   10  Configuration error (missing credentials file, bad config)
   130 Cancelled (SIGINT / Ctrl-C)
 
-  Machine-readable list: gog agent exit-codes --json
+  Machine-readable list: wk agent exit-codes --json
 
 Error output:
   - Error messages are written to stderr.
@@ -414,11 +414,11 @@ Common errors and remedies:
 
   Exit 4 (auth_required):
     Token has expired or was revoked. Re-authenticate:
-      gog auth add --account user@gmail.com
+      wk auth add --account user@gmail.com
 
   Exit 6 (permission_denied):
     The OAuth token lacks required scopes. Re-add with broader scopes:
-      gog auth add --account user@gmail.com --services gmail,drive
+      wk auth add --account user@gmail.com --services gmail,drive
 
   Exit 7 (rate_limited):
     Google API quota exceeded. Wait and retry with exponential backoff.

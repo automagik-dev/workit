@@ -28,7 +28,7 @@ func TestDriveChangeOpString(t *testing.T) {
 
 func TestDefaultPollInterval(t *testing.T) {
 	// Clear any existing env var
-	os.Unsetenv("GOG_SYNC_POLL_INTERVAL")
+	os.Unsetenv("WK_SYNC_POLL_INTERVAL")
 
 	interval := DefaultPollInterval()
 	if interval != 5*time.Second {
@@ -37,8 +37,8 @@ func TestDefaultPollInterval(t *testing.T) {
 }
 
 func TestDefaultPollIntervalFromEnv(t *testing.T) {
-	os.Setenv("GOG_SYNC_POLL_INTERVAL", "10s")
-	defer os.Unsetenv("GOG_SYNC_POLL_INTERVAL")
+	os.Setenv("WK_SYNC_POLL_INTERVAL", "10s")
+	defer os.Unsetenv("WK_SYNC_POLL_INTERVAL")
 
 	interval := DefaultPollInterval()
 	if interval != 10*time.Second {
@@ -47,8 +47,8 @@ func TestDefaultPollIntervalFromEnv(t *testing.T) {
 }
 
 func TestDefaultPollIntervalInvalidEnv(t *testing.T) {
-	os.Setenv("GOG_SYNC_POLL_INTERVAL", "invalid")
-	defer os.Unsetenv("GOG_SYNC_POLL_INTERVAL")
+	os.Setenv("WK_SYNC_POLL_INTERVAL", "invalid")
+	defer os.Unsetenv("WK_SYNC_POLL_INTERVAL")
 
 	interval := DefaultPollInterval()
 	// Should fall back to default

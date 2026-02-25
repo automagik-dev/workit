@@ -442,7 +442,7 @@ func sharedTokenMatches(r *http.Request, expected string) bool {
 	if expected == "" {
 		return false
 	}
-	token := r.Header.Get("x-gog-token")
+	token := r.Header.Get("x-wk-token")
 	if token == "" {
 		token = r.URL.Query().Get("token")
 	}

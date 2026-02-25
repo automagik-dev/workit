@@ -292,7 +292,7 @@ func TestRandomMessageID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if !regexp.MustCompile(`^<[A-Za-z0-9_-]+@gogcli\.local>$`).MatchString(id) {
+	if !regexp.MustCompile(`^<[A-Za-z0-9_-]+@workit\.local>$`).MatchString(id) {
 		t.Fatalf("unexpected: %q", id)
 	}
 }

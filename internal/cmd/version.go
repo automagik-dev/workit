@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/outfmt"
 )
 
 var (
@@ -19,7 +19,7 @@ var (
 func VersionString() string {
 	v := strings.TrimSpace(version)
 	if v == "" {
-		v = "dev"
+		v = buildVersionDev
 	}
 
 	metadata := make([]string, 0, 3)
@@ -34,9 +34,9 @@ func VersionString() string {
 	}
 
 	if len(metadata) == 0 {
-		return v
+		return "Workit " + v
 	}
-	return fmt.Sprintf("%s (%s)", v, strings.Join(metadata, " "))
+	return fmt.Sprintf("Workit %s (%s)", v, strings.Join(metadata, " "))
 }
 
 type VersionCmd struct{}

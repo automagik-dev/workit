@@ -173,15 +173,15 @@ func TestCalendarTimeCmd_UsesEnvTimezone(t *testing.T) {
 	origNew := newCalendarService
 	t.Cleanup(func() { newCalendarService = origNew })
 
-	origEnv := os.Getenv("GOG_TIMEZONE")
-	defer os.Setenv("GOG_TIMEZONE", origEnv)
+	origEnv := os.Getenv("WK_TIMEZONE")
+	defer os.Setenv("WK_TIMEZONE", origEnv)
 
 	envTZ := pickTimezoneExcluding(t)
-	os.Setenv("GOG_TIMEZONE", envTZ)
+	os.Setenv("WK_TIMEZONE", envTZ)
 
 	// No server needed since we're using env timezone
 	newCalendarService = func(context.Context, string) (*calendar.Service, error) {
-		t.Fatal("should not call calendar service when GOG_TIMEZONE is provided")
+		t.Fatal("should not call calendar service when WK_TIMEZONE is provided")
 		return nil, errors.New("unexpected calendar service call")
 	}
 
@@ -214,11 +214,11 @@ func TestCalendarTimeCmd_WithTimezoneLocal(t *testing.T) {
 	origNew := newCalendarService
 	t.Cleanup(func() { newCalendarService = origNew })
 
-	origEnv := os.Getenv("GOG_TIMEZONE")
-	defer os.Setenv("GOG_TIMEZONE", origEnv)
+	origEnv := os.Getenv("WK_TIMEZONE")
+	defer os.Setenv("WK_TIMEZONE", origEnv)
 
 	envTZ := pickNonLocalTimezone(t)
-	os.Setenv("GOG_TIMEZONE", envTZ)
+	os.Setenv("WK_TIMEZONE", envTZ)
 
 	// No server needed since --timezone local should force local
 	newCalendarService = func(context.Context, string) (*calendar.Service, error) {

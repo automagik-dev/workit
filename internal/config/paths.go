@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const AppName = "gogcli"
+const AppName = "workit"
 
 func Dir() (string, error) {
 	base, err := os.UserConfigDir()
@@ -226,6 +226,40 @@ func ListServiceAccountEmails() ([]string, error) {
 	sort.Strings(out)
 
 	return out, nil
+}
+
+// LegacyAppName is the pre-rebrand config directory name.
+const LegacyAppName = "gogcli"
+
+// MigrateConfigDir checks for the legacy config dir (~/.config/gogcli/) and
+// migrates it to the new location (~/.config/workit/) if needed.
+// Called once on startup. If the new dir already exists, this is a no-op.
+// If the old dir exists but the new one does not, an atomic rename is attempted.
+func MigrateConfigDir() error {
+	newDir, err := Dir()
+	if err != nil {
+		return err
+	}
+	oldDir := filepath.Join(filepath.Dir(newDir), LegacyAppName)
+
+	// If new dir already exists, nothing to do.
+	if _, err := os.Stat(newDir); err == nil {
+		return nil
+	}
+
+	// If old dir doesn't exist either, nothing to migrate.
+	if _, err := os.Stat(oldDir); os.IsNotExist(err) {
+		return nil
+	}
+
+	// Move old dir to new location.
+	fmt.Fprintf(os.Stderr, "Migrating config from %s to %s\n", oldDir, newDir)
+
+	if err := os.Rename(oldDir, newDir); err != nil {
+		return fmt.Errorf("rename config dir: %w", err)
+	}
+
+	return nil
 }
 
 func EnsureGmailWatchDir() (string, error) {

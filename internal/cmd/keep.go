@@ -10,10 +10,10 @@ import (
 
 	keepapi "google.golang.org/api/keep/v1"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
-	"github.com/namastexlabs/gog-cli/internal/googleapi"
-	"github.com/namastexlabs/gog-cli/internal/outfmt"
-	"github.com/namastexlabs/gog-cli/internal/ui"
+	"github.com/namastexlabs/workit/internal/config"
+	"github.com/namastexlabs/workit/internal/googleapi"
+	"github.com/namastexlabs/workit/internal/outfmt"
+	"github.com/namastexlabs/workit/internal/ui"
 )
 
 var newKeepServiceWithSA = googleapi.NewKeepWithServiceAccount
@@ -361,5 +361,5 @@ func getKeepService(ctx context.Context, flags *RootFlags, keepCmd *KeepCmd) (*k
 		}
 	}
 
-	return nil, usage("Keep is Workspace-only and requires a service account. Configure it with: gog auth service-account set <email> --key <service-account.json> (or legacy: gog auth keep <email> --key <service-account.json>)")
+	return nil, usage("Keep is Workspace-only and requires a service account. Configure it with: wk auth service-account set <email> --key <service-account.json> (or legacy: wk auth keep <email> --key <service-account.json>)")
 }

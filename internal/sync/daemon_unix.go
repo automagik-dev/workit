@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/namastexlabs/gog-cli/internal/config"
+	"github.com/namastexlabs/workit/internal/config"
 )
 
 // GetDaemonStatus checks if the daemon is running.

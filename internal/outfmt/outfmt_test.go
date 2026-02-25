@@ -126,8 +126,8 @@ func TestWriteJSON_ResultsOnlyThenJQ(t *testing.T) {
 }
 
 func TestFromEnvAndParseError(t *testing.T) {
-	t.Setenv("GOG_JSON", "yes")
-	t.Setenv("GOG_PLAIN", "0")
+	t.Setenv("WK_JSON", "yes")
+	t.Setenv("WK_PLAIN", "0")
 	mode := FromEnv()
 
 	if !mode.JSON || mode.Plain {
