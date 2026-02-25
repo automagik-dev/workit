@@ -18,6 +18,9 @@ COMMIT := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo "")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 COVERAGE_MIN ?= 70
 LDFLAGS := -X github.com/namastexlabs/workit/internal/cmd.version=$(VERSION) -X github.com/namastexlabs/workit/internal/cmd.branch=$(BRANCH) -X github.com/namastexlabs/workit/internal/cmd.commit=$(COMMIT) -X github.com/namastexlabs/workit/internal/cmd.date=$(DATE)
+WK_CLIENT_ID_VAL := $(if $(WK_CLIENT_ID),$(WK_CLIENT_ID),$(GOG_CLIENT_ID))
+WK_CLIENT_SECRET_VAL := $(if $(WK_CLIENT_SECRET),$(WK_CLIENT_SECRET),$(GOG_CLIENT_SECRET))
+WK_CALLBACK_SERVER_VAL := $(if $(WK_CALLBACK_SERVER),$(WK_CALLBACK_SERVER),$(GOG_CALLBACK_SERVER))
 
 TOOLS_DIR := $(CURDIR)/.tools
 GOFUMPT := $(TOOLS_DIR)/gofumpt
@@ -45,14 +48,14 @@ build-gog:
 	@go build -ldflags "$(LDFLAGS)" -o $(BIN_GOG) $(CMD_GOG)
 
 # Build with internal defaults for headless OAuth (credentials baked in).
-# Usage: make build-internal GOG_CLIENT_ID=... GOG_CLIENT_SECRET=... GOG_CALLBACK_SERVER=...
-# Note: env var names kept as GOG_* for backward compat with existing CI secrets.
+# Usage: make build-internal WK_CLIENT_ID=... WK_CLIENT_SECRET=... WK_CALLBACK_SERVER=...
+# Legacy fallback: if WK_* is unset, uses matching GOG_* variable.
 build-internal:
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS) \
-		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$(GOG_CLIENT_ID)' \
-		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$(GOG_CLIENT_SECRET)' \
-		-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$(GOG_CALLBACK_SERVER)'" \
+		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$(WK_CLIENT_ID_VAL)' \
+		-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$(WK_CLIENT_SECRET_VAL)' \
+		-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$(WK_CALLBACK_SERVER_VAL)'" \
 		-o $(BIN) $(CMD)
 
 # Build with credentials from ~/.config/workit/credentials.env
@@ -63,16 +66,16 @@ build-namastex:
 	@if [ -f "$(HOME)/.config/workit/credentials.env" ]; then \
 		. $(HOME)/.config/workit/credentials.env && \
 		go build -ldflags "$(LDFLAGS) \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${GOG_CLIENT_ID}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${GOG_CLIENT_SECRET}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${GOG_CALLBACK_SERVER}'" \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}'" \
 			-o $(BIN) $(CMD); \
 	elif [ -f "$(HOME)/.config/gog/credentials.env" ]; then \
 		. $(HOME)/.config/gog/credentials.env && \
 		go build -ldflags "$(LDFLAGS) \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${GOG_CLIENT_ID}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${GOG_CLIENT_SECRET}' \
-			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${GOG_CALLBACK_SERVER}'" \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientID=$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultClientSecret=$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}' \
+			-X 'github.com/namastexlabs/workit/internal/config.DefaultCallbackServer=$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}'" \
 			-o $(BIN) $(CMD); \
 	else \
 		echo "Missing credentials file: $(HOME)/.config/workit/credentials.env"; \

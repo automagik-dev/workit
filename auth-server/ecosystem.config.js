@@ -1,9 +1,9 @@
 module.exports = {
   apps: [{
-    name: 'gog-auth-server',
+    name: 'wk-auth-server',
     script: './auth-server',
-    args: '--port 8089 --credentials-file /home/genie/.config/gogcli/credentials.json --redirect-url https://gogoauth.namastex.io/callback',
-    cwd: '/opt/gog-auth-server',
+    args: '--port 8089 --credentials-file /home/genie/.config/workit/credentials.json --redirect-url https://wkauth.namastex.io/callback',
+    cwd: '/opt/wk-auth-server',
     interpreter: 'none',
     autorestart: true,
     max_memory_restart: '100M',
