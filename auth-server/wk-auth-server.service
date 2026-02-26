@@ -17,7 +17,7 @@ EnvironmentFile=-/etc/default/wk-auth-server
 ExecStartPre=/bin/sh -ec 'cred_file="${WK_CREDENTIALS_FILE:-}"; if [ -n "$cred_file" ] && [ -r "$cred_file" ]; then exit 0; fi; [ -n "${WK_CLIENT_ID:-}" ] && [ -n "${WK_CLIENT_SECRET:-}" ]'
 ExecStartPre=/bin/sh -ec 'home="${WK_AUTH_SERVER_HOME:-/opt/wk-auth-server}"; bin="${WK_AUTH_SERVER_BIN:-${home}/auth-server}"; [ -x "$bin" ]'
 
-ExecStart=/bin/sh -ec 'home="${WK_AUTH_SERVER_HOME:-/opt/wk-auth-server}"; bin="${WK_AUTH_SERVER_BIN:-${home}/auth-server}"; port="${WK_AUTH_SERVER_PORT:-8089}"; redirect="${WK_REDIRECT_URL:-https://auth.automagik.dev/callback}"; cred_file="${WK_CREDENTIALS_FILE:-}"; if [ -n "$cred_file" ] && [ -r "$cred_file" ]; then exec "$bin" --port="$port" --redirect-url="$redirect" --credentials-file="$cred_file"; fi; exec "$bin" --port="$port" --redirect-url="$redirect"'
+ExecStart=/bin/sh -ec 'home="${WK_AUTH_SERVER_HOME:-/opt/wk-auth-server}"; bin="${WK_AUTH_SERVER_BIN:-${home}/auth-server}"; port="${WK_AUTH_SERVER_PORT:-8089}"; redirect="${WK_REDIRECT_URL:-https://auth.example.com/callback}"; cred_file="${WK_CREDENTIALS_FILE:-}"; if [ -n "$cred_file" ] && [ -r "$cred_file" ]; then exec "$bin" --port="$port" --redirect-url="$redirect" --credentials-file="$cred_file"; fi; exec "$bin" --port="$port" --redirect-url="$redirect"'
 
 Restart=on-failure
 RestartSec=10s

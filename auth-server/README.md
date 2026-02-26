@@ -90,7 +90,7 @@ services:
     environment:
       - WK_CLIENT_ID=${WK_CLIENT_ID}
       - WK_CLIENT_SECRET=${WK_CLIENT_SECRET}
-      - WK_REDIRECT_URL=https://auth.automagik.dev/callback
+      - WK_REDIRECT_URL=https://auth.example.com/callback
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
@@ -104,10 +104,10 @@ services:
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name auth.automagik.dev;
+    server_name auth.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/auth.automagik.dev/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/auth.automagik.dev/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/auth.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/auth.example.com/privkey.pem;
 
     location / {
         proxy_pass http://localhost:8080;

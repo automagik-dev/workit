@@ -1,7 +1,7 @@
 # Brainstorm: Auto-Detect Headless Auth + Callback Server Deployment
 
 ## Problem
-The `gog auth add` command requires `--headless --callback-server URL --force-consent` for agent use. Should just be `gog auth add email --services all`. The callback server at gogoauth.namastex.io is down (502). Local browser auth uses random ports and `127.0.0.1`, both broken with Web application OAuth clients.
+The `gog auth add` command requires `--headless --callback-server URL --force-consent` for agent use. Should just be `gog auth add email --services all`. The callback server at auth.example.com is down (502). Local browser auth uses random ports and `127.0.0.1`, both broken with Web application OAuth clients.
 
 ## Scope
 - **IN**: config keys (callback_server, auth_mode), auto-detect logic, CallbackServerURL precedence, fixed local auth port (8085), localhost instead of 127.0.0.1, auth-server --credentials-file flag, PM2 deployment to /opt, auth status output, tests
@@ -31,7 +31,7 @@ Port `8085` hardcoded as `DefaultLocalAuthPort`. Change `127.0.0.1:0` → `local
 - All redirect URI formatting from `127.0.0.1:{port}` → `localhost:8085`
 
 ### D6: Google Console redirect URIs
-- `https://gogoauth.namastex.io/callback` ← headless (already registered)
+- `https://auth.example.com/callback` ← headless (already registered)
 - `http://localhost:8085/oauth2/callback` ← local browser auth (adding now)
 
 ## Risks
@@ -47,10 +47,10 @@ Tokens in-memory with 15min TTL. Server restart = lost flow. Acceptable (auth fl
 
 ## Acceptance Criteria
 
-1. `gog config set callback_server https://gogoauth.namastex.io` → saves to config
+1. `gog config set callback_server https://auth.example.com` → saves to config
 2. `gog config set auth_mode headless` → saves to config
 3. Auth-server running via PM2 at /opt/gog-auth-server/ → `curl localhost:8089/health` returns 200
-4. `gog auth add felipe@namastex.ai --services all` → auto-detects headless → prints URL → polls → stores token
+4. `gog auth add user@example.com --services all` → auto-detects headless → prints URL → polls → stores token
 5. `gog people me --json` → returns profile data using new token
 6. Local browser auth uses `http://localhost:8085/oauth2/callback` (fixed port, localhost not 127.0.0.1)
 

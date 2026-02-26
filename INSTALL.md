@@ -25,7 +25,7 @@ If the binary was built with `make build-internal`, it already has OAuth credent
 ```bash
 export WK_CLIENT_ID="your-client-id"
 export WK_CLIENT_SECRET="your-client-secret"
-export WK_CALLBACK_SERVER="https://auth.automagik.dev"
+export WK_CALLBACK_SERVER="https://auth.example.com"
 ```
 
 **Option C: Credentials file (standard workit way)**
@@ -172,7 +172,7 @@ wk update
 # Configure (if not using pre-built binary)
 export WK_CLIENT_ID="xxx"
 export WK_CLIENT_SECRET="xxx" 
-export WK_CALLBACK_SERVER="https://auth.automagik.dev"
+export WK_CALLBACK_SERVER="https://auth.example.com"
 export WK_KEYRING_BACKEND=file
 export WK_KEYRING_PASSWORD="secure-password"
 

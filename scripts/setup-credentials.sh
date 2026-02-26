@@ -25,7 +25,7 @@ Options:
   --non-interactive       Do not prompt; fail if values are missing
   --force                 Overwrite existing credentials.env without prompting
   --keyring-backend NAME  Keyring backend (default: file)
-  --callback-server URL   Callback server (default: $WK_CALLBACK_SERVER or https://auth.automagik.dev)
+  --callback-server URL   Callback server (default: $WK_CALLBACK_SERVER or https://auth.example.com)
   --client-id VALUE       OAuth client id (discouraged: use env/.env instead)
   --client-secret VALUE   OAuth client secret (discouraged: use env/.env instead)
   -h, --help              Show help
@@ -45,7 +45,7 @@ FORCE="0"
 KEYRING_BACKEND="${WK_KEYRING_BACKEND:-file}"
 CLIENT_ID="${WK_CLIENT_ID:-}"
 CLIENT_SECRET="${WK_CLIENT_SECRET:-}"
-CALLBACK_SERVER="${WK_CALLBACK_SERVER:-https://auth.automagik.dev}"
+CALLBACK_SERVER="${WK_CALLBACK_SERVER:-https://auth.example.com}"
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -121,7 +121,7 @@ load_env_file "$ENV_FILE"
 
 CLIENT_ID="${CLIENT_ID:-${WK_CLIENT_ID:-}}"
 CLIENT_SECRET="${CLIENT_SECRET:-${WK_CLIENT_SECRET:-}}"
-CALLBACK_SERVER="${CALLBACK_SERVER:-${WK_CALLBACK_SERVER:-https://auth.automagik.dev}}"
+CALLBACK_SERVER="${CALLBACK_SERVER:-${WK_CALLBACK_SERVER:-https://auth.example.com}}"
 KEYRING_BACKEND="${KEYRING_BACKEND:-${WK_KEYRING_BACKEND:-file}}"
 
 # Create config directory
@@ -159,7 +159,7 @@ if [[ "$NON_INTERACTIVE" != "1" ]]; then
 		CLIENT_SECRET="$CLIENT_SECRET_IN"
 	fi
 
-	read -r -p "Callback Server [${CALLBACK_SERVER:-https://auth.automagik.dev}]: " CALLBACK_SERVER_IN
+	read -r -p "Callback Server [${CALLBACK_SERVER:-https://auth.example.com}]: " CALLBACK_SERVER_IN
 	if [[ -n "${CALLBACK_SERVER_IN:-}" ]]; then
 		CALLBACK_SERVER="$CALLBACK_SERVER_IN"
 	fi

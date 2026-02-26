@@ -10,7 +10,7 @@
 
 ## Summary
 
-Transform gog-cli into a zero-friction Google Workspace CLI for Linux users. Add headless OAuth (users authenticate via mobile, no GCP setup needed) and real-time Drive sync (bidirectional folder sync like Google Drive for Desktop). This enables Namastex to provide a hosted OAuth service at `auth.namastex.io` where users authenticate once and access Gmail, Calendar, Drive, Docs, Sheets, and all other Workspace products forever.
+Transform gog-cli into a zero-friction Google Workspace CLI for Linux users. Add headless OAuth (users authenticate via mobile, no GCP setup needed) and real-time Drive sync (bidirectional folder sync like Google Drive for Desktop). This enables providing a hosted OAuth service at `auth.example.com` where users authenticate once and access Gmail, Calendar, Drive, Docs, Sheets, and all other Workspace products forever.
 
 **Why:** Linux lacks an official Google Drive client. Users struggle with OAuth setup (creating GCP projects, downloading credentials.json). By providing hosted auth infrastructure, we eliminate friction entirely.
 
@@ -21,7 +21,7 @@ Transform gog-cli into a zero-friction Google Workspace CLI for Linux users. Add
 ### IN Scope
 
 1. **Auth Callback Server** (`auth-server/`)
-   - Go HTTP server deployable at `auth.namastex.io`
+   - Go HTTP server deployable at `auth.example.com`
    - `/callback` - receives OAuth redirect from Google
    - `/token/{state}` - CLI polls to retrieve token
    - `/status/{state}` - check status without consuming
@@ -151,7 +151,7 @@ ServicePeople, ServiceSheets, ServiceGroups, ServiceKeep
 ## Execution Groups
 
 ### Group 1: Auth Callback Server
-**Goal:** Deployable callback server at auth.namastex.io
+**Goal:** Deployable callback server at auth.example.com
 
 **Deliverables:**
 - `auth-server/main.go` - Entry point

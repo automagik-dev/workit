@@ -52,7 +52,7 @@ source ~/.config/workit/credentials.env
 
 ```
 ┌─────────────────┐     ┌──────────────────────────┐     ┌─────────────────┐
-│  Agent (wk)    │────▶│  auth.automagik.dev    │◀────│  User's Phone   │
+│  Agent (wk)    │────▶│  auth.example.com    │◀────│  User's Phone   │
 │  --headless     │     │  (callback server)       │     │  (OAuth login)  │
 └─────────────────┘     └──────────────────────────┘     └─────────────────┘
         │                         │
@@ -104,7 +104,6 @@ wk drive list
 
 ## Credentials
 
-**Project:** felipe-bot (felipe-bot-485616)  
-**OAuth Client:** workit-headless  
-**Callback URL:** https://auth.automagik.dev/callback  
+**OAuth Client:** Configure via `scripts/setup-credentials.sh`
+**Callback URL:** `https://auth.example.com/callback` (replace with your domain)
 **Audience:** Internal deployments
