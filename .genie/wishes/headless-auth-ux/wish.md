@@ -9,7 +9,7 @@
 
 The `gog auth add` command requires `--headless --callback-server URL --force-consent` for agent use — 3 extra flags just to authenticate. For an agent-first CLI, `gog auth add email --services all` should auto-detect headless mode when running without a TTY and a callback server is configured.
 
-Additionally, the callback server at `gogoauth.namastex.io` is down (502) and local browser auth is broken because it uses random ports with `127.0.0.1` (incompatible with Web application OAuth clients).
+Additionally, the callback server at `auth.example.com` is down (502) and local browser auth is broken because it uses random ports with `127.0.0.1` (incompatible with Web application OAuth clients).
 
 ## Scope
 
@@ -42,13 +42,13 @@ Additionally, the callback server at `gogoauth.namastex.io` is down (502) and lo
 
 ## Success Criteria
 
-- [ ] `gog config set callback_server https://gogoauth.namastex.io` saves to config
+- [ ] `gog config set callback_server https://auth.example.com` saves to config
 - [ ] `gog config set auth_mode headless` saves to config; rejects invalid values
 - [ ] `gog config list --json` shows `callback_server` and `auth_mode` keys
 - [ ] Auth-server accepts `--credentials-file` flag and reads creds from JSON
 - [ ] Auth-server running via PM2 at `/opt/gog-auth-server/` — `curl localhost:8089/health` returns 200
 - [ ] `pm2 list` shows `gog-auth-server` as `online`
-- [ ] `curl -s https://gogoauth.namastex.io/health | jq -r .status` returns `ok` (full proxy chain)
+- [ ] `curl -s https://auth.example.com/health | jq -r .status` returns `ok` (full reverse proxy chain)
 - [ ] `gog auth add email --services all` auto-detects headless when no TTY + callback server configured
 - [ ] `--force-consent` auto-applied in headless mode (no manual flag needed)
 - [ ] Local browser auth uses `http://localhost:8085/oauth2/callback` (fixed port, localhost)
@@ -70,7 +70,7 @@ Additionally, the callback server at `gogoauth.namastex.io` is down (502) and lo
 4. Add unit tests in `internal/config/keys_test.go` for validation (valid values, invalid values, get/set/unset)
 
 **Acceptance Criteria:**
-- `gog config set callback_server https://gogoauth.namastex.io` → writes to config.json
+- `gog config set callback_server https://auth.example.com` → writes to config.json
 - `gog config set callback_server ftp://bad` → error: must start with http/https
 - `gog config set auth_mode headless` → writes to config.json
 - `gog config set auth_mode invalid` → error: must be auto/browser/headless/manual
@@ -168,7 +168,7 @@ cd /home/genie/workspace/repos/gog-cli && go test ./internal/cmd/... && go test 
      apps: [{
        name: 'gog-auth-server',
        script: './auth-server',
-       args: '--port 8089 --credentials-file /home/genie/.config/gogcli/credentials.json --redirect-url https://gogoauth.namastex.io/callback',
+       args: '--port 8089 --credentials-file ~/.config/workit/credentials.json --redirect-url https://auth.example.com/callback',
        cwd: '/opt/gog-auth-server',
        interpreter: 'none',
        autorestart: true,
@@ -186,7 +186,7 @@ cd /home/genie/workspace/repos/gog-cli && go test ./internal/cmd/... && go test 
 - `./auth-server --credentials-file /path/to/credentials.json --port 8089` starts and serves `/health`
 - `pm2 list` shows `gog-auth-server` as `online`
 - `curl localhost:8089/health` returns 200
-- `curl -s https://gogoauth.namastex.io/health | jq -r .status` returns `ok` (full Caddy proxy chain)
+- `curl -s https://auth.example.com/health | jq -r .status` returns `ok` (full reverse proxy chain)
 - Server survives restart (`pm2 restart gog-auth-server`)
 
 **Validation:**
@@ -207,7 +207,7 @@ No data at risk — auth-server is stateless (in-memory token store).
 
 **Deliverables:**
 1. Run `make ci` — all existing + new tests pass, no lint errors
-2. Verify `gog config set callback_server https://gogoauth.namastex.io` works
+2. Verify `gog config set callback_server https://auth.example.com` works
 3. Verify `gog config set auth_mode headless` works
 4. Verify `gog config list --json` shows new keys
 5. Verify `gog auth status --json` shows new fields

@@ -1,7 +1,7 @@
 const WK_AUTH_SERVER_HOME = process.env.WK_AUTH_SERVER_HOME || '/opt/wk-auth-server';
 const WK_AUTH_SERVER_BIN = process.env.WK_AUTH_SERVER_BIN || `${WK_AUTH_SERVER_HOME}/auth-server`;
 const WK_AUTH_SERVER_PORT = process.env.WK_AUTH_SERVER_PORT || '8089';
-const WK_REDIRECT_URL = process.env.WK_REDIRECT_URL || 'https://auth.automagik.dev/callback';
+const WK_REDIRECT_URL = process.env.WK_REDIRECT_URL || 'https://auth.example.com/callback';
 const WK_CREDENTIALS_FILE = process.env.WK_CREDENTIALS_FILE || '';
 
 const args = [

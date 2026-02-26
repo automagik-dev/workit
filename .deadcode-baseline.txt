@@ -48,7 +48,7 @@ internal/sync/conflict.go:100:28: unreachable func: ConflictResolver.Resolve
 internal/sync/conflict.go:155:28: unreachable func: ConflictResolver.renameWithTimestamp
 internal/sync/conflict.go:173:6: unreachable func: ParseConflictStrategy
 internal/sync/db.go:362:14: unreachable func: DB.GetRecentLogs
-internal/sync/download.go:101:22: unreachable func: Downloader.DownloadFolder
+internal/sync/download.go:107:22: unreachable func: Downloader.DownloadFolder
 internal/sync/drive_changes.go:37:25: unreachable func: DriveChangeOp.String
 internal/sync/watcher.go:38:18: unreachable func: WatchOp.String
 internal/tracking/crypto.go:57:6: unreachable func: Decrypt

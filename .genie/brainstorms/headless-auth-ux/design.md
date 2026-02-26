@@ -4,7 +4,7 @@
 
 ## Problem
 
-The `gog auth add` command requires `--headless --callback-server URL --force-consent` for agent use. Should just be `gog auth add email --services all`. The callback server at gogoauth.namastex.io is down (502). Local browser auth uses random ports and `127.0.0.1`, both broken with Web application OAuth clients.
+The `gog auth add` command requires `--headless --callback-server URL --force-consent` for agent use. Should just be `gog auth add email --services all`. The callback server at auth.example.com is down (502). Local browser auth uses random ports and `127.0.0.1`, both broken with Web application OAuth clients.
 
 ## Scope
 
@@ -56,7 +56,7 @@ flag → env GOG_CALLBACK_SERVER → config callback_server → build-time Defau
 
 ### Google Console Redirect URIs (D6)
 
-- `https://gogoauth.namastex.io/callback` — headless (already registered)
+- `https://auth.example.com/callback` — headless (already registered)
 - `http://localhost:8085/oauth2/callback` — local browser auth (adding now)
 
 ### Auth-Server Deployment (D1, D2)
@@ -64,7 +64,7 @@ flag → env GOG_CALLBACK_SERVER → config callback_server → build-time Defau
 - Binary deployed to `/opt/gog-auth-server/` via PM2
 - PM2 `ecosystem.config.js` with `interpreter: 'none'` for Go binary
 - `--credentials-file` flag reads `~/.config/gogcli/credentials.json`
-- Listens on port `8089`; Caddy on CT 118 proxies `gogoauth.namastex.io` → CT 111:8089
+- Listens on port `8089`; reverse proxy forwards `auth.example.com` → localhost:8089
 
 ## Risks
 
@@ -76,10 +76,10 @@ flag → env GOG_CALLBACK_SERVER → config callback_server → build-time Defau
 
 ## Acceptance Criteria
 
-1. `gog config set callback_server https://gogoauth.namastex.io` → saves to config
+1. `gog config set callback_server https://auth.example.com` → saves to config
 2. `gog config set auth_mode headless` → saves to config
-3. Auth-server running via PM2 at /opt/gog-auth-server/ → `curl localhost:8089/health` returns 200; `https://gogoauth.namastex.io/health` returns `ok`
-4. `gog auth add felipe@namastex.ai --services all` → auto-detects headless → prints URL → polls → stores token
+3. Auth-server running via PM2 at /opt/gog-auth-server/ → `curl localhost:8089/health` returns 200; `https://auth.example.com/health` returns `ok`
+4. `gog auth add user@example.com --services all` → auto-detects headless → prints URL → polls → stores token
 5. `gog people me --json` → returns profile data using new token
 6. Local browser auth uses `http://localhost:8085/oauth2/callback` (fixed port, localhost not 127.0.0.1)
 
@@ -105,14 +105,14 @@ flag → env GOG_CALLBACK_SERVER → config callback_server → build-time Defau
 
 ```bash
 # One-time setup:
-gog config set callback_server https://gogoauth.namastex.io
+gog config set callback_server https://auth.example.com
 
 # Then forever after, agents just run:
-gog auth add felipe@namastex.ai --services all
+gog auth add user@example.com --services all
 # → auto-detects no TTY → pings callback server → uses headless → prints URL → polls → done
 
 # Interactive users are unaffected:
-gog auth add felipe@namastex.ai --services all
+gog auth add user@example.com --services all
 # → detects TTY → opens browser as before
 ```
 
@@ -120,7 +120,7 @@ gog auth add felipe@namastex.ai --services all
 
 ```bash
 make ci                                    # all tests pass
-gog config set callback_server https://gogoauth.namastex.io
+gog config set callback_server https://auth.example.com
 gog config set auth_mode headless
 gog config list --json                     # shows new keys
 gog auth status --json                     # shows auth_mode + callback_server

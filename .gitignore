@@ -50,3 +50,14 @@ node_modules/
 memory/
 .openclaw/
 MEMORY.md
+
+# Agent identity files (never commit)
+SOUL.md
+ROLE.md
+IDENTITY.md
+USER.md
+HEARTBEAT.md
+AGENT.md
+AGENTS.md
+TOOLS.md
+CLAUDE.md

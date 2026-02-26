@@ -1,13 +1,13 @@
 #!/bin/bash
 # workit OAuth Callback Server
-# Runs on http://10.114.0.111:8089
+# Runs on http://localhost:8089
 #
 # Required: Set these env vars or edit this script
 # - WK_CLIENT_ID
 # - WK_CLIENT_SECRET
 
 PORT=8089
-REDIRECT_URL="https://auth.automagik.dev/callback"
+REDIRECT_URL="https://auth.example.com/callback"
 
 # Check for credentials
 if [ -z "$WK_CLIENT_ID" ] || [ -z "$WK_CLIENT_SECRET" ]; then
@@ -26,7 +26,7 @@ fi
 echo "🚀 Starting workit OAuth Callback Server"
 echo "   Port: ${PORT}"
 echo "   Redirect URL: ${REDIRECT_URL}"
-echo "   Health check: http://10.114.0.111:${PORT}/health"
+echo "   Health check: http://localhost:${PORT}/health"
 echo ""
 
 cd "$(dirname "$0")"

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"google.golang.org/api/drive/v3"
 )
@@ -52,6 +53,11 @@ func (d *Downloader) DownloadFile(ctx context.Context, fileID, fileName string) 
 	localPath := file.Name
 
 	absPath := filepath.Join(d.localRoot, localPath)
+
+	// Verify the resolved path stays within localRoot (prevent path traversal).
+	if !strings.HasPrefix(filepath.Clean(absPath)+string(os.PathSeparator), filepath.Clean(d.localRoot)+string(os.PathSeparator)) {
+		return nil, fmt.Errorf("path traversal detected: %q", localPath)
+	}
 
 	// Ensure parent directory exists
 	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
@@ -100,6 +106,11 @@ func (d *Downloader) DownloadFile(ctx context.Context, fileID, fileName string) 
 // DownloadFolder creates a local folder.
 func (d *Downloader) DownloadFolder(ctx context.Context, folderID, folderName string) error {
 	absPath := filepath.Join(d.localRoot, folderName)
+
+	// Verify the resolved path stays within localRoot (prevent path traversal).
+	if !strings.HasPrefix(filepath.Clean(absPath)+string(os.PathSeparator), filepath.Clean(d.localRoot)+string(os.PathSeparator)) {
+		return fmt.Errorf("path traversal detected: %q", folderName)
+	}
 
 	if err := os.MkdirAll(absPath, 0o755); err != nil {
 		return fmt.Errorf("create folder: %w", err)

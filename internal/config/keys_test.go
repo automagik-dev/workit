@@ -8,7 +8,7 @@ func TestCallbackServerKey_ValidURLs(t *testing.T) {
 	tests := []struct {
 		value string
 	}{
-		{"https://auth.automagik.dev"},
+		{"https://auth.example.com"},
 		{"http://localhost:8089"},
 		{"https://example.com/path"},
 	}
@@ -29,7 +29,7 @@ func TestCallbackServerKey_InvalidURLs(t *testing.T) {
 		value string
 	}{
 		{"ftp://bad"},
-		{"auth.automagik.dev"},
+		{"auth.example.com"},
 		{""},
 	}
 	for _, tt := range tests {
