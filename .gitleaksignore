@@ -1,0 +1,8 @@
+# False positives — variable names and test fixtures, not real secrets.
+#
+# scripts/install.sh:48 — shell variable assignment: GOG_CLIENT_SECRET="${WK_CLIENT_SECRET:-}"
+bc9d51bdd74c1bf4ef7787758a5f5fac06b74f27:scripts/install.sh:generic-api-key:48
+# scripts/setup-credentials.sh:44 — shell variable: CLIENT_SECRET="${WK_CLIENT_SECRET:-}"
+bc9d51bdd74c1bf4ef7787758a5f5fac06b74f27:scripts/setup-credentials.sh:generic-api-key:44
+# internal/tracking/worker/src/crypto.test.ts:5 — deterministic test key (32 zero-bytes, base64)
+1d595747f5571558f82f2dfbc7f8da64945dadf0:internal/tracking/worker/src/crypto.test.ts:generic-api-key:5
