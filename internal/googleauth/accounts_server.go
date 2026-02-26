@@ -21,6 +21,7 @@ import (
 
 	"github.com/automagik-dev/workit/internal/config"
 	"github.com/automagik-dev/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/setup"
 )
 
 // AccountInfo represents an account for the UI
@@ -79,6 +80,12 @@ func shouldEnsureKeychainAccess() (bool, error) {
 
 // StartManageServer starts the accounts management server and opens browser
 func StartManageServer(ctx context.Context, opts ManageServerOptions) error {
+	// Auto-setup keyring password for Linux headless environments.
+	// Non-fatal: if it fails, user can still configure manually.
+	if err := setup.SetupKeyringIfNeeded(os.Stderr); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: keyring auto-setup failed: %v\n", err)
+	}
+
 	if opts.Timeout <= 0 {
 		opts.Timeout = 10 * time.Minute
 	}
@@ -432,6 +439,11 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 		renderErrorPage(w, "Failed to store token: "+err.Error())
 
 		return
+	}
+
+	// Update credentials.env with the authenticated account (headless Linux).
+	if err := setup.AppendAccountToCredentialsEnv(email); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to update credentials.env with account: %v\n", err)
 	}
 
 	// Render success page with the new template
