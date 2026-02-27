@@ -457,8 +457,8 @@ func TestManageServer_HandleAuthStart(t *testing.T) {
 		t.Fatalf("expected oauthState set")
 	}
 
-	if redirectURI := parsed.Query().Get("redirect_uri"); !strings.Contains(redirectURI, "localhost:") {
-		t.Fatalf("expected redirect uri, got %q", redirectURI)
+	if redirectURI := parsed.Query().Get("redirect_uri"); !strings.HasSuffix(redirectURI, "/oauth2/callback") {
+		t.Fatalf("expected redirect uri ending in /oauth2/callback, got %q", redirectURI)
 	}
 
 	scope := parsed.Query().Get("scope")
@@ -864,8 +864,8 @@ func TestStartManageServer_Timeout(t *testing.T) {
 		t.Fatalf("StartManageServer: %v", err)
 	}
 
-	if !strings.Contains(opened, "http://localhost:") {
-		t.Fatalf("expected browser URL, got %q", opened)
+	if !strings.Contains(opened, ":"+strconv.Itoa(DefaultLocalAuthPort)) {
+		t.Fatalf("expected browser URL with port %d, got %q", DefaultLocalAuthPort, opened)
 	}
 }
 
