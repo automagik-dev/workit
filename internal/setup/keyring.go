@@ -25,8 +25,6 @@ const (
 	envKeyringPassword = "WK_KEYRING_PASSWORD" //nolint:gosec // env var name, not a credential
 	envKeyringBackend  = "WK_KEYRING_BACKEND"  //nolint:gosec // env var name, not a credential
 	envAccount         = "WK_ACCOUNT"
-
-	sourceLine = "source" // prefix used in shell profiles
 )
 
 // Stubs for testability.

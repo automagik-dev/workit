@@ -13,6 +13,7 @@ import (
 func TestNeedsFileBackendSetup(t *testing.T) {
 	// Save and restore the original resolveBackendInfo.
 	origResolve := resolveBackendInfo
+
 	t.Cleanup(func() { resolveBackendInfo = origResolve })
 
 	// Mock: return "auto" backend with "default" source (typical fresh install).
@@ -39,6 +40,7 @@ func TestNeedsFileBackendSetup(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if got != tt.want {
 				t.Errorf("NeedsFileBackendSetup(%q, %q) = %v, want %v", tt.goos, tt.dbusAddr, got, tt.want)
 			}
@@ -48,6 +50,7 @@ func TestNeedsFileBackendSetup(t *testing.T) {
 
 func TestNeedsFileBackendSetup_ExplicitBackend(t *testing.T) {
 	origResolve := resolveBackendInfo
+
 	t.Cleanup(func() { resolveBackendInfo = origResolve })
 
 	tests := []struct {
@@ -65,10 +68,12 @@ func TestNeedsFileBackendSetup_ExplicitBackend(t *testing.T) {
 			resolveBackendInfo = func() (secrets.KeyringBackendInfo, error) {
 				return secrets.KeyringBackendInfo{Value: tt.backend, Source: "config"}, nil
 			}
+
 			got, err := NeedsFileBackendSetup("linux", "")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if got != tt.want {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
@@ -81,6 +86,7 @@ func TestGeneratePassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generatePassword: %v", err)
 	}
+
 	if len(pw1) != passwordBytes*2 {
 		t.Errorf("password length = %d, want %d", len(pw1), passwordBytes*2)
 	}
@@ -89,6 +95,7 @@ func TestGeneratePassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generatePassword: %v", err)
 	}
+
 	if pw1 == pw2 {
 		t.Error("two generated passwords are identical")
 	}
@@ -102,16 +109,19 @@ func TestEnsureKeyringKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ensureKeyringKey: %v", err)
 	}
+
 	if pw1 == "" {
 		t.Fatal("password is empty")
 	}
 
 	// Check permissions.
 	path := filepath.Join(dir, keyringKeyFile)
+
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("stat keyring.key: %v", err)
 	}
+
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("permissions = %o, want 600", perm)
 	}
@@ -121,6 +131,7 @@ func TestEnsureKeyringKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ensureKeyringKey (idempotent): %v", err)
 	}
+
 	if pw1 != pw2 {
 		t.Errorf("password changed on second call: %q vs %q", pw1, pw2)
 	}
@@ -135,6 +146,7 @@ func TestWriteCredentialsEnv(t *testing.T) {
 	}
 
 	path := filepath.Join(dir, credentialsEnvFile)
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read credentials.env: %v", err)
@@ -144,6 +156,7 @@ func TestWriteCredentialsEnv(t *testing.T) {
 	if !strings.Contains(content, "export WK_KEYRING_PASSWORD=abc123def456") {
 		t.Error("missing WK_KEYRING_PASSWORD line")
 	}
+
 	if !strings.Contains(content, "export WK_KEYRING_BACKEND=file") {
 		t.Error("missing WK_KEYRING_BACKEND line")
 	}
@@ -153,6 +166,7 @@ func TestWriteCredentialsEnv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat credentials.env: %v", err)
 	}
+
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("permissions = %o, want 600", perm)
 	}
@@ -182,6 +196,7 @@ func TestWriteCredentialsEnv_PreservesAccount(t *testing.T) {
 	if !strings.Contains(content, "export WK_KEYRING_PASSWORD=newpw") {
 		t.Error("password not updated")
 	}
+
 	if !strings.Contains(content, "export WK_ACCOUNT=test@example.com") {
 		t.Error("WK_ACCOUNT line lost")
 	}
@@ -200,6 +215,7 @@ func TestConfigureShellProfile(t *testing.T) {
 	// Override userHomeDir to use temp dir.
 	origHome := userHomeDir
 	origGetenv := getenv
+
 	t.Cleanup(func() {
 		userHomeDir = origHome
 		getenv = origGetenv
@@ -209,6 +225,7 @@ func TestConfigureShellProfile(t *testing.T) {
 		if key == "SHELL" {
 			return "/bin/bash"
 		}
+
 		return ""
 	}
 
@@ -222,14 +239,16 @@ func TestConfigureShellProfile(t *testing.T) {
 	}
 
 	content := string(data)
+
 	expectedLine := "source " + credPath
 	if !strings.Contains(content, expectedLine) {
 		t.Errorf("shell profile missing source line, content:\n%s", content)
 	}
 
 	// Idempotent: second call should not duplicate.
-	if err := configureShellProfile(credPath); err != nil {
-		t.Fatalf("configureShellProfile (idempotent): %v", err)
+	err2 := configureShellProfile(credPath)
+	if err2 != nil {
+		t.Fatalf("configureShellProfile (idempotent): %v", err2)
 	}
 
 	data2, err := os.ReadFile(rcFile)
@@ -247,11 +266,13 @@ func TestAppendAccountToCredentialsEnv(t *testing.T) {
 	dir := t.TempDir()
 
 	origConfigDir := configDirFunc
+
 	t.Cleanup(func() { configDirFunc = origConfigDir })
 	configDirFunc = func() (string, error) { return dir, nil }
 
 	// Create initial credentials.env.
 	path := filepath.Join(dir, credentialsEnvFile)
+
 	initial := "export WK_KEYRING_PASSWORD=testpw\nexport WK_KEYRING_BACKEND=file\n"
 	if err := os.WriteFile(path, []byte(initial), 0o600); err != nil {
 		t.Fatal(err)
@@ -273,8 +294,9 @@ func TestAppendAccountToCredentialsEnv(t *testing.T) {
 	}
 
 	// Update account.
-	if err := AppendAccountToCredentialsEnv("other@example.com"); err != nil {
-		t.Fatalf("AppendAccountToCredentialsEnv (update): %v", err)
+	err2 := AppendAccountToCredentialsEnv("other@example.com")
+	if err2 != nil {
+		t.Fatalf("AppendAccountToCredentialsEnv (update): %v", err2)
 	}
 
 	data2, err := os.ReadFile(path)
@@ -286,6 +308,7 @@ func TestAppendAccountToCredentialsEnv(t *testing.T) {
 	if !strings.Contains(content2, "export WK_ACCOUNT=other@example.com") {
 		t.Error("account not updated")
 	}
+
 	if strings.Contains(content2, "user@example.com") {
 		t.Error("old account still present")
 	}
@@ -301,6 +324,7 @@ func TestAppendAccountToCredentialsEnv_NoFile(t *testing.T) {
 	dir := t.TempDir()
 
 	origConfigDir := configDirFunc
+
 	t.Cleanup(func() { configDirFunc = origConfigDir })
 	configDirFunc = func() (string, error) { return dir, nil }
 
@@ -320,6 +344,7 @@ func TestSetupKeyringIfNeeded_NoOp_Darwin(t *testing.T) {
 	origGOOS := runtimeGOOS
 	origResolve := resolveBackendInfo
 	origGetenv := getenv
+
 	t.Cleanup(func() {
 		runtimeGOOS = origGOOS
 		resolveBackendInfo = origResolve
@@ -336,6 +361,7 @@ func TestSetupKeyringIfNeeded_NoOp_Darwin(t *testing.T) {
 	if err := SetupKeyringIfNeeded(&buf); err != nil {
 		t.Fatalf("expected no-op: %v", err)
 	}
+
 	if buf.Len() != 0 {
 		t.Errorf("expected no output for no-op, got: %s", buf.String())
 	}
@@ -345,6 +371,7 @@ func TestSetupKeyringIfNeeded_NoOp_LinuxWithDBus(t *testing.T) {
 	origGOOS := runtimeGOOS
 	origResolve := resolveBackendInfo
 	origGetenv := getenv
+
 	t.Cleanup(func() {
 		runtimeGOOS = origGOOS
 		resolveBackendInfo = origResolve
@@ -359,6 +386,7 @@ func TestSetupKeyringIfNeeded_NoOp_LinuxWithDBus(t *testing.T) {
 		if key == "DBUS_SESSION_BUS_ADDRESS" {
 			return "unix:path=/run/user/1000/bus"
 		}
+
 		return ""
 	}
 
@@ -366,6 +394,7 @@ func TestSetupKeyringIfNeeded_NoOp_LinuxWithDBus(t *testing.T) {
 	if err := SetupKeyringIfNeeded(&buf); err != nil {
 		t.Fatalf("expected no-op: %v", err)
 	}
+
 	if buf.Len() != 0 {
 		t.Errorf("expected no output for no-op, got: %s", buf.String())
 	}
@@ -375,6 +404,7 @@ func TestSetupKeyringIfNeeded_SkipsWhenPasswordSet(t *testing.T) {
 	origGOOS := runtimeGOOS
 	origResolve := resolveBackendInfo
 	origGetenv := getenv
+
 	t.Cleanup(func() {
 		runtimeGOOS = origGOOS
 		resolveBackendInfo = origResolve
@@ -389,6 +419,7 @@ func TestSetupKeyringIfNeeded_SkipsWhenPasswordSet(t *testing.T) {
 		if key == envKeyringPassword {
 			return "already-set"
 		}
+
 		return ""
 	}
 
@@ -396,6 +427,7 @@ func TestSetupKeyringIfNeeded_SkipsWhenPasswordSet(t *testing.T) {
 	if err := SetupKeyringIfNeeded(&buf); err != nil {
 		t.Fatalf("expected no-op: %v", err)
 	}
+
 	if buf.Len() != 0 {
 		t.Errorf("expected no output when password already set, got: %s", buf.String())
 	}
@@ -417,6 +449,7 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 	origSetenv := setenv
 	origEnsureDir := ensureConfigDir
 	origHome := userHomeDir
+
 	t.Cleanup(func() {
 		runtimeGOOS = origGOOS
 		resolveBackendInfo = origResolve
@@ -436,6 +469,7 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 		if key == "SHELL" {
 			return "/bin/bash"
 		}
+
 		return envMap[key]
 	}
 	setenv = func(key, value string) error {
@@ -452,24 +486,29 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 
 	// Check keyring.key exists with correct permissions.
 	keyPath := filepath.Join(dir, keyringKeyFile)
+
 	info, err := os.Stat(keyPath)
 	if err != nil {
 		t.Fatalf("keyring.key not created: %v", err)
 	}
+
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("keyring.key permissions = %o, want 600", perm)
 	}
 
 	// Check credentials.env exists with correct content.
 	credPath := filepath.Join(dir, credentialsEnvFile)
+
 	credData, err := os.ReadFile(credPath)
 	if err != nil {
 		t.Fatalf("credentials.env not created: %v", err)
 	}
+
 	credContent := string(credData)
 	if !strings.Contains(credContent, "export WK_KEYRING_PASSWORD=") {
 		t.Error("credentials.env missing WK_KEYRING_PASSWORD")
 	}
+
 	if !strings.Contains(credContent, "export WK_KEYRING_BACKEND=file") {
 		t.Error("credentials.env missing WK_KEYRING_BACKEND")
 	}
@@ -478,6 +517,7 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 	if envMap[envKeyringPassword] == "" {
 		t.Error("WK_KEYRING_PASSWORD not set in process")
 	}
+
 	if envMap[envKeyringBackend] != "file" {
 		t.Errorf("WK_KEYRING_BACKEND = %q, want 'file'", envMap[envKeyringBackend])
 	}
@@ -487,6 +527,7 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if !strings.Contains(string(bashrcData), "source "+credPath) {
 		t.Error("shell profile not updated with source line")
 	}
@@ -496,6 +537,7 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 	if !strings.Contains(output, "Keyring auto-setup complete") {
 		t.Errorf("expected setup message, got: %s", output)
 	}
+
 	if !strings.Contains(output, "source") {
 		t.Errorf("expected source instruction, got: %s", output)
 	}
@@ -506,6 +548,7 @@ func TestDetectShellProfile_Zsh(t *testing.T) {
 
 	origHome := userHomeDir
 	origGetenv := getenv
+
 	t.Cleanup(func() {
 		userHomeDir = origHome
 		getenv = origGetenv
@@ -516,6 +559,7 @@ func TestDetectShellProfile_Zsh(t *testing.T) {
 		if key == "SHELL" {
 			return "/bin/zsh"
 		}
+
 		return ""
 	}
 
@@ -535,6 +579,7 @@ func TestDetectShellProfile_Bash(t *testing.T) {
 
 	origHome := userHomeDir
 	origGetenv := getenv
+
 	t.Cleanup(func() {
 		userHomeDir = origHome
 		getenv = origGetenv
@@ -545,6 +590,7 @@ func TestDetectShellProfile_Bash(t *testing.T) {
 		if key == "SHELL" {
 			return "/bin/bash"
 		}
+
 		return ""
 	}
 
