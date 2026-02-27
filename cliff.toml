@@ -52,7 +52,8 @@ conventional_commits = true
 filter_unconventional = true
 # Ignore intermediate version tags within the commit range to prevent
 # duplicate section headers. The range boundaries are set by the workflow.
-ignore_tags = ".*"
+# Only ignore pre-release/rc tags; keep calver release tags for range detection
+ignore_tags = ".*-(alpha|beta|rc).*"
 sort_commits = "newest"
 
 # Escape @ mentions in commit messages so GitHub doesn't linkify them as users
