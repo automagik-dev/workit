@@ -12,7 +12,7 @@ Or manually:
 ```bash
 git clone https://github.com/automagik-dev/workit.git
 cd workit
-./scripts/setup-credentials.sh  # Creates ~/.config/workit/credentials.env
+wk auth manage                  # Add accounts via the account manager UI
 make build-automagik            # Builds with embedded OAuth credentials
 cp bin/wk ~/.local/bin/
 ```
@@ -104,6 +104,6 @@ wk drive list
 
 ## Credentials
 
-**OAuth Client:** Configure via `scripts/setup-credentials.sh`
+**OAuth Client:** Configure via `wk auth credentials <credentials.json>` then `wk auth manage`
 **Callback URL:** `https://auth.example.com/callback` (replace with your domain)
 **Audience:** Internal deployments

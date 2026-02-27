@@ -44,16 +44,22 @@ wk auth credentials list
 ## Authorize Your Account
 
 ```bash
-wk auth add you@gmail.com
+wk auth manage
 ```
 
-This opens a browser window for OAuth authorization. The refresh token is stored securely in your system keychain.
+This is the recommended entry point. It opens an account manager UI where you can add, remove, and inspect accounts. The refresh token is stored securely in your system keychain.
+
+For direct single-account authorization:
+
+```bash
+wk auth add you@gmail.com
+```
 
 ## Accounts and Tokens
 
 `wk` stores your OAuth refresh tokens in a "keyring" backend. Default is `auto` (best available backend for your OS/environment).
 
-Before you can run `wk auth add`, you must store OAuth client credentials once via `wk auth credentials <credentials.json>` (download a Desktop app OAuth client JSON from the Cloud Console). For multiple clients, use `wk --client <name> auth credentials ...`; tokens are isolated per client.
+Before adding an account, store OAuth client credentials once via `wk auth credentials <credentials.json>` (download a Desktop app OAuth client JSON from the Cloud Console). For multiple clients, use `wk --client <name> auth credentials ...`; tokens are isolated per client.
 
 List accounts:
 
@@ -173,7 +179,15 @@ Show current backend + source (env/config/default) and config path:
 wk auth keyring
 ```
 
-Non-interactive runs (CI/ssh): file backend requires `WK_KEYRING_PASSWORD`.
+### Linux Headless / CI Auto-Setup
+
+On Linux headless environments (servers, containers, WSL without a desktop), `wk` automatically configures the `file` keyring backend and sets up an encryption password — **no manual `WK_KEYRING_PASSWORD` required** for typical use. Just run:
+
+```bash
+wk auth manage
+```
+
+For fully non-interactive CI runs where you want to supply the password explicitly:
 
 ```bash
 export WK_KEYRING_PASSWORD='...'
@@ -212,9 +226,9 @@ If no OS keychain backend is available (e.g., Linux/WSL/container), keyring can 
 
 ## Headless / Remote Auth Flows
 
-For servers without a browser:
+For servers without a browser, `wk auth manage` is the recommended entry point. It binds to `0.0.0.0`, shows your outbound IP, and auto-closes after auth completes. See [docs/headless-auth.md](headless-auth.md) for details.
 
-### Manual Interactive Flow (recommended)
+### Manual Interactive Flow (fallback)
 
 ```bash
 wk auth add you@gmail.com --services user --manual

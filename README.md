@@ -111,10 +111,10 @@ wk auth credentials ~/Downloads/client_secret_....json
 ### 2. Authorize your account
 
 ```bash
-wk auth add you@gmail.com
+wk auth manage
 ```
 
-For headless/remote servers, use `--manual` or `--remote`. See [docs/headless-auth.md](docs/headless-auth.md).
+This opens the account manager UI. On headless/remote servers it binds to `0.0.0.0`, shows your outbound IP, and auto-closes after auth — no tunnels needed. See [docs/headless-auth.md](docs/headless-auth.md).
 
 ### 3. First query
 

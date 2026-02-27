@@ -8,8 +8,8 @@ Use this file for account setup, token lifecycle, and Workspace service-account 
 - `wk auth services`
 
 ## 2) Login (interactive OAuth)
-- Add account: `wk auth add <email>`
-- Open account manager UI: `wk auth manage`
+- **Recommended entry point:** `wk auth manage` — opens account manager UI, works on desktop and headless/remote servers (binds to 0.0.0.0, shows outbound IP, auto-closes after auth)
+- Add account directly: `wk auth add <email>`
 - Remove account: `wk auth remove <email>`
 
 ## 3) Multi-account workflows
@@ -21,10 +21,11 @@ Use this file for account setup, token lifecycle, and Workspace service-account 
   - `wk auth alias unset work`
 
 ## 4) Headless OAuth flow
-- Start login from a non-UI environment:
-  - `wk auth add user@company.com --no-input`
-- Poll completion:
-  - `wk auth poll <state>`
+- **Recommended:** `wk auth manage` — binds to 0.0.0.0, shows outbound IP for remote access, auto-closes after auth
+- For agents/automation (prints JSON with URL): `wk auth manage --print-url`
+- Legacy: `wk auth add user@company.com --headless --no-input`
+- Poll completion manually: `wk auth poll <state>`
+- No manual keyring setup needed on Linux headless — auto-configured automatically
 
 ## 5) Token management
 - List token keys: `wk auth tokens list`
