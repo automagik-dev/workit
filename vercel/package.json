@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "OAuth relay for auth.automagik.dev — exchanges Google OAuth codes for tokens via in-memory store",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vercel dev",
     "build": "tsc --noEmit && echo 'Build OK'",
