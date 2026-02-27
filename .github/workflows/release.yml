@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to (re)release (e.g. v0.1.0)"
+        description: "Tag to (re)release (e.g. v2.260227.1)"
         required: true
         type: string
 
@@ -49,11 +49,14 @@ jobs:
   goreleaser:
     needs: [test, worker]
     runs-on: macos-latest
+    env:
+      GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -61,51 +64,47 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Stash GoReleaser config
-        run: cp .goreleaser.yaml /tmp/.goreleaser.yaml
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Checkout release tag
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: git checkout ${{ inputs.tag }}
+        run: git checkout ${{ steps.tag.outputs.tag }}
 
-      - name: Generate changelog-backed release notes
-        shell: bash
+      - name: Find previous release tag
+        id: prev
         run: |
-          set -euo pipefail
-          tag="${{ github.ref_name }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
-          fi
-          version="${tag#v}"
-          notes_file="/tmp/release-notes.md"
-          awk -v ver="$version" '
-            $0 ~ "^## "ver" " {print "## "ver; in_section=1; next}
-            in_section && /^## / {exit}
-            in_section {print}
-          ' CHANGELOG.md | sed '/^$/d' > "$notes_file"
-          if [[ ! -s "$notes_file" ]]; then
-            echo "missing release notes section for $version in CHANGELOG.md" >&2
-            exit 1
-          fi
-          echo "RELEASE_NOTES_FILE=$notes_file" >> "$GITHUB_ENV"
+          PREV=$(git tag --list 'v*' --sort=-version:refname | grep -v "^${{ steps.tag.outputs.tag }}$" | head -1)
+          echo "tag=${PREV:-}" >> "$GITHUB_OUTPUT"
+          echo "Previous tag: ${PREV:-none}"
+
+      - name: Generate release notes with git-cliff
+        uses: orhun/git-cliff-action@e16f179f0be49ecdfe63753837f20b9531642772 # v4.7.0
+        id: cliff
+        with:
+          config: cliff.toml
+          args: ${{ steps.prev.outputs.tag && format('{0}..{1}', steps.prev.outputs.tag, steps.tag.outputs.tag) || steps.tag.outputs.tag }}
+        env:
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Stash GoReleaser config
+        run: cp .goreleaser.yaml /tmp/.goreleaser.yaml
 
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean --config /tmp/.goreleaser.yaml
+          args: release --clean --config /tmp/.goreleaser.yaml --release-notes /tmp/release-notes.md
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
-      - name: Apply generated notes to release
-        shell: bash
+      - name: Write cliff notes to file and update release
         run: |
-          set -euo pipefail
-          tag="${{ github.ref_name }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
-          fi
-          gh release edit "$tag" --notes-file "$RELEASE_NOTES_FILE"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "${{ steps.cliff.outputs.content }}" > /tmp/release-notes.md
+          gh release edit "${{ steps.tag.outputs.tag }}" --notes-file /tmp/release-notes.md
