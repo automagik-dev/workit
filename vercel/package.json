@@ -1,16 +1,14 @@
 {
   "name": "auth-relay",
   "version": "1.0.0",
-  "description": "OAuth relay for auth.automagik.dev — exchanges Google OAuth codes for tokens via Vercel KV",
+  "description": "OAuth relay for auth.automagik.dev — exchanges Google OAuth codes for tokens via in-memory store",
   "private": true,
   "scripts": {
     "dev": "vercel dev",
     "build": "tsc --noEmit && echo 'Build OK'",
     "lint": "tsc --noEmit"
   },
-  "dependencies": {
-    "@vercel/kv": "^3.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@vercel/edge": "^1.2.2",

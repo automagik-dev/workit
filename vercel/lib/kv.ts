@@ -1,5 +1,5 @@
 /**
- * Vercel KV helpers for OAuth token storage.
+ * In-memory token store with TTL (no external dependencies).
  *
  * Token lifecycle:
  *   1. Google redirects to /callback with code + state
@@ -7,10 +7,35 @@
  *   3. CLI polls /token/{state} — returns token and marks consumed
  *
  * KV key schema:
- *   token:{state}   → JSON TokenEntry   (EX 300)
+ *   token:{state}   → JSON TokenEntry   (TTL 300s)
  */
 
-import { kv } from "@vercel/kv";
+// In-memory token store with TTL (no external dependencies)
+const store = new Map<string, { value: string; expiresAt: number }>();
+
+export const kv = {
+  async set(key: string, value: string, ttlSeconds: number): Promise<void> {
+    store.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+  },
+  async get(key: string): Promise<string | null> {
+    const entry = store.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      store.delete(key);
+      return null;
+    }
+    return entry.value;
+  },
+  async del(key: string): Promise<void> {
+    store.delete(key);
+  },
+  async ttl(key: string): Promise<number> {
+    const entry = store.get(key);
+    if (!entry) return -2;
+    const remaining = Math.floor((entry.expiresAt - Date.now()) / 1000);
+    return remaining > 0 ? remaining : -2;
+  },
+};
 
 /** TTL for stored tokens in seconds (5 minutes). */
 export const TOKEN_TTL_SECONDS = 300;
@@ -36,22 +61,16 @@ export async function storeToken(
   state: string,
   entry: TokenEntry,
 ): Promise<void> {
-  await kv.set(tokenKey(state), JSON.stringify(entry), {
-    ex: TOKEN_TTL_SECONDS,
-  });
+  await kv.set(tokenKey(state), JSON.stringify(entry), TOKEN_TTL_SECONDS);
 }
 
 /** Get a token entry without consuming it. */
 export async function getTokenEntry(
   state: string,
 ): Promise<TokenEntry | null> {
-  const raw = await kv.get<string>(tokenKey(state));
+  const raw = await kv.get(tokenKey(state));
   if (!raw) return null;
-  // kv.get with a type may already parse JSON; handle both cases
-  if (typeof raw === "string") {
-    return JSON.parse(raw) as TokenEntry;
-  }
-  return raw as unknown as TokenEntry;
+  return JSON.parse(raw) as TokenEntry;
 }
 
 /** Get and consume a token (one-time retrieval). */
@@ -76,7 +95,7 @@ export async function consumeToken(
   entry.consumed = true;
   const ttl = await kv.ttl(tokenKey(state));
   if (ttl > 0) {
-    await kv.set(tokenKey(state), JSON.stringify(entry), { ex: ttl });
+    await kv.set(tokenKey(state), JSON.stringify(entry), ttl);
   }
 
   return { entry, status: "ready" };
