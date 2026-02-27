@@ -91,6 +91,7 @@ jobs:
           args: ${{ steps.prev.outputs.tag && format('{0}..{1}', steps.prev.outputs.tag, steps.tag.outputs.tag) || steps.tag.outputs.tag }}
         env:
           GITHUB_REPO: ${{ github.repository }}
+          OUTPUT: /tmp/release-notes.md
 
       - name: Stash GoReleaser config
         run: cp .goreleaser.yaml /tmp/.goreleaser.yaml
@@ -103,8 +104,3 @@ jobs:
           args: release --clean --config /tmp/.goreleaser.yaml --release-notes /tmp/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-
-      - name: Write cliff notes to file and update release
-        run: |
-          echo "${{ steps.cliff.outputs.content }}" > /tmp/release-notes.md
-          gh release edit "${{ steps.tag.outputs.tag }}" --notes-file /tmp/release-notes.md
