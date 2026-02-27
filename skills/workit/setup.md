@@ -2,90 +2,106 @@
 
 ## Quick Start (no GCP setup needed)
 
-The `wk` binary includes a shared OAuth client via `auth.automagik.dev`.
-No GCP console, no credentials.json, no client secrets required.
+The `wk` binary ships with a shared OAuth client via `auth.automagik.dev`.
+**No GCP console, no credentials.json, no client secrets required.**
 
-**Desktop/laptop:**
+Install:
+```bash
+# Linux amd64
+curl -sSL https://github.com/automagik-dev/workit/releases/latest/download/workit_linux_amd64.tar.gz | tar xz -C ~/.local/bin
+# macOS arm64
+curl -sSL https://github.com/automagik-dev/workit/releases/latest/download/workit_darwin_arm64.tar.gz | tar xz -C ~/.local/bin
+```
+
+Check: `wk version` and `wk auth status`
+
+---
+
+## Auth flows by environment
+
+### Desktop / laptop
 ```bash
 wk auth manage   # opens browser, auto-closes after login
-wk gmail search 'newer_than:1d'
 ```
 
-**Remote server / VPS (SSH):**
+### Remote server / VPS (SSH headless)
 ```bash
-wk auth manage   # prints URL with server IP — open in your browser
-# After login, server auto-closes
-wk gmail search 'newer_than:1d'
+wk auth manage   # detects no TTY, prints URL with server outbound IP
+# Open printed URL in your browser — auth completes automatically
 ```
 
-**Agent / headless automation:**
+### Agent / automation (fully unattended)
 ```bash
-wk auth manage --print-url   # prints {"url":"http://IP:PORT","port":8085}
-# User opens URL, logs in; your code polls:
-wk auth poll <state>          # returns token when ready
+wk auth add user@example.com --headless --no-input
+# Prints a Google login URL. User (or automation) opens it.
+# CLI polls auth.automagik.dev until token arrives, then stores it.
 ```
 
-**Linux headless (no D-Bus):**
-Keyring is auto-configured. After `wk auth manage`, source the generated file:
+### Get just the URL (for scripting)
 ```bash
-source ~/.config/workit/credentials.env
+wk auth manage --print-url   # prints JSON: {"url":"https://...","state":"..."}
 ```
 
-Use this file for account setup, token lifecycle, and Workspace service-account flows.
+**Linux headless keyring:** auto-configured. No manual setup or `source` needed after v2.260227.4+.
+
+---
 
 ## 1) Inspect auth state
-- `wk auth status`
-- `wk auth list`
-- `wk auth services`
+```bash
+wk auth status          # overall state + keyring backend
+wk auth list            # all stored accounts
+wk auth services        # services enabled per account
+```
 
-## 2) Login (interactive OAuth)
-- **Recommended entry point:** `wk auth manage` — opens account manager UI, works on desktop and headless/remote servers (binds to 0.0.0.0, shows outbound IP, auto-closes after auth)
-- Add account directly: `wk auth add <email>`
-- Remove account: `wk auth remove <email>`
+## 2) Add / remove accounts
+```bash
+wk auth manage                              # recommended: interactive account manager
+wk auth add user@example.com               # direct add (browser opens)
+wk auth add user@example.com --headless    # headless: prints URL, polls until done
+wk auth remove user@example.com
+```
 
-## 3) Multi-account workflows
-- List accounts: `wk auth list`
-- Per-command account selection: `wk -a user@company.com drive ls`
-- Use aliases:
-  - `wk auth alias set work user@company.com`
-  - `wk auth alias list`
-  - `wk auth alias unset work`
+## 3) Multi-account
+```bash
+wk auth list
+wk -a user@company.com drive ls            # per-command account
+wk auth alias set work user@company.com
+wk auth alias list
+wk auth alias unset work
+```
 
-## 4) Headless OAuth flow
-- **Recommended:** `wk auth manage` — binds to 0.0.0.0, shows outbound IP for remote access, auto-closes after auth
-- For agents/automation (prints JSON with URL): `wk auth manage --print-url`
-- Legacy: `wk auth add user@company.com --headless --no-input`
-- Poll completion manually: `wk auth poll <state>`
-- No manual keyring setup needed on Linux headless — auto-configured automatically
+## 4) Token management
+```bash
+wk auth tokens list
+wk auth tokens export <key> --out token.json   # sensitive
+wk auth tokens import <path>                    # sensitive
+wk auth tokens delete <key>
+```
 
-## 5) Token management
-- List token keys: `wk auth tokens list`
-- Export token (sensitive): `wk auth tokens export <key> --out token.json`
-- Import token (sensitive): `wk auth tokens import <inPath>`
-- Delete token: `wk auth tokens delete <key>`
+## 5) OAuth client credentials (BYO GCP)
+```bash
+wk auth credentials list
+wk auth credentials set credentials.json [--domain example.com]
+wk --client <name> gmail search 'in:inbox'
+```
 
-## 6) OAuth client credentials
-- List clients: `wk auth credentials list`
-- Set client from credentials.json: `wk auth credentials set <credentials-json-path> [--domain example.com]`
-- Select client on commands: `wk --client <name> gmail search 'in:inbox'`
+## 6) Keyring backend
+```bash
+wk auth keyring           # show current backend
+wk auth keyring <backend> # set backend (secret-service, keychain, file, etc.)
+wk auth status            # verify
+```
 
-## 7) Keyring backend
-- Show/set backend: `wk auth keyring [backend]`
-- Verify with: `wk auth status`
+## 7) Service account (Workspace domain-wide delegation)
+```bash
+wk auth service-account set --key /path/key.json impersonate@company.com
+wk auth service-account status
+wk auth service-account unset
+```
 
-## 8) Service account (Workspace only)
-- Store key for domain-wide delegation:
-  - `wk auth service-account set --key /path/key.json <impersonate@company.com>`
-- Check status:
-  - `wk auth service-account status`
-- Remove key:
-  - `wk auth service-account unset`
-
-## 9) Keep-specific service account (Workspace only)
-- `wk auth keep --key /path/key.json admin@company.com`
-
-## 10) Recommended auth pattern in agents
-1. `wk auth status`
-2. choose account (`-a`) and optional `--client`
-3. run read checks with `--read-only`
-4. run writes with `--dry-run`, then execute after confirmation
+## 8) Recommended pattern in agents
+1. `wk auth status` — check if account already exists
+2. If not: `wk auth add user@example.com --headless --no-input` and surface the URL
+3. `wk auth services` — verify services are authorized
+4. Read operations: add `--read-only`
+5. Write operations: `--dry-run` first, then without after confirmation
