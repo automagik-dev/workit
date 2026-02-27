@@ -55,7 +55,7 @@ func TestNeedsFileBackendSetup_ExplicitBackend(t *testing.T) {
 		backend string
 		want    bool
 	}{
-		{"explicit file", "file", false},     // User already configured — don't interfere.
+		{"explicit file", "file", false}, // User already configured — don't interfere.
 		{"explicit keychain", "keychain", false},
 		{"auto", "auto", true},
 	}
