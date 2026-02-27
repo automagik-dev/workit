@@ -102,14 +102,14 @@ func TestResolveAuthMode_ConfigHeadless(t *testing.T) {
 	}
 }
 
-func TestResolveAuthMode_ConfigHeadless_NoCallbackServer(t *testing.T) {
+func TestResolveAuthMode_ConfigHeadless_WithDefaultCallbackServer(t *testing.T) {
 	setupTestConfig(t, `{"auth_mode":"headless"}`)
 	t.Setenv("WK_CALLBACK_SERVER", "")
 
 	result := ResolveAuthMode(context.Background(), false, false, "")
-	// Should fall back to browser when callback server not resolvable
-	if result.Mode != AuthModeBrowser {
-		t.Fatalf("expected browser fallback, got %s", result.Mode)
+	// DefaultCallbackServer is set, so headless mode should be used as configured
+	if result.Mode != AuthModeHeadless {
+		t.Fatalf("expected headless, got %s", result.Mode)
 	}
 }
 
