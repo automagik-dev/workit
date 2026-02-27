@@ -17,7 +17,9 @@ BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 COMMIT := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo "")
 DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 COVERAGE_MIN ?= 70
+CALLBACK_SERVER ?= https://auth.automagik.dev
 LDFLAGS := -X github.com/automagik-dev/workit/internal/cmd.version=$(VERSION) -X github.com/automagik-dev/workit/internal/cmd.branch=$(BRANCH) -X github.com/automagik-dev/workit/internal/cmd.commit=$(COMMIT) -X github.com/automagik-dev/workit/internal/cmd.date=$(DATE)
+LDFLAGS += -X github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$(CALLBACK_SERVER)
 
 TOOLS_DIR := $(CURDIR)/.tools
 GOFUMPT := $(TOOLS_DIR)/gofumpt
