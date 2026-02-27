@@ -83,12 +83,23 @@ jobs:
           echo "tag=${PREV:-}" >> "$GITHUB_OUTPUT"
           echo "Previous tag: ${PREV:-none}"
 
+      - name: Install git-cliff
+        run: |
+          curl -sSfL https://github.com/orhun/git-cliff/releases/download/v2.7.0/git-cliff-2.7.0-aarch64-apple-darwin.tar.gz \
+            | tar xz -C /tmp
+          chmod +x /tmp/git-cliff-2.7.0/git-cliff
+          sudo mv /tmp/git-cliff-2.7.0/git-cliff /usr/local/bin/git-cliff
+          git cliff --version
+
       - name: Generate release notes with git-cliff
-        uses: orhun/git-cliff-action@e16f179f0be49ecdfe63753837f20b9531642772 # v4.7.0
-        id: cliff
-        with:
-          config: cliff.toml
-          args: ${{ steps.prev.outputs.tag && format('{0}..{1}', steps.prev.outputs.tag, steps.tag.outputs.tag) || steps.tag.outputs.tag }}
+        run: |
+          if [ -n "${{ steps.prev.outputs.tag }}" ]; then
+            RANGE="${{ steps.prev.outputs.tag }}..${{ steps.tag.outputs.tag }}"
+          else
+            RANGE="${{ steps.tag.outputs.tag }}"
+          fi
+          git cliff --config cliff.toml $RANGE --output /tmp/release-notes.md
+          cat /tmp/release-notes.md
         env:
           GITHUB_REPO: ${{ github.repository }}
 
@@ -103,8 +114,3 @@ jobs:
           args: release --clean --config /tmp/.goreleaser.yaml --release-notes /tmp/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-
-      - name: Write cliff notes to file and update release
-        run: |
-          echo "${{ steps.cliff.outputs.content }}" > /tmp/release-notes.md
-          gh release edit "${{ steps.tag.outputs.tag }}" --notes-file /tmp/release-notes.md
