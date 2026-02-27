@@ -6,3 +6,5 @@ bc9d51bdd74c1bf4ef7787758a5f5fac06b74f27:scripts/install.sh:generic-api-key:48
 bc9d51bdd74c1bf4ef7787758a5f5fac06b74f27:scripts/setup-credentials.sh:generic-api-key:44
 # internal/tracking/worker/src/crypto.test.ts:5 — deterministic test key (32 zero-bytes, base64)
 1d595747f5571558f82f2dfbc7f8da64945dadf0:internal/tracking/worker/src/crypto.test.ts:generic-api-key:5
+# internal/setup/keyring_test.go:131 — test fixture password string, not a real secret
+7487c594f8db64aa10c4b4dddd647feb0ef2a7f2:internal/setup/keyring_test.go:generic-api-key:131
