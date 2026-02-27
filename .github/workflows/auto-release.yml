@@ -1,0 +1,43 @@
+name: auto-release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Skip if commit message contains [skip release] or [skip ci]
+    if: "!contains(github.event.head_commit.message, '[skip release]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute next calver tag
+        id: calver
+        run: |
+          DATE=$(date -u +%y%m%d)
+          MAJOR=2
+          # Find highest N for today
+          LATEST=$(git tag --list "v${MAJOR}.${DATE}.*" --sort=-version:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            N=1
+          else
+            N=$(echo "$LATEST" | sed "s/v${MAJOR}.${DATE}\.//")
+            N=$((N + 1))
+          fi
+          TAG="v${MAJOR}.${DATE}.${N}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Next tag: ${TAG}"
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.calver.outputs.tag }}" -m "Release ${{ steps.calver.outputs.tag }}"
+          git push origin "${{ steps.calver.outputs.tag }}"
