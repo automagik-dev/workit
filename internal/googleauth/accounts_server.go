@@ -37,6 +37,7 @@ type ManageServerOptions struct {
 	Services     []Service
 	ForceConsent bool
 	Client       string
+	JSON         bool // print {"url":..., "port":...} to stdout; no browser
 }
 
 // ManageServer handles the accounts management UI
@@ -78,6 +79,21 @@ func shouldEnsureKeychainAccess() (bool, error) {
 	return backendInfo.Value != "file", nil
 }
 
+// detectOutboundIP returns the machine's preferred outbound IP address by
+// connecting (UDP, no packet sent) to Google's DNS. Falls back to "localhost".
+func detectOutboundIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return "localhost"
+	}
+	defer conn.Close()
+	addr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok || addr.IP == nil || addr.IP.IsLoopback() {
+		return "localhost"
+	}
+	return addr.IP.String()
+}
+
 // StartManageServer starts the accounts management server and opens browser
 func StartManageServer(ctx context.Context, opts ManageServerOptions) error {
 	// Auto-setup keyring password for Linux headless environments.
@@ -106,7 +122,8 @@ func StartManageServer(ctx context.Context, opts ManageServerOptions) error {
 		return fmt.Errorf("failed to generate CSRF token: %w", err)
 	}
 
-	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", fmt.Sprintf("localhost:%d", DefaultLocalAuthPort))
+	// Bind to 0.0.0.0 so the server is reachable on headless VPS / agents.
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", fmt.Sprintf("0.0.0.0:%d", DefaultLocalAuthPort))
 	if err != nil {
 		return fmt.Errorf("failed to start listener on port %d: %w (is another process using this port?)", DefaultLocalAuthPort, err)
 	}
@@ -154,11 +171,18 @@ func StartManageServer(ctx context.Context, opts ManageServerOptions) error {
 	}()
 
 	port := ln.Addr().(*net.TCPAddr).Port
-	url := fmt.Sprintf("http://localhost:%d", port)
+	ip := detectOutboundIP()
+	url := fmt.Sprintf("http://%s:%d", ip, port)
 
-	fmt.Fprintln(os.Stderr, "Opening accounts manager in browser...")
-	fmt.Fprintln(os.Stderr, "If the browser doesn't open, visit:", url)
-	_ = openBrowserFn(url)
+	if opts.JSON {
+		// Headless / agent mode: print JSON to stdout and wait for OAuth to complete.
+		fmt.Printf(`{"url":%q,"port":%d}`, url, port)
+		fmt.Println()
+	} else {
+		fmt.Fprintln(os.Stderr, "Opening accounts manager in browser...")
+		fmt.Fprintln(os.Stderr, "If the browser doesn't open, visit:", url)
+		_ = openBrowserFn(url)
+	}
 
 	select {
 	case err := <-ms.resultCh:
@@ -253,7 +277,8 @@ func (ms *ManageServer) handleAuthStart(w http.ResponseWriter, r *http.Request) 
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", port)
+	ip := detectOutboundIP()
+	redirectURI := fmt.Sprintf("http://%s:%d/oauth2/callback", ip, port)
 
 	cfg := oauth2.Config{
 		ClientID:     creds.ClientID,
@@ -298,7 +323,8 @@ func (ms *ManageServer) handleAuthUpgrade(w http.ResponseWriter, r *http.Request
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", port)
+	ip := detectOutboundIP()
+	redirectURI := fmt.Sprintf("http://%s:%d/oauth2/callback", ip, port)
 
 	cfg := oauth2.Config{
 		ClientID:     creds.ClientID,
@@ -363,7 +389,8 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", port)
+	ip := detectOutboundIP()
+	redirectURI := fmt.Sprintf("http://%s:%d/oauth2/callback", ip, port)
 
 	cfg := oauth2.Config{
 		ClientID:     creds.ClientID,
@@ -449,6 +476,15 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 	// Render success page with the new template
 	w.WriteHeader(http.StatusOK)
 	renderSuccessPageWithDetails(w, email, serviceNames)
+
+	// Auto-close: signal the main goroutine to shut down the server now that
+	// authentication succeeded. Non-blocking so the response is flushed first.
+	go func() {
+		select {
+		case ms.resultCh <- nil:
+		default:
+		}
+	}()
 }
 
 func (ms *ManageServer) handleSetDefault(w http.ResponseWriter, r *http.Request) {

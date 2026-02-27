@@ -1423,6 +1423,7 @@ type AuthManageCmd struct {
 	ForceConsent bool          `name:"force-consent" help:"Force consent screen when adding accounts"`
 	ServicesCSV  string        `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: wk auth service-account set)" default:"all"`
 	Timeout      time.Duration `name:"timeout" help:"Server timeout duration" default:"10m"`
+	JSON         bool          `name:"json" help:"Print {\"url\":\"http://IP:PORT\",\"port\":PORT} to stdout and wait (no browser; headless/agent mode)"`
 }
 
 func (c *AuthManageCmd) Run(ctx context.Context, _ *RootFlags) error {
@@ -1436,6 +1437,7 @@ func (c *AuthManageCmd) Run(ctx context.Context, _ *RootFlags) error {
 		Services:     services,
 		ForceConsent: c.ForceConsent,
 		Client:       authclient.ClientOverrideFromContext(ctx),
+		JSON:         c.JSON,
 	})
 }
 
