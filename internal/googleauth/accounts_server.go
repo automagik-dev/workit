@@ -81,10 +81,10 @@ func shouldEnsureKeychainAccess() (bool, error) {
 
 // detectOutboundIP returns the machine's preferred outbound IP address by
 // connecting (UDP, no packet sent) to Google's DNS. Falls back to "localhost".
-func detectOutboundIP() string {
+func detectOutboundIP(ctx context.Context) string {
 	dialer := &net.Dialer{}
 
-	conn, err := dialer.DialContext(context.Background(), "udp", "8.8.8.8:80")
+	conn, err := dialer.DialContext(ctx, "udp", "8.8.8.8:80")
 	if err != nil {
 		return "localhost"
 	}
@@ -176,7 +176,7 @@ func StartManageServer(ctx context.Context, opts ManageServerOptions) error {
 	}()
 
 	port := ln.Addr().(*net.TCPAddr).Port
-	ip := detectOutboundIP()
+	ip := detectOutboundIP(ctx)
 	url := fmt.Sprintf("http://%s:%d", ip, port)
 
 	if opts.JSON {
@@ -282,7 +282,7 @@ func (ms *ManageServer) handleAuthStart(w http.ResponseWriter, r *http.Request) 
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	ip := detectOutboundIP()
+	ip := detectOutboundIP(r.Context())
 	redirectURI := fmt.Sprintf("http://%s:%d/oauth2/callback", ip, port)
 
 	cfg := oauth2.Config{
@@ -328,7 +328,7 @@ func (ms *ManageServer) handleAuthUpgrade(w http.ResponseWriter, r *http.Request
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	ip := detectOutboundIP()
+	ip := detectOutboundIP(r.Context())
 	redirectURI := fmt.Sprintf("http://%s:%d/oauth2/callback", ip, port)
 
 	cfg := oauth2.Config{
@@ -394,7 +394,7 @@ func (ms *ManageServer) handleOAuthCallback(w http.ResponseWriter, r *http.Reque
 	}
 
 	port := ms.listener.Addr().(*net.TCPAddr).Port
-	ip := detectOutboundIP()
+	ip := detectOutboundIP(r.Context())
 	redirectURI := fmt.Sprintf("http://%s:%d/oauth2/callback", ip, port)
 
 	cfg := oauth2.Config{
