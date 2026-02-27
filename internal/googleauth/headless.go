@@ -206,8 +206,8 @@ func pollOnce(ctx context.Context, client *http.Client, pollURL string) (refresh
 		return "", false, errTokenConsumed
 
 	case http.StatusNotFound:
-		// Token not found or expired
-		return "", false, errTokenNotFound
+		// Token not yet available (user hasn't logged in yet) — keep polling
+		return "", false, nil
 
 	default:
 		// Unexpected status, keep trying
