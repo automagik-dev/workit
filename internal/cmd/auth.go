@@ -730,6 +730,11 @@ func (c *AuthAddCmd) handleRemoteAuthStep(
 func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []googleauth.Service, scopes []string) error {
 	u := ui.FromContext(ctx)
 
+	// Pre-flight: ensure keychain is accessible before starting headless OAuth.
+	if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
+		return fmt.Errorf("keychain access: %w", keychainErr)
+	}
+
 	// Get callback server URL
 	callbackServer, err := callbackServerURLFn(c.CallbackServer)
 	if err != nil {
@@ -801,11 +806,6 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 			return nil
 		}
 		return googleauth.WrapOAuthError(err)
-	}
-
-	// Pre-flight: ensure keychain is accessible before storing token
-	if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
-		return fmt.Errorf("keychain access: %w", keychainErr)
 	}
 
 	// Verify the email matches (if possible)
