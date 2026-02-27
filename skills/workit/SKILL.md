@@ -8,6 +8,8 @@ allowed-tools: Bash(wk *), Bash(jq *)
 
 Use `wk` for Gmail, Calendar, Drive, Docs, Sheets, Slides, Chat, Classroom, Tasks, Contacts, People, Keep, Groups, Forms, App Script, auth/sync setup, and local DOCX editing.
 
+> **No GCP setup needed.** Run `wk auth manage` — auth.automagik.dev handles OAuth. Load `setup.md` for details.
+
 ## Safety defaults (always)
 - Read/list/query flows: add `--read-only`.
 - Any write/send/create/update/delete flow: start with `--dry-run`, then rerun without it after user confirms.

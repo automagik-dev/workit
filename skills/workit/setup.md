@@ -1,5 +1,36 @@
 # wk setup and authentication
 
+## Quick Start (no GCP setup needed)
+
+The `wk` binary includes a shared OAuth client via `auth.automagik.dev`.
+No GCP console, no credentials.json, no client secrets required.
+
+**Desktop/laptop:**
+```bash
+wk auth manage   # opens browser, auto-closes after login
+wk gmail search 'newer_than:1d'
+```
+
+**Remote server / VPS (SSH):**
+```bash
+wk auth manage   # prints URL with server IP — open in your browser
+# After login, server auto-closes
+wk gmail search 'newer_than:1d'
+```
+
+**Agent / headless automation:**
+```bash
+wk auth manage --print-url   # prints {"url":"http://IP:PORT","port":8085}
+# User opens URL, logs in; your code polls:
+wk auth poll <state>          # returns token when ready
+```
+
+**Linux headless (no D-Bus):**
+Keyring is auto-configured. After `wk auth manage`, source the generated file:
+```bash
+source ~/.config/workit/credentials.env
+```
+
 Use this file for account setup, token lifecycle, and Workspace service-account flows.
 
 ## 1) Inspect auth state
