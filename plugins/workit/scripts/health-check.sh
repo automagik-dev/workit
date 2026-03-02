@@ -3,10 +3,12 @@
 #
 # Runs at session start. Must always exit 0.
 
+BIN_DIR="${WK_BIN_DIR:-$HOME/.local/bin}"
+
 find_wk() {
   local p
   p="$(command -v wk 2>/dev/null)" && echo "$p" && return 0
-  [ -x "$HOME/.local/bin/wk" ] && echo "$HOME/.local/bin/wk" && return 0
+  [ -x "$BIN_DIR/wk" ] && echo "$BIN_DIR/wk" && return 0
   return 1
 }
 

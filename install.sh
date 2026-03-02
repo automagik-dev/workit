@@ -92,6 +92,7 @@ EOF
             ;;
         --version=*)
             VERSION="${1#--version=}"
+            [ -n "$VERSION" ] || fail "--version requires a VERSION argument"
             shift
             ;;
         *)
@@ -137,6 +138,33 @@ download_stdout() {
     else
         wget -q "$_url" -O - || return 1
     fi
+}
+
+sha256_file() {
+    if command -v sha256sum > /dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    elif command -v shasum > /dev/null 2>&1; then
+        shasum -a 256 "$1" | awk '{print $1}'
+    else
+        warn "No SHA-256 tool found; skipping checksum verification"
+        return 1
+    fi
+}
+
+verify_checksum() {
+    _name="$1"
+    _path="$2"
+    _checksums="$3"
+    _expected="$(grep " ${_name}$" "$_checksums" | awk '{print $1}' | head -n 1)"
+    if [ -z "$_expected" ]; then
+        warn "Checksum not found for ${_name}; skipping verification"
+        return 0
+    fi
+    _actual="$(sha256_file "$_path")" || return 0
+    if [ "$_actual" != "$_expected" ]; then
+        fail "Checksum mismatch for ${_name} (expected: ${_expected}, got: ${_actual})"
+    fi
+    ok "Checksum verified: ${_name}"
 }
 
 # ---------------------------------------------------------------------------
@@ -189,6 +217,17 @@ info "Downloading binary: ${BINARY_URL}"
 download "$BINARY_URL" "$BINARY_ARCHIVE" || \
     fail "Failed to download binary from ${BINARY_URL}"
 
+# Download checksums.txt for verification
+CHECKSUMS_URL="${RELEASE_BASE_URL}/${TAG}/checksums.txt"
+CHECKSUMS_FILE="${TMPDIR_WORK}/checksums.txt"
+info "Downloading checksums: ${CHECKSUMS_URL}"
+download "$CHECKSUMS_URL" "$CHECKSUMS_FILE" || \
+    warn "Failed to download checksums.txt; skipping verification"
+
+if [ -f "$CHECKSUMS_FILE" ]; then
+    verify_checksum "$BINARY_FILENAME" "$BINARY_ARCHIVE" "$CHECKSUMS_FILE"
+fi
+
 info "Extracting binary..."
 tar -xzf "$BINARY_ARCHIVE" -C "$TMPDIR_WORK"
 
@@ -198,31 +237,38 @@ WK_BINARY="$(find "$TMPDIR_WORK" -type f -name 'wk' | head -n 1)"
 
 # Check for existing install
 TARGET="${INSTALL_DIR}/wk"
+SKIP_BINARY=false
 if [ -f "$TARGET" ] && [ "$FORCE" = false ]; then
     EXISTING_VERSION="$("$TARGET" --version 2>/dev/null || echo "unknown")"
     warn "Existing installation found at ${TARGET}"
     info "Installed version : ${EXISTING_VERSION}"
     info "New version       : ${VERSION}"
     if [ ! -t 0 ]; then
-        warn "Running non-interactively; use --force to overwrite existing install."
-        exit 0
+        warn "Non-interactive mode: skipping binary overwrite (use --force to replace)"
+        info "Continuing with plugin installation..."
+        SKIP_BINARY=true
+    else
+        printf "Overwrite? [y/N] "
+        read -r REPLY
+        case "$REPLY" in
+            [Yy]*) ;;
+            *) info "Skipping binary overwrite. Continuing with plugin..."; SKIP_BINARY=true ;;
+        esac
     fi
-    printf "Overwrite? [y/N] "
-    read -r REPLY
-    case "$REPLY" in
-        [Yy]*) ;;
-        *) info "Installation cancelled. Existing install unchanged."; exit 0 ;;
-    esac
 fi
 
-mkdir -p "$INSTALL_DIR"
-cp "$WK_BINARY" "$TARGET"
-chmod +x "$TARGET"
-ok "Binary installed: ${TARGET}"
+if [ "$SKIP_BINARY" = false ]; then
+    mkdir -p "$INSTALL_DIR"
+    cp "$WK_BINARY" "$TARGET"
+    chmod +x "$TARGET"
+    ok "Binary installed: ${TARGET}"
 
-# macOS quarantine removal
-if [ "$OS" = "darwin" ]; then
-    xattr -d com.apple.quarantine "$TARGET" 2>/dev/null || true
+    # macOS quarantine removal
+    if [ "$OS" = "darwin" ]; then
+        xattr -d com.apple.quarantine "$TARGET" 2>/dev/null || true
+    fi
+else
+    info "Binary unchanged at ${TARGET}"
 fi
 
 # ---------------------------------------------------------------------------
@@ -235,6 +281,10 @@ PLUGIN_ARCHIVE="${TMPDIR_WORK}/${PLUGIN_FILENAME}"
 info "Downloading plugin: ${PLUGIN_URL}"
 download "$PLUGIN_URL" "$PLUGIN_ARCHIVE" || \
     fail "Failed to download plugin from ${PLUGIN_URL}"
+
+if [ -f "$CHECKSUMS_FILE" ]; then
+    verify_checksum "$PLUGIN_FILENAME" "$PLUGIN_ARCHIVE" "$CHECKSUMS_FILE"
+fi
 
 info "Installing plugin to ${PLUGIN_DIR}..."
 
@@ -261,15 +311,18 @@ ok "Plugin installed: ${PLUGIN_DIR}"
 # Claude Code integration
 # ---------------------------------------------------------------------------
 mkdir -p "${HOME}/.claude/plugins"
-ln -sf "$PLUGIN_DIR" "${HOME}/.claude/plugins/workit"
+ln -sfn "$PLUGIN_DIR" "${HOME}/.claude/plugins/workit"
 ok "Claude Code plugin linked: ~/.claude/plugins/workit"
 
 # ---------------------------------------------------------------------------
 # OpenClaw integration (optional)
 # ---------------------------------------------------------------------------
 if command -v openclaw > /dev/null 2>&1; then
-    openclaw plugins install "$PLUGIN_DIR/" 2>/dev/null || true
-    ok "OpenClaw plugin registered"
+    if openclaw plugins install "$PLUGIN_DIR/" 2>/dev/null; then
+        ok "OpenClaw plugin registered"
+    else
+        warn "OpenClaw detected, but plugin registration failed"
+    fi
 fi
 
 # ---------------------------------------------------------------------------
