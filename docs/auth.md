@@ -2,9 +2,237 @@
 
 > Back to [README](../README.md)
 
-## OAuth Credentials Setup
+## Quick Start (Relay Auth — No GCP Setup)
 
-Before adding an account, create OAuth2 credentials from Google Cloud Console:
+`workit` ships with a built-in auth relay at `auth.automagik.dev`. You do **not** need a Google Cloud project, OAuth credentials, or any API keys to get started.
+
+Just run:
+
+```bash
+wk auth manage
+```
+
+This opens an account manager UI. It binds to `0.0.0.0:8085`, detects and displays your outbound IP, and auto-closes after authentication completes — no localhost tunnels or manual port-forwarding required.
+
+### How the relay flow works
+
+1. `wk auth manage` starts a local HTTP server and opens the browser (or prints a URL)
+2. You log in with your Google account
+3. Google redirects to `auth.automagik.dev` (the default callback server)
+4. The callback server holds your token for up to 15 minutes
+5. The CLI polls, retrieves the token, stores it in your system keychain, and closes
+
+```
+┌─────────┐     ┌──────────┐     ┌─────────────────────┐     ┌────────┐
+│   CLI   │────▶│  Google  │────▶│  auth.automagik.dev  │────▶│  CLI   │
+│ (agent) │     │  OAuth   │     │  (callback server)   │     │ (poll) │
+└─────────┘     └──────────┘     └─────────────────────┘     └────────┘
+```
+
+That's it. Your refresh token is stored securely in your system keychain and ready to use.
+
+## Account Management
+
+The recommended entry point for all auth operations:
+
+```bash
+wk auth manage
+```
+
+Other individual commands:
+
+```bash
+# Add a single account directly
+wk auth add you@gmail.com
+
+# Remove an account
+wk auth remove you@gmail.com
+
+# List stored accounts
+wk auth list
+
+# Verify tokens are usable (spots revoked/expired tokens)
+wk auth list --check
+
+# Show auth state and enabled services for the active account
+wk auth status
+
+# List available services and their scopes
+wk auth services
+```
+
+Accounts can be authorized either via OAuth refresh tokens or Workspace service accounts (domain-wide delegation). If a service account key is configured for an account, it takes precedence over OAuth refresh tokens (see `wk auth list`).
+
+## Multi-Account Usage
+
+### Account Selection
+
+Specify the account using a flag or environment variable:
+
+```bash
+# Via flag
+wk gmail search 'newer_than:7d' --account you@gmail.com
+
+# Via alias
+wk auth alias set work work@company.com
+wk gmail search 'newer_than:7d' --account work
+
+# Via environment variable
+export WK_ACCOUNT=you@gmail.com
+wk gmail search 'newer_than:7d'
+
+# Auto-select (default account or the single stored token)
+wk gmail labels list --account auto
+```
+
+### Account Aliases
+
+```bash
+wk auth alias set work work@company.com
+wk auth alias list
+wk auth alias unset work
+```
+
+Aliases work anywhere you pass `--account` or `WK_ACCOUNT` (reserved names: `auto`, `default`).
+
+## Headless / Agent Auth
+
+For servers, CI, or AI agents where no browser is available:
+
+```bash
+# Recommended: headless interactive flow (binds to 0.0.0.0, shows outbound IP)
+wk auth manage
+
+# Agent-driven: emit the URL as JSON for programmatic handling
+wk auth manage --print-url
+# Output: {"url":"http://203.0.113.42:8085","port":8085}
+```
+
+### Direct headless add (non-interactive)
+
+```bash
+# Start headless auth — polls until complete
+wk auth add you@gmail.com --headless --no-input
+
+# Start headless auth and print JSON (url + state + poll_url)
+wk auth add you@gmail.com --headless --json
+
+# Start headless auth without polling (async — poll later)
+wk auth add you@gmail.com --headless --no-poll
+wk auth poll abc123xyz
+
+# Extend poll timeout
+wk auth add you@gmail.com --headless --poll-timeout=10m
+```
+
+### Manual fallback (paste-URL flow)
+
+```bash
+wk auth add you@gmail.com --services user --manual
+```
+
+The CLI prints an auth URL. Open it in a local browser, then paste the full loopback redirect URL back when prompted.
+
+### Split remote flow
+
+Useful for two-step/scripted handoff:
+
+```bash
+# Step 1: print auth URL (open locally in a browser)
+wk auth add you@gmail.com --services user --remote --step 1
+
+# Step 2: paste the full redirect URL from your browser address bar
+wk auth add you@gmail.com --services user --remote --step 2 --auth-url 'http://127.0.0.1:<port>/oauth2/callback?code=...&state=...'
+```
+
+The `state` is cached on disk for ~10 minutes. If it expires, rerun step 1.
+
+See [docs/headless-auth.md](headless-auth.md) for full details.
+
+## Token Management
+
+```bash
+# List stored tokens
+wk auth tokens list
+
+# Export tokens (for backup or migration)
+wk auth tokens export
+
+# Import tokens
+wk auth tokens import
+
+# Delete a token
+wk auth tokens delete you@gmail.com
+```
+
+## Keyring Backends
+
+`wk` stores OAuth refresh tokens in a "keyring" backend. The default is `auto` (best available for your OS/environment).
+
+Available backends:
+
+- `auto` (default): picks the best backend for the platform.
+- `keychain`: macOS Keychain (recommended on macOS; avoids password management).
+- `file`: encrypted on-disk keyring (requires a password).
+
+```bash
+# Set backend
+wk auth keyring file
+wk auth keyring keychain
+wk auth keyring auto
+
+# Show current backend + source and config path
+wk auth keyring
+```
+
+Force backend via env (overrides config):
+
+```bash
+export WK_KEYRING_BACKEND=file
+```
+
+### Linux Headless / CI Auto-Setup
+
+On Linux headless environments (servers, containers, WSL without a desktop), `wk` automatically configures the `file` keyring backend and sets up an encryption password — no manual `WK_KEYRING_PASSWORD` required for typical use:
+
+```bash
+wk auth manage
+```
+
+For fully non-interactive CI runs where you want to supply the password explicitly:
+
+```bash
+export WK_KEYRING_PASSWORD='...'
+wk --no-input auth status
+```
+
+### Keychain Prompts (macOS)
+
+macOS Keychain may prompt more than expected when the app identity keeps changing (different binary path, `go run` temp builds, rebuilding to a new `./bin/wk`, multiple copies). Keychain treats those as different apps.
+
+Options:
+
+- **Default (recommended):** keep using Keychain and run a stable `wk` binary path to reduce repeat prompts.
+- **Force Keychain:** `WK_KEYRING_BACKEND=keychain` (disables file-backend fallback).
+- **Avoid Keychain prompts entirely:** `WK_KEYRING_BACKEND=file` (stores encrypted entries on disk under your config dir). For non-interactive/CI use: `WK_KEYRING_PASSWORD=...` (tradeoff: secret in env).
+
+### Credential Storage Locations
+
+OAuth credentials are stored securely in your system's keychain:
+
+- **macOS**: Keychain Access
+- **Linux**: Secret Service (GNOME Keyring, KWallet)
+- **Windows**: Credential Manager
+
+The CLI uses [github.com/99designs/keyring](https://github.com/99designs/keyring) for secure storage.
+
+If no OS keychain backend is available (e.g., Linux/WSL/container), keyring falls back to an encrypted on-disk store and may prompt for a password; for non-interactive runs set `WK_KEYRING_PASSWORD`.
+
+## Advanced: BYO GCP Credentials (Optional)
+
+> This section is for advanced users who want to use their own Google Cloud project and OAuth client instead of the default relay. Most users do not need this.
+
+### Create OAuth Credentials (Google Cloud Console)
 
 1. Open the [Google Cloud Console credentials page](https://console.cloud.google.com/apis/credentials)
 2. [Create a project](https://console.cloud.google.com/projectcreate)
@@ -28,7 +256,7 @@ Before adding an account, create OAuth2 credentials from Google Cloud Console:
    - Application type: "Desktop app"
    - Download the JSON file (usually named `client_secret_....apps.googleusercontent.com.json`)
 
-## Store Credentials
+### Store Your Credentials
 
 ```bash
 wk auth credentials ~/Downloads/client_secret_....json
@@ -41,77 +269,7 @@ wk --client work auth credentials ~/Downloads/work-client.json
 wk auth credentials list
 ```
 
-## Authorize Your Account
-
-```bash
-wk auth manage
-```
-
-This is the recommended entry point. It opens an account manager UI where you can add, remove, and inspect accounts. The refresh token is stored securely in your system keychain.
-
-For direct single-account authorization:
-
-```bash
-wk auth add you@gmail.com
-```
-
-## Accounts and Tokens
-
-`wk` stores your OAuth refresh tokens in a "keyring" backend. Default is `auto` (best available backend for your OS/environment).
-
-Before adding an account, store OAuth client credentials once via `wk auth credentials <credentials.json>` (download a Desktop app OAuth client JSON from the Cloud Console). For multiple clients, use `wk --client <name> auth credentials ...`; tokens are isolated per client.
-
-List accounts:
-
-```bash
-wk auth list
-```
-
-Verify tokens are usable (helps spot revoked/expired tokens):
-
-```bash
-wk auth list --check
-```
-
-Accounts can be authorized either via OAuth refresh tokens or Workspace service accounts (domain-wide delegation). If a service account key is configured for an account, it takes precedence over OAuth refresh tokens (see `wk auth list`).
-
-Show current auth state/services for the active account:
-
-```bash
-wk auth status
-```
-
-## Account Selection
-
-Specify the account using either a flag or environment variable:
-
-```bash
-# Via flag
-wk gmail search 'newer_than:7d' --account you@gmail.com
-
-# Via alias
-wk auth alias set work work@company.com
-wk gmail search 'newer_than:7d' --account work
-
-# Via environment
-export WK_ACCOUNT=you@gmail.com
-wk gmail search 'newer_than:7d'
-
-# Auto-select (default account or the single stored token)
-wk gmail labels list --account auto
-```
-
-## Account Aliases
-
-```bash
-wk auth alias set work work@company.com
-wk auth alias list
-wk auth alias unset work
-```
-
-Aliases work anywhere you pass `--account` or `WK_ACCOUNT` (reserved: `auto`, `default`).
-
-## Multiple OAuth Clients
+### Multiple OAuth Clients
 
 Use `--client` (or `WK_CLIENT`) to select a named OAuth client:
 
@@ -157,105 +315,15 @@ wk auth credentials list
 
 See [docs/auth-clients.md](auth-clients.md) for the full client selection and mapping rules.
 
-## Keyring Backends
+### Overriding the Callback Server
 
-Backends:
+The callback server URL (`auth.automagik.dev`) can be overridden in order of precedence:
 
-- `auto` (default): picks the best backend for the platform.
-- `keychain`: macOS Keychain (recommended on macOS; avoids password management).
-- `file`: encrypted on-disk keyring (requires a password).
+1. **Flag**: `--callback-server=https://your-server.example.com`
+2. **Environment**: `WK_CALLBACK_SERVER=https://your-server.example.com`
+3. **Build-time default**: Compiled into binary with `-ldflags`
 
-Set backend via command (writes `keyring_backend` into `config.json`):
-
-```bash
-wk auth keyring file
-wk auth keyring keychain
-wk auth keyring auto
-```
-
-Show current backend + source (env/config/default) and config path:
-
-```bash
-wk auth keyring
-```
-
-### Linux Headless / CI Auto-Setup
-
-On Linux headless environments (servers, containers, WSL without a desktop), `wk` automatically configures the `file` keyring backend and sets up an encryption password — **no manual `WK_KEYRING_PASSWORD` required** for typical use. Just run:
-
-```bash
-wk auth manage
-```
-
-For fully non-interactive CI runs where you want to supply the password explicitly:
-
-```bash
-export WK_KEYRING_PASSWORD='...'
-wk --no-input auth status
-```
-
-Force backend via env (overrides config):
-
-```bash
-export WK_KEYRING_BACKEND=file
-```
-
-Precedence: `WK_KEYRING_BACKEND` env var overrides `config.json`.
-
-### Keychain Prompts (macOS)
-
-macOS Keychain may prompt more than you'd expect when the "app identity" keeps changing (different binary path, `go run` temp builds, rebuilding to new `./bin/wk`, multiple copies). Keychain treats those as different apps, so it asks again.
-
-Options:
-
-- **Default (recommended):** keep using Keychain (secure) and run a stable `wk` binary path to reduce repeat prompts.
-- **Force Keychain:** `WK_KEYRING_BACKEND=keychain` (disables any file-backend fallback).
-- **Avoid Keychain prompts entirely:** `WK_KEYRING_BACKEND=file` (stores encrypted entries on disk under your config dir).
-  - To avoid password prompts too (CI/non-interactive): set `WK_KEYRING_PASSWORD=...` (tradeoff: secret in env).
-
-### Credential Storage
-
-OAuth credentials are stored securely in your system's keychain:
-- **macOS**: Keychain Access
-- **Linux**: Secret Service (GNOME Keyring, KWallet)
-- **Windows**: Credential Manager
-
-The CLI uses [github.com/99designs/keyring](https://github.com/99designs/keyring) for secure storage.
-
-If no OS keychain backend is available (e.g., Linux/WSL/container), keyring can fall back to an encrypted on-disk store and may prompt for a password; for non-interactive runs set `WK_KEYRING_PASSWORD`.
-
-## Headless / Remote Auth Flows
-
-For servers without a browser, `wk auth manage` is the recommended entry point. It binds to `0.0.0.0`, shows your outbound IP, and auto-closes after auth completes. See [docs/headless-auth.md](headless-auth.md) for details.
-
-### Manual Interactive Flow (fallback)
-
-```bash
-wk auth add you@gmail.com --services user --manual
-```
-
-- The CLI prints an auth URL. Open it in a local browser.
-- After approval, copy the full loopback redirect URL from the browser address bar.
-- Paste that URL back into the terminal when prompted.
-
-### Split Remote Flow
-
-Useful for two-step/scripted handoff:
-
-```bash
-# Step 1: print auth URL (open it locally in a browser)
-wk auth add you@gmail.com --services user --remote --step 1
-
-# Step 2: paste the full redirect URL from your browser address bar
-wk auth add you@gmail.com --services user --remote --step 2 --auth-url 'http://127.0.0.1:<port>/oauth2/callback?code=...&state=...'
-```
-
-- The `state` is cached on disk for a short time (about 10 minutes). If it expires, rerun step 1.
-- Remote step 2 requires a redirect URL that includes `state` (state check mandatory).
-
-See [docs/headless-auth.md](headless-auth.md) for more details.
-
-## Service Accounts (Workspace only)
+## Service Accounts (Workspace Only)
 
 A service account is a non-human Google identity that belongs to a Google Cloud project. In Google Workspace, a service account can impersonate a user via **domain-wide delegation** (admin-controlled) and access APIs like Gmail/Calendar/Drive as that user.
 
@@ -269,7 +337,7 @@ In `wk`, service accounts are an **optional auth method** that can be configured
 4. In the service account details, enable **Domain-wide delegation**.
 5. Create a key (**Keys -> Add key -> Create new key -> JSON**) and download the JSON key file.
 
-### 2) Allowlist scopes (Google Workspace Admin Console)
+### 2) Allowlist Scopes (Google Workspace Admin Console)
 
 Domain-wide delegation is enforced by Workspace admin settings.
 
@@ -280,7 +348,7 @@ Domain-wide delegation is enforced by Workspace admin settings.
 
 If a scope is missing from the allowlist, service-account token minting can fail (or API calls will 403 with insufficient permissions).
 
-### 3) Configure `wk` to use the service account
+### 3) Configure `wk` to Use the Service Account
 
 Store the key for the user you want to impersonate:
 
@@ -295,9 +363,18 @@ wk --account you@yourdomain.com auth status
 wk auth list
 ```
 
-## Google Keep (Workspace only)
+Remove the service account config:
 
-Keep requires Workspace + domain-wide delegation. You can configure it via the generic service-account command above (recommended), or the legacy Keep helper:
+```bash
+wk auth service-account unset you@yourdomain.com
+
+# Check current status
+wk auth service-account status you@yourdomain.com
+```
+
+## Google Keep (Workspace Only)
+
+Keep requires Workspace + domain-wide delegation. Configure it via the service-account command:
 
 ```bash
 wk auth service-account set you@yourdomain.com --key ~/Downloads/service-account.json
@@ -313,6 +390,7 @@ wk keep get <noteId> --account you@yourdomain.com
 | `WK_CLIENT` | OAuth client name (selects stored credentials + token bucket) |
 | `WK_KEYRING_BACKEND` | Force keyring backend: `auto`, `keychain`, or `file` (overrides config) |
 | `WK_KEYRING_PASSWORD` | Password for the encrypted on-disk keyring (file backend; avoids interactive prompt) |
+| `WK_CALLBACK_SERVER` | Override the relay callback server URL (default: `https://auth.automagik.dev`) |
 
 See also [docs/configuration.md](configuration.md) for the full environment variables reference.
 
@@ -324,11 +402,12 @@ See also [docs/configuration.md](configuration.md) for the full environment vari
 - Re-authorize with `--force-consent` if you suspect token compromise.
 - Remove unused accounts with `wk auth remove <email>`.
 
-## OAuth Client IDs in Open Source
+## Note on OAuth Client IDs in Open Source
 
 Some open source Google CLIs ship a pre-configured OAuth client ID/secret copied from other desktop apps to avoid OAuth consent verification, testing-user limits, or quota issues. This makes the consent screen/security emails show the other app's name and can stop working at any time.
 
-`workit` does not do this. Supported auth:
+`workit` does not do this. Supported auth methods:
 
+- Default relay via `auth.automagik.dev` (no GCP setup required — just run `wk auth manage`)
 - Your own OAuth Desktop client JSON via `wk auth credentials ...` + `wk auth add ...`
 - Google Workspace service accounts with domain-wide delegation (Workspace only)

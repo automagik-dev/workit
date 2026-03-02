@@ -140,4 +140,4 @@ The user signed in with a different email than specified. Ensure the correct Goo
 
 ## For Operators
 
-See [infrastructure.md](infrastructure.md) for setting up your own callback server.
+To set up your own callback server instead of `auth.automagik.dev`, see the BYO GCP section in [auth.md](auth.md).
