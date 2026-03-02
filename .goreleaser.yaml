@@ -87,6 +87,8 @@ archives:
 
 checksum:
   name_template: checksums.txt
+  extra_files:
+    - glob: _plugin_dist/workit-plugin_*.tar.gz
 
 release:
   extra_files:
