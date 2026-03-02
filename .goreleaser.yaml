@@ -7,8 +7,8 @@ changelog:
 
 before:
   hooks:
-    - mkdir -p dist
-    - tar -czf dist/workit-plugin_{{ .Version }}.tar.gz -C plugins workit
+    - mkdir -p _plugin_dist
+    - tar -czf _plugin_dist/workit-plugin_{{ .Version }}.tar.gz -C plugins workit
 
 builds:
   - id: wk
@@ -90,4 +90,4 @@ checksum:
 
 release:
   extra_files:
-    - glob: dist/workit-plugin_*.tar.gz
+    - glob: _plugin_dist/workit-plugin_*.tar.gz

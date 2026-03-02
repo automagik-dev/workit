@@ -36,6 +36,7 @@ go.work.sum
 
 # Local build output
 bin/
+_plugin_dist/
 /gog
 auth-server/auth-server
 
