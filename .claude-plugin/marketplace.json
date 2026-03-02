@@ -1,16 +1,18 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "workit",
-  "description": "Office work CLI toolkit for agents — Google Workspace + DOCX editing",
-  "owner": { "name": "Automagik" },
+  "name": "automagik-workit",
+  "owner": {
+    "name": "Automagik"
+  },
+  "metadata": {
+    "description": "Plugins by Automagik — Google Workspace tools",
+    "homepage": "https://github.com/automagik-dev/workit"
+  },
   "plugins": [
     {
       "name": "workit",
-      "description": "Agent-native CLI for Google Workspace. 18+ services, local DOCX editing, JSON-first output.",
       "version": "0.12.0",
-      "author": { "name": "Automagik" },
-      "source": ".",
-      "category": "productivity"
+      "source": "./plugins/workit",
+      "description": "Agent-native CLI for Google Workspace. 18+ services, local DOCX editing, JSON-first output, least-privilege auth."
     }
   ]
 }

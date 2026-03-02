@@ -318,9 +318,23 @@ ok "Plugin installed: ${PLUGIN_DIR}"
 # ---------------------------------------------------------------------------
 # Claude Code integration
 # ---------------------------------------------------------------------------
-mkdir -p "${HOME}/.claude/plugins"
-ln -sfn "$PLUGIN_DIR" "${HOME}/.claude/plugins/workit"
-ok "Claude Code plugin linked: ~/.claude/plugins/workit"
+if command -v claude > /dev/null 2>&1; then
+    # Register workit repo as a marketplace and install the plugin
+    claude plugin marketplace add https://github.com/automagik-dev/workit.git 2>/dev/null || true
+    if claude plugin install workit@automagik-workit 2>/dev/null; then
+        ok "Claude Code plugin installed: workit@automagik-workit"
+    else
+        # Fallback: symlink for older Claude Code versions
+        mkdir -p "${HOME}/.claude/plugins"
+        ln -sfn "$PLUGIN_DIR" "${HOME}/.claude/plugins/workit"
+        ok "Claude Code plugin linked: ~/.claude/plugins/workit (fallback)"
+    fi
+else
+    # Claude Code not installed — symlink for when it is
+    mkdir -p "${HOME}/.claude/plugins"
+    ln -sfn "$PLUGIN_DIR" "${HOME}/.claude/plugins/workit"
+    ok "Claude Code plugin linked: ~/.claude/plugins/workit"
+fi
 
 # ---------------------------------------------------------------------------
 # Codex integration (optional)
