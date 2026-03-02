@@ -280,13 +280,6 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Bootstrap config (relay auth — no GCP setup needed)
-# ---------------------------------------------------------------------------
-"$TARGET" config set callback_server https://auth.automagik.dev 2>/dev/null
-"$TARGET" config set keyring_backend file 2>/dev/null
-ok "Config: relay auth via auth.automagik.dev"
-
-# ---------------------------------------------------------------------------
 # Plugin download and install
 # ---------------------------------------------------------------------------
 PLUGIN_FILENAME="workit-plugin_${VERSION}.tar.gz"
