@@ -280,6 +280,13 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Bootstrap config (relay auth — no GCP setup needed)
+# ---------------------------------------------------------------------------
+"$TARGET" config set callback_server https://auth.automagik.dev 2>/dev/null
+"$TARGET" config set keyring_backend file 2>/dev/null
+ok "Config: relay auth via auth.automagik.dev"
+
+# ---------------------------------------------------------------------------
 # Plugin download and install
 # ---------------------------------------------------------------------------
 PLUGIN_FILENAME="workit-plugin_${VERSION}.tar.gz"
@@ -414,9 +421,9 @@ if [ ! -t 0 ]; then
     printf "No GCP setup needed — auth runs through https://auth.automagik.dev.\n"
     printf "\n"
     printf "Next steps:\n"
-    printf "  1. wk auth status                        → check existing accounts\n"
-    printf "  2. wk auth add EMAIL --headless --no-input  → auth (prints URL for user)\n"
-    printf "  3. wk gmail search 'newer_than:1d' --json   → first query\n"
+    printf "  1. wk auth status                              → check existing accounts\n"
+    printf "  2. wk auth manage --print-url --no-input       → prints auth URL for user\n"
+    printf "  3. wk gmail search 'newer_than:1d' --json      → first query\n"
     printf "\n"
     printf "Available services: Gmail, Calendar, Drive, Sheets, Docs, Slides,\n"
     printf "                    Chat, Classroom, Tasks, Contacts, Keep, Forms, AppScript\n"
