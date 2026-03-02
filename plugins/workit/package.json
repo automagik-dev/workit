@@ -1,6 +1,9 @@
 {
-  "name": "workit-plugin",
+  "name": "workit",
   "version": "0.12.0",
   "private": true,
-  "description": "Workit plugin for Claude Code — Google Workspace CLI skills"
+  "description": "Workit plugin for Claude Code — Google Workspace CLI skills",
+  "openclaw": {
+    "extensions": ["./index.js"]
+  }
 }
