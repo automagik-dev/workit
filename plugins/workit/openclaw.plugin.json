@@ -1,0 +1,6 @@
+{
+  "id": "workit",
+  "name": "Workit — Google Workspace CLI",
+  "version": "0.12.0",
+  "skills": ["./skills"]
+}
