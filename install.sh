@@ -363,7 +363,7 @@ case ":${PATH}:" in
 esac
 
 # ---------------------------------------------------------------------------
-# Bootstrap prompt
+# Bootstrap prompt — detect agent vs human
 # ---------------------------------------------------------------------------
 printf "\n"
 printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -381,22 +381,40 @@ printf "Claude:  ~/.claude/plugins/workit\n"
 printf "Codex:   ~/.agents/skills/workit\n"
 printf "Skills:  loaded (Gmail, Calendar, Drive, Sheets, Docs, Slides, Chat, ...)\n"
 printf "Relay:   https://auth.automagik.dev (no GCP setup needed)\n"
-printf "\n"
 printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-printf "AGENT BOOTSTRAP PROMPT\n"
-printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-printf "\n"
-printf "You now have access to Google Workspace via the \`wk\` CLI (workit v%s).\n" "$VERSION"
-printf "No GCP setup needed — auth runs through https://auth.automagik.dev.\n"
-printf "\n"
-printf "Quick start:\n"
-printf "  wk auth status          → check if accounts are already connected\n"
-printf "  wk auth manage          → add an account (opens browser or prints URL for headless)\n"
-printf "  wk auth add EMAIL --headless --no-input  → for fully unattended agent flow\n"
-printf "\n"
-printf "Available services: Gmail, Calendar, Drive, Sheets, Docs, Slides,\n"
-printf "                    Chat, Classroom, Tasks, Contacts, Keep, Forms, AppScript\n"
-printf "\n"
-printf "Ask the user what they want to do, then load the relevant skill file.\n"
-printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
+# Agent detection: non-interactive stdin (curl | sh) = likely an agent
+if [ ! -t 0 ]; then
+    # -----------------------------------------------------------------------
+    # Agent bootstrap prompt — structured for LLM consumption
+    # -----------------------------------------------------------------------
+    printf "\n"
+    printf "AGENT BOOTSTRAP INSTRUCTIONS\n"
+    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    printf "\n"
+    printf "You now have access to Google Workspace via the \`wk\` CLI (workit v%s).\n" "$VERSION"
+    printf "No GCP setup needed — auth runs through https://auth.automagik.dev.\n"
+    printf "\n"
+    printf "Next steps:\n"
+    printf "  1. wk auth status                        → check existing accounts\n"
+    printf "  2. wk auth add EMAIL --headless --no-input  → auth (prints URL for user)\n"
+    printf "  3. wk gmail search 'newer_than:1d' --json   → first query\n"
+    printf "\n"
+    printf "Available services: Gmail, Calendar, Drive, Sheets, Docs, Slides,\n"
+    printf "                    Chat, Classroom, Tasks, Contacts, Keep, Forms, AppScript\n"
+    printf "\n"
+    printf "Load the relevant skill file for the user's request, then execute.\n"
+    printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+else
+    # -----------------------------------------------------------------------
+    # Human prompt — concise next steps
+    # -----------------------------------------------------------------------
+    printf "\n"
+    printf "Next steps:\n"
+    printf "  ${BOLD}wk auth manage${NC}        → connect your Google account\n"
+    printf "  ${BOLD}wk --help${NC}             → see all commands\n"
+    printf "  ${BOLD}wk gmail search '...'${NC} → try your first query\n"
+    printf "\n"
+    printf "Docs: https://github.com/automagik-dev/workit\n"
+fi
 printf "\n"
