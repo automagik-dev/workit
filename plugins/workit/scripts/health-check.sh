@@ -19,6 +19,7 @@ if [ -z "$WK" ]; then
   exit 0
 fi
 
-VER="$("$WK" --version 2>/dev/null | head -1)" || VER="unknown"
+VER="$("$WK" --version 2>/dev/null | head -n 1)"
+[ -n "$VER" ] || VER="unknown"
 echo "[workit] ${VER}" >&2
 exit 0

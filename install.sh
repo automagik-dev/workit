@@ -157,7 +157,10 @@ verify_checksum() {
     _checksums="$3"
     _expected="$(grep " ${_name}$" "$_checksums" | awk '{print $1}' | head -n 1)"
     if [ -z "$_expected" ]; then
-        warn "Checksum not found for ${_name}; skipping verification"
+        if [ -z "${WK_RELEASE_URL:-}" ]; then
+            fail "Checksum entry not found for ${_name} in checksums.txt"
+        fi
+        warn "Checksum not found for ${_name}; skipping verification (custom WK_RELEASE_URL)"
         return 0
     fi
     _actual="$(sha256_file "$_path")" || return 0
@@ -221,8 +224,13 @@ download "$BINARY_URL" "$BINARY_ARCHIVE" || \
 CHECKSUMS_URL="${RELEASE_BASE_URL}/${TAG}/checksums.txt"
 CHECKSUMS_FILE="${TMPDIR_WORK}/checksums.txt"
 info "Downloading checksums: ${CHECKSUMS_URL}"
-download "$CHECKSUMS_URL" "$CHECKSUMS_FILE" || \
-    warn "Failed to download checksums.txt; skipping verification"
+if ! download "$CHECKSUMS_URL" "$CHECKSUMS_FILE"; then
+    if [ -z "${WK_RELEASE_URL:-}" ]; then
+        fail "Failed to download checksums.txt from official release"
+    else
+        warn "Failed to download checksums.txt; skipping verification (custom WK_RELEASE_URL)"
+    fi
+fi
 
 if [ -f "$CHECKSUMS_FILE" ]; then
     verify_checksum "$BINARY_FILENAME" "$BINARY_ARCHIVE" "$CHECKSUMS_FILE"
@@ -351,7 +359,13 @@ esac
 # ---------------------------------------------------------------------------
 printf "\n"
 printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-printf "${GREEN}✅ workit v%s installed${NC}\n" "$VERSION"
+if [ "$SKIP_BINARY" = true ] && [ -x "$TARGET" ]; then
+    DISPLAY_VER="$("$TARGET" --version 2>/dev/null | head -n 1)"
+    [ -n "$DISPLAY_VER" ] || DISPLAY_VER="unknown"
+    printf "${GREEN}✅ plugin updated; wk unchanged (%s)${NC}\n" "$DISPLAY_VER"
+else
+    printf "${GREEN}✅ workit v%s installed${NC}\n" "$VERSION"
+fi
 printf "\n"
 printf "Binary:  ~/.local/bin/wk\n"
 printf "Plugin:  ~/.workit/plugin/\n"
