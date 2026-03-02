@@ -415,7 +415,7 @@ if [ ! -t 0 ]; then
     printf "\n"
     printf "Next steps:\n"
     printf "  1. wk auth status                              → check existing accounts\n"
-    printf "  2. wk auth manage --print-url --no-input       → prints auth URL for user\n"
+    printf "  2. wk auth manage --no-input                   → prints auth URL for user\n"
     printf "  3. wk gmail search 'newer_than:1d' --json      → first query\n"
     printf "\n"
     printf "Available services: Gmail, Calendar, Drive, Sheets, Docs, Slides,\n"
