@@ -348,12 +348,14 @@ ok "Codex skills linked: ~/.agents/skills/workit"
 # OpenClaw integration (optional)
 # ---------------------------------------------------------------------------
 if command -v openclaw > /dev/null 2>&1; then
-    # Remove stale install before re-registering
+    # Uninstall first (while files may still exist) to keep config valid,
+    # then clean leftover directory, then reinstall fresh.
+    openclaw plugins uninstall workit --force 2>/dev/null || true
     rm -rf "${HOME}/.openclaw/extensions/workit" 2>/dev/null
     if openclaw plugins install "$PLUGIN_DIR/" 2>/dev/null; then
         ok "OpenClaw plugin registered"
     else
-        warn "OpenClaw detected, but plugin registration failed"
+        warn "OpenClaw detected, but plugin registration failed (run: openclaw doctor --fix)"
     fi
 fi
 
