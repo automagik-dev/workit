@@ -5,6 +5,11 @@ project_name: workit
 changelog:
   disable: true
 
+before:
+  hooks:
+    - mkdir -p dist
+    - tar -czf dist/workit-plugin_{{ .Version }}.tar.gz -C plugins workit
+
 builds:
   - id: wk
     main: ./cmd/wk
@@ -82,3 +87,7 @@ archives:
 
 checksum:
   name_template: checksums.txt
+
+release:
+  extra_files:
+    - glob: dist/workit-plugin_*.tar.gz
