@@ -65,10 +65,10 @@
 ### One Command (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/automagik-dev/workit/main/install.sh | sh
 ```
 
-This installs the latest release binary and bootstraps local skills.
+This downloads the pre-built binary for your platform from GitHub Releases and installs it to `~/.local/bin/wk`.
 
 ### Update
 
@@ -87,10 +87,12 @@ yay -S workit
 
 #### Build from source
 
+Requires Go 1.21+. See [INSTALL.md](INSTALL.md) for full developer build instructions.
+
 ```bash
 git clone https://github.com/automagik-dev/workit.git
 cd workit
-make
+make build
 ./bin/wk --help
 ```
 
