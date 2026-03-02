@@ -1,238 +1,392 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
+#!/bin/sh
 # ---------------------------------------------------------------------------
-# workit Local Developer Install
+# workit installer
 #
-# Run this AFTER cloning the repo. It builds the binary and optionally
-# installs it to your PATH (~/.local/bin).
+# Downloads and installs the wk binary and workit plugin from GitHub Releases.
 #
 # Usage:
-#   ./install.sh                  # build + install to ~/.local/bin
-#   ./install.sh --no-install     # build only (binary at bin/wk)
-#   ./install.sh --force          # overwrite existing install without asking
-#   ./install.sh --help           # show usage
+#   curl -sSL https://raw.githubusercontent.com/automagik-dev/workit/main/install.sh | sh
+#   sh install.sh [--force] [--version VERSION] [--help]
+#
+# Environment overrides:
+#   WK_RELEASE_URL  Base URL for downloads (default: https://github.com/automagik-dev/workit/releases/download)
+#                   Useful for offline/local testing with file:// URLs.
 # ---------------------------------------------------------------------------
+set -e
 
-# -- Colors ----------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Color support (detect terminal)
+# ---------------------------------------------------------------------------
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    BOLD='\033[1m'
+    NC='\033[0m'
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    BOLD=''
+    NC=''
+fi
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
-
-# -- Helpers ---------------------------------------------------------------
-
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 info()  { printf "${BLUE}[INFO]${NC}  %s\n" "$*"; }
 ok()    { printf "${GREEN}[OK]${NC}    %s\n" "$*"; }
 warn()  { printf "${YELLOW}[WARN]${NC}  %s\n" "$*"; }
-fail()  { printf "${RED}[FAIL]${NC}  %s\n" "$*"; exit 1; }
-step()  { printf "\n${BOLD}--- %s ---${NC}\n" "$*"; }
+fail()  { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; exit 1; }
 
-# -- Defaults --------------------------------------------------------------
-
-INSTALL_DIR="${HOME}/.local/bin"
-DO_INSTALL=true
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
 FORCE=false
-REQUIRED_GO_MAJOR=1
-REQUIRED_GO_MINOR=21
+VERSION=""
+GITHUB_REPO="automagik-dev/workit"
+GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
+RELEASE_BASE_URL="${WK_RELEASE_URL:-https://github.com/${GITHUB_REPO}/releases/download}"
+INSTALL_DIR="${HOME}/.local/bin"
+PLUGIN_DIR="${HOME}/.workit/plugin"
 
-# -- Parse flags -----------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Flag parsing
+# ---------------------------------------------------------------------------
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --help|-h)
+            cat <<EOF
+Usage: sh install.sh [OPTIONS]
 
-for arg in "$@"; do
-  case "$arg" in
-    --no-install)
-      DO_INSTALL=false
-      ;;
-    --force)
-      FORCE=true
-      ;;
-    --help|-h)
-      echo "Usage: ./install.sh [--no-install] [--force] [--help]"
-      echo ""
-      echo "Local developer install script. Run after cloning the repo."
-      echo ""
-      echo "Options:"
-      echo "  --no-install  Build only, do not copy binary to PATH"
-      echo "  --force       Overwrite existing installation without asking"
-      echo "  --help, -h    Show this help message"
-      echo ""
-      echo "Examples:"
-      echo "  ./install.sh                  # build + install to ~/.local/bin/wk"
-      echo "  ./install.sh --no-install     # build only (binary at ./bin/wk)"
-      exit 0
-      ;;
-    *)
-      fail "Unknown option: $arg (try --help)"
-      ;;
-  esac
+Downloads and installs workit (wk binary + plugin) from GitHub Releases.
+
+Options:
+  --force              Skip confirmation prompts and overwrite existing install
+  --version VERSION    Install a specific version (e.g. 2.260227.5)
+                       Default: latest release
+  --help, -h           Show this help message and exit
+
+Environment variables:
+  WK_RELEASE_URL       Override the base download URL (for offline/local testing)
+
+Examples:
+  sh install.sh
+  sh install.sh --force
+  sh install.sh --version 2.260227.5
+  WK_RELEASE_URL=file:///tmp/releases sh install.sh
+EOF
+            exit 0
+            ;;
+        --force)
+            FORCE=true
+            shift
+            ;;
+        --version)
+            shift
+            [ $# -gt 0 ] || fail "--version requires a VERSION argument"
+            VERSION="$1"
+            shift
+            ;;
+        --version=*)
+            VERSION="${1#--version=}"
+            [ -n "$VERSION" ] || fail "--version requires a VERSION argument"
+            shift
+            ;;
+        *)
+            fail "Unknown option: $1 (try --help)"
+            ;;
+    esac
 done
 
-# -- Step 1: Verify we are in the repo root --------------------------------
+# ---------------------------------------------------------------------------
+# Temp dir + cleanup trap
+# ---------------------------------------------------------------------------
+TMPDIR_WORK="$(mktemp -d)"
+cleanup() {
+    rm -rf "$TMPDIR_WORK"
+}
+trap cleanup EXIT INT TERM
 
-step "Checking repository"
-
-if [ ! -f "Makefile" ]; then
-  fail "Makefile not found. Please run this script from the workit repo root."
-fi
-
-if [ ! -d "cmd/wk" ]; then
-  fail "cmd/wk/ directory not found. Please run this script from the workit repo root."
-fi
-
-if [ ! -f "go.mod" ]; then
-  fail "go.mod not found. Please run this script from the workit repo root."
-fi
-
-ok "Repository root detected (Makefile, cmd/wk/, go.mod present)"
-
-# -- Step 2: Check Go is installed and version is sufficient ---------------
-
-step "Checking Go installation"
-
-if ! command -v go &>/dev/null; then
-  fail "Go is not installed. Please install Go ${REQUIRED_GO_MAJOR}.${REQUIRED_GO_MINOR}+ first.\n       See: https://go.dev/doc/install"
-fi
-
-GO_VERSION_RAW="$(go version)"
-# Extract major.minor from "go version go1.25.0 linux/amd64" or similar
-GO_VERSION="$(echo "$GO_VERSION_RAW" | sed -n 's/.*go\([0-9]*\.[0-9]*\).*/\1/p')"
-
-if [ -z "$GO_VERSION" ]; then
-  warn "Could not parse Go version from: $GO_VERSION_RAW"
-  warn "Continuing anyway -- build may fail if Go is too old."
+# ---------------------------------------------------------------------------
+# Detect downloader (curl or wget)
+# ---------------------------------------------------------------------------
+if command -v curl > /dev/null 2>&1; then
+    DOWNLOADER="curl"
+elif command -v wget > /dev/null 2>&1; then
+    DOWNLOADER="wget"
 else
-  GO_MAJOR="${GO_VERSION%%.*}"
-  GO_MINOR="${GO_VERSION##*.}"
-
-  if [ "$GO_MAJOR" -lt "$REQUIRED_GO_MAJOR" ] || \
-     { [ "$GO_MAJOR" -eq "$REQUIRED_GO_MAJOR" ] && [ "$GO_MINOR" -lt "$REQUIRED_GO_MINOR" ]; }; then
-    fail "Go ${GO_VERSION} found, but >= ${REQUIRED_GO_MAJOR}.${REQUIRED_GO_MINOR} is required.\n       Installed: ${GO_VERSION_RAW}\n       See: https://go.dev/doc/install"
-  fi
-
-  ok "Go ${GO_VERSION} detected (>= ${REQUIRED_GO_MAJOR}.${REQUIRED_GO_MINOR} required)"
+    fail "Neither curl nor wget found. Please install one and re-run."
 fi
 
-info "$(go version)"
+download() {
+    _url="$1"
+    _dest="$2"
+    if [ "$DOWNLOADER" = "curl" ]; then
+        curl -sSfL "$_url" -o "$_dest" || return 1
+    else
+        wget -q "$_url" -O "$_dest" || return 1
+    fi
+}
 
-# -- Step 3: Install dev tools via Makefile --------------------------------
+download_stdout() {
+    _url="$1"
+    if [ "$DOWNLOADER" = "curl" ]; then
+        curl -sSfL "$_url" || return 1
+    else
+        wget -q "$_url" -O - || return 1
+    fi
+}
 
-step "Installing dev tools (gofumpt, goimports, golangci-lint)"
+sha256_file() {
+    if command -v sha256sum > /dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    elif command -v shasum > /dev/null 2>&1; then
+        shasum -a 256 "$1" | awk '{print $1}'
+    else
+        warn "No SHA-256 tool found; skipping checksum verification"
+        return 1
+    fi
+}
 
-if ! make tools; then
-  fail "make tools failed. Check the output above for errors."
+verify_checksum() {
+    _name="$1"
+    _path="$2"
+    _checksums="$3"
+    _expected="$(grep " ${_name}$" "$_checksums" | awk '{print $1}' | head -n 1)"
+    if [ -z "$_expected" ]; then
+        if [ -z "${WK_RELEASE_URL:-}" ]; then
+            fail "Checksum entry not found for ${_name} in checksums.txt"
+        fi
+        warn "Checksum not found for ${_name}; skipping verification (custom WK_RELEASE_URL)"
+        return 0
+    fi
+    _actual="$(sha256_file "$_path")" || return 0
+    if [ "$_actual" != "$_expected" ]; then
+        fail "Checksum mismatch for ${_name} (expected: ${_expected}, got: ${_actual})"
+    fi
+    ok "Checksum verified: ${_name}"
+}
+
+# ---------------------------------------------------------------------------
+# OS / arch detection
+# ---------------------------------------------------------------------------
+OS_RAW="$(uname -s)"
+ARCH_RAW="$(uname -m)"
+
+case "$OS_RAW" in
+    Linux)  OS="linux" ;;
+    Darwin) OS="darwin" ;;
+    *)      fail "Unsupported OS: ${OS_RAW}. Only linux and darwin are supported." ;;
+esac
+
+case "$ARCH_RAW" in
+    x86_64)          ARCH="amd64" ;;
+    aarch64|arm64)   ARCH="arm64" ;;
+    *)               fail "Unsupported architecture: ${ARCH_RAW}. Only amd64 and arm64 are supported." ;;
+esac
+
+info "Detected platform: ${OS}/${ARCH}"
+
+# ---------------------------------------------------------------------------
+# Version resolution
+# ---------------------------------------------------------------------------
+if [ -z "$VERSION" ]; then
+    info "Fetching latest release version..."
+    RELEASE_JSON="$(download_stdout "$GITHUB_API" 2>/dev/null)" || \
+        fail "Failed to fetch release info from ${GITHUB_API}"
+
+    # Parse tag_name from JSON without jq (handles both "v2.x.y" and "2.x.y")
+    VERSION="$(printf '%s' "$RELEASE_JSON" | grep '"tag_name"' | sed 's/.*"tag_name"[[:space:]]*:[[:space:]]*"v\{0,1\}\([^"]*\)".*/\1/')"
+    [ -n "$VERSION" ] || fail "Could not parse version from GitHub API response."
 fi
 
-ok "Dev tools installed to .tools/"
+# Ensure TAG has the v prefix, VERSION does not
+VERSION="${VERSION#v}"
+TAG="v${VERSION}"
 
-# -- Step 4: Build the binary via Makefile ---------------------------------
+info "Installing workit ${TAG}"
 
-step "Building wk binary"
+# ---------------------------------------------------------------------------
+# Binary download and install
+# ---------------------------------------------------------------------------
+BINARY_FILENAME="workit_${VERSION}_${OS}_${ARCH}.tar.gz"
+BINARY_URL="${RELEASE_BASE_URL}/${TAG}/${BINARY_FILENAME}"
+BINARY_ARCHIVE="${TMPDIR_WORK}/${BINARY_FILENAME}"
 
-if ! make build; then
-  fail "make build failed. Check the output above for errors."
+info "Downloading binary: ${BINARY_URL}"
+download "$BINARY_URL" "$BINARY_ARCHIVE" || \
+    fail "Failed to download binary from ${BINARY_URL}"
+
+# Download checksums.txt for verification
+CHECKSUMS_URL="${RELEASE_BASE_URL}/${TAG}/checksums.txt"
+CHECKSUMS_FILE="${TMPDIR_WORK}/checksums.txt"
+info "Downloading checksums: ${CHECKSUMS_URL}"
+if ! download "$CHECKSUMS_URL" "$CHECKSUMS_FILE"; then
+    if [ -z "${WK_RELEASE_URL:-}" ]; then
+        fail "Failed to download checksums.txt from official release"
+    else
+        warn "Failed to download checksums.txt; skipping verification (custom WK_RELEASE_URL)"
+    fi
 fi
 
-if [ ! -f "bin/wk" ]; then
-  fail "Build appeared to succeed but bin/wk was not created."
+if [ -f "$CHECKSUMS_FILE" ]; then
+    verify_checksum "$BINARY_FILENAME" "$BINARY_ARCHIVE" "$CHECKSUMS_FILE"
 fi
 
-ok "Binary built at bin/wk"
+info "Extracting binary..."
+tar -xzf "$BINARY_ARCHIVE" -C "$TMPDIR_WORK"
 
-# -- Step 5: Verify the binary works ---------------------------------------
+# Find the wk binary in the extracted files
+WK_BINARY="$(find "$TMPDIR_WORK" -type f -name 'wk' | head -n 1)"
+[ -n "$WK_BINARY" ] || fail "Could not find 'wk' binary in archive ${BINARY_FILENAME}"
 
-step "Verifying binary"
-
-WK_VERSION_OUTPUT="$(./bin/wk --version 2>&1 || true)"
-
-if [ -z "$WK_VERSION_OUTPUT" ]; then
-  warn "bin/wk --version produced no output (binary may still be functional)"
-else
-  ok "bin/wk --version: ${WK_VERSION_OUTPUT}"
-fi
-
-# -- Step 6: Optionally install to ~/.local/bin ----------------------------
-
-if [ "$DO_INSTALL" = true ]; then
-  step "Installing to ${INSTALL_DIR}"
-
-  TARGET="${INSTALL_DIR}/wk"
-
-  # Check if target already exists
-  if [ -f "$TARGET" ] && [ "$FORCE" = false ]; then
+# Check for existing install
+TARGET="${INSTALL_DIR}/wk"
+SKIP_BINARY=false
+if [ -f "$TARGET" ] && [ "$FORCE" = false ]; then
+    EXISTING_VERSION="$("$TARGET" --version 2>/dev/null || echo "unknown")"
     warn "Existing installation found at ${TARGET}"
-    EXISTING_VERSION="$("$TARGET" --version 2>&1 || echo "unknown")"
-    info "Existing version: ${EXISTING_VERSION}"
-    printf "${YELLOW}Overwrite? [y/N]${NC} "
-    read -r REPLY
-    if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then
-      info "Skipped installation to PATH. Binary is available at ./bin/wk"
-      DO_INSTALL=false
+    info "Installed version : ${EXISTING_VERSION}"
+    info "New version       : ${VERSION}"
+    if [ ! -t 0 ]; then
+        warn "Non-interactive mode: skipping binary overwrite (use --force to replace)"
+        info "Continuing with plugin installation..."
+        SKIP_BINARY=true
+    else
+        printf "Overwrite? [y/N] "
+        read -r REPLY
+        case "$REPLY" in
+            [Yy]*) ;;
+            *) info "Skipping binary overwrite. Continuing with plugin..."; SKIP_BINARY=true ;;
+        esac
     fi
-  fi
-
-  if [ "$DO_INSTALL" = true ]; then
-    mkdir -p "$INSTALL_DIR"
-    cp bin/wk "$TARGET"
-    chmod +x "$TARGET"
-
-    ok "Installed to ${TARGET}"
-
-    # Check if INSTALL_DIR is on PATH
-    if [[ ":${PATH}:" != *":${INSTALL_DIR}:"* ]]; then
-      echo ""
-      warn "${INSTALL_DIR} is not in your PATH."
-      info "Add it to your shell profile:"
-      echo ""
-      echo "  # bash (~/.bashrc or ~/.bash_profile)"
-      echo "  export PATH=\"\$PATH:${INSTALL_DIR}\""
-      echo ""
-      echo "  # zsh (~/.zshrc)"
-      echo "  export PATH=\"\$PATH:${INSTALL_DIR}\""
-      echo ""
-      info "Then reload your shell:  source ~/.bashrc  (or source ~/.zshrc)"
-    fi
-  fi
-else
-  info "Skipping PATH installation (--no-install). Binary is at ./bin/wk"
 fi
 
-# -- Step 7: Print next steps ----------------------------------------------
+if [ "$SKIP_BINARY" = false ]; then
+    mkdir -p "$INSTALL_DIR"
+    cp "$WK_BINARY" "$TARGET"
+    chmod +x "$TARGET"
+    ok "Binary installed: ${TARGET}"
 
-step "Next steps"
+    # macOS quarantine removal
+    if [ "$OS" = "darwin" ]; then
+        xattr -d com.apple.quarantine "$TARGET" 2>/dev/null || true
+    fi
+else
+    info "Binary unchanged at ${TARGET}"
+fi
 
-echo ""
-printf "${BOLD}1. Set up OAuth credentials${NC}\n"
-echo "   You need Google OAuth client credentials to authenticate."
-echo ""
-echo "   Option A -- Credentials file:"
-echo "     mkdir -p ~/.config/workit && chmod 700 ~/.config/workit"
-echo "     cat > ~/.config/workit/credentials.env << 'CRED'"
-echo "     WK_CLIENT_ID=your-client-id"
-echo "     WK_CLIENT_SECRET=your-client-secret"
-echo "     WK_CALLBACK_SERVER=https://your-callback-server.example.com"
-echo "     CRED"
-echo ""
-echo "   Option B -- Environment variables:"
-echo "     export WK_CLIENT_ID=\"your-client-id\""
-echo "     export WK_CLIENT_SECRET=\"your-client-secret\""
-echo ""
-echo "   Option C -- JSON credentials file (standard Google format):"
-echo "     wk auth credentials ~/path/to/client_secret.json"
-echo ""
-printf "${BOLD}2. Authenticate a Google account${NC}\n"
-echo "   wk auth add you@gmail.com --headless --services=user"
-echo ""
-printf "${BOLD}3. Verify everything works${NC}\n"
-echo "   wk auth list --check"
-echo "   wk gmail labels list --account you@gmail.com"
-echo ""
-printf "${BOLD}4. For headless/server environments${NC}\n"
-echo "   export WK_KEYRING_BACKEND=file"
-echo "   export WK_KEYRING_PASSWORD=\"your-secure-password\""
-echo ""
-info "Full documentation: see INSTALL.md in this repository."
-echo ""
-ok "workit setup complete."
+# ---------------------------------------------------------------------------
+# Plugin download and install
+# ---------------------------------------------------------------------------
+PLUGIN_FILENAME="workit-plugin_${VERSION}.tar.gz"
+PLUGIN_URL="${RELEASE_BASE_URL}/${TAG}/${PLUGIN_FILENAME}"
+PLUGIN_ARCHIVE="${TMPDIR_WORK}/${PLUGIN_FILENAME}"
+
+info "Downloading plugin: ${PLUGIN_URL}"
+download "$PLUGIN_URL" "$PLUGIN_ARCHIVE" || \
+    fail "Failed to download plugin from ${PLUGIN_URL}"
+
+if [ -f "$CHECKSUMS_FILE" ]; then
+    verify_checksum "$PLUGIN_FILENAME" "$PLUGIN_ARCHIVE" "$CHECKSUMS_FILE"
+fi
+
+info "Installing plugin to ${PLUGIN_DIR}..."
+
+# Remove old plugin contents and recreate directory
+rm -rf "$PLUGIN_DIR"
+mkdir -p "$PLUGIN_DIR"
+
+# The tarball extracts to a workit/ root directory; move contents into PLUGIN_DIR
+PLUGIN_EXTRACT="${TMPDIR_WORK}/plugin_extract"
+mkdir -p "$PLUGIN_EXTRACT"
+tar -xzf "$PLUGIN_ARCHIVE" -C "$PLUGIN_EXTRACT"
+
+# Move the extracted contents (inside workit/ subdirectory) to PLUGIN_DIR
+if [ -d "${PLUGIN_EXTRACT}/workit" ]; then
+    cp -r "${PLUGIN_EXTRACT}/workit/." "$PLUGIN_DIR/"
+else
+    # Fallback: move everything directly
+    cp -r "${PLUGIN_EXTRACT}/." "$PLUGIN_DIR/"
+fi
+
+ok "Plugin installed: ${PLUGIN_DIR}"
+
+# ---------------------------------------------------------------------------
+# Claude Code integration
+# ---------------------------------------------------------------------------
+mkdir -p "${HOME}/.claude/plugins"
+ln -sfn "$PLUGIN_DIR" "${HOME}/.claude/plugins/workit"
+ok "Claude Code plugin linked: ~/.claude/plugins/workit"
+
+# ---------------------------------------------------------------------------
+# OpenClaw integration (optional)
+# ---------------------------------------------------------------------------
+if command -v openclaw > /dev/null 2>&1; then
+    if openclaw plugins install "$PLUGIN_DIR/" 2>/dev/null; then
+        ok "OpenClaw plugin registered"
+    else
+        warn "OpenClaw detected, but plugin registration failed"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# PATH check
+# ---------------------------------------------------------------------------
+case ":${PATH}:" in
+    *":${INSTALL_DIR}:"*) ;;
+    *)
+        echo ""
+        warn "${INSTALL_DIR} is not in your PATH."
+        info "Add it to your shell profile:"
+        echo ""
+        echo "  # bash (~/.bashrc or ~/.bash_profile)"
+        echo "  export PATH=\"\$PATH:${INSTALL_DIR}\""
+        echo ""
+        echo "  # zsh (~/.zshrc)"
+        echo "  export PATH=\"\$PATH:${INSTALL_DIR}\""
+        echo ""
+        info "Then reload your shell: source ~/.bashrc  (or source ~/.zshrc)"
+        echo ""
+        ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Bootstrap prompt
+# ---------------------------------------------------------------------------
+printf "\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+if [ "$SKIP_BINARY" = true ] && [ -x "$TARGET" ]; then
+    DISPLAY_VER="$("$TARGET" --version 2>/dev/null | head -n 1)"
+    [ -n "$DISPLAY_VER" ] || DISPLAY_VER="unknown"
+    printf "${GREEN}✅ plugin updated; wk unchanged (%s)${NC}\n" "$DISPLAY_VER"
+else
+    printf "${GREEN}✅ workit v%s installed${NC}\n" "$VERSION"
+fi
+printf "\n"
+printf "Binary:  ~/.local/bin/wk\n"
+printf "Plugin:  ~/.workit/plugin/\n"
+printf "Skills:  loaded (Gmail, Calendar, Drive, Sheets, Docs, Slides, Chat, ...)\n"
+printf "Relay:   https://auth.automagik.dev (no GCP setup needed)\n"
+printf "\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "AGENT BOOTSTRAP PROMPT\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "\n"
+printf "You now have access to Google Workspace via the \`wk\` CLI (workit v%s).\n" "$VERSION"
+printf "No GCP setup needed — auth runs through https://auth.automagik.dev.\n"
+printf "\n"
+printf "Quick start:\n"
+printf "  wk auth status          → check if accounts are already connected\n"
+printf "  wk auth manage          → add an account (opens browser or prints URL for headless)\n"
+printf "  wk auth add EMAIL --headless --no-input  → for fully unattended agent flow\n"
+printf "\n"
+printf "Available services: Gmail, Calendar, Drive, Sheets, Docs, Slides,\n"
+printf "                    Chat, Classroom, Tasks, Contacts, Keep, Forms, AppScript\n"
+printf "\n"
+printf "Ask the user what they want to do, then load the relevant skill file.\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "\n"

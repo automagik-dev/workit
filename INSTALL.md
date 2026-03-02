@@ -1,24 +1,57 @@
-# workit — Quick Install for OpenClaw Agents
+# workit — Installation Guide
 
 > Give your OpenClaw agent full access to Google Workspace (Gmail, Calendar, Drive, Docs, Sheets, Contacts, Tasks, and more) via CLI.
 
-## 1. Install the Binary
+## 1. Quick Install (Recommended)
+
+Install the latest release binary and Claude Code skill in one command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/automagik-dev/workit/main/install.sh | sh
 ```
 
-For subsequent upgrades:
+This downloads the pre-built binary for your platform from GitHub Releases and installs it to `~/.local/bin/wk`.
+
+### Installer Flags
+
+Pass flags after a `--` separator when piping to `sh`:
+
+```bash
+# Force overwrite an existing installation
+curl -sSL https://raw.githubusercontent.com/automagik-dev/workit/main/install.sh | sh -s -- --force
+
+# Install a specific version
+curl -sSL https://raw.githubusercontent.com/automagik-dev/workit/main/install.sh | sh -s -- --version v0.5.0
+
+# Show installer help
+curl -sSL https://raw.githubusercontent.com/automagik-dev/workit/main/install.sh | sh -s -- --help
+```
+
+| Flag | Description |
+|------|-------------|
+| `--force` | Overwrite existing installation without prompting |
+| `--version VERSION` | Install a specific release tag (e.g. `v0.5.0`) |
+| `--help` | Show installer usage |
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `WK_RELEASE_URL` | Override the download URL (useful for offline/air-gapped testing) |
+
+### Update
 
 ```bash
 wk update
 ```
 
+---
+
 ## 2. Configure Credentials
 
 **Option A: Pre-built binary (recommended for internal use)**
 
-If the binary was built with `make build-internal`, it already has OAuth credentials. Skip to step 3.
+If the binary was built with `make build-internal`, it already has OAuth credentials baked in. Skip to step 3.
 
 **Option B: Environment variables**
 
@@ -33,6 +66,8 @@ export WK_CALLBACK_SERVER="https://auth.example.com"
 ```bash
 wk auth credentials ~/path/to/client_secret.json
 ```
+
+---
 
 ## 3. Authenticate a Google Account
 
@@ -57,6 +92,8 @@ wk auth add you@gmail.com --services=user
 # Opens browser, complete login, done.
 ```
 
+---
+
 ## 4. Set Up Keyring (Headless Environments)
 
 On servers without a desktop keychain:
@@ -69,6 +106,8 @@ wk auth keyring file
 export WK_KEYRING_PASSWORD="your-secure-password"
 ```
 
+---
+
 ## 5. Verify It Works
 
 ```bash
@@ -80,6 +119,8 @@ wk gmail labels list --account you@gmail.com
 wk drive list --account you@gmail.com
 wk calendar events list --account you@gmail.com
 ```
+
+---
 
 ## 6. Add to OpenClaw Config
 
@@ -132,6 +173,8 @@ Access Gmail, Calendar, Drive, Docs, Sheets, Contacts, Tasks via `wk` CLI.
 - Multiple accounts supported: `wk auth add second@gmail.com`
 ```
 
+---
+
 ## 7. Drive Sync Setup (optional)
 
 To sync a Google Drive folder to a local directory:
@@ -160,18 +203,78 @@ Changes sync bidirectionally:
 
 ---
 
+## 8. Build from Source (Developer / Contributor)
+
+If you want to contribute to workit or build a custom binary, you need Go 1.21+ and the repo cloned locally.
+
+### Requirements
+
+- Go 1.21 or newer — [go.dev/doc/install](https://go.dev/doc/install)
+- GNU Make
+
+### Quick Build
+
+```bash
+git clone https://github.com/automagik-dev/workit.git
+cd workit
+make build
+./bin/wk --help
+```
+
+### Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| `make build` | Build binary to `bin/wk` (community build, no baked-in credentials) |
+| `make build-automagik` | Build with Automagik OAuth credentials (requires internal secrets) |
+| `make build-internal` | Build with internal-use baked-in credentials |
+| `make tools` | Install dev tools (`gofumpt`, `goimports`, `golangci-lint`) to `.tools/` |
+| `make test` | Run test suite |
+| `make lint` | Run linter |
+| `make install` | Install `bin/wk` to `~/.local/bin` |
+
+### Developer Credential Setup
+
+When building from source you need to supply your own OAuth credentials:
+
+```bash
+# Option A: Environment variables
+export WK_CLIENT_ID="your-client-id"
+export WK_CLIENT_SECRET="your-client-secret"
+export WK_CALLBACK_SERVER="https://auth.example.com"
+
+# Option B: Credentials file
+mkdir -p ~/.config/workit && chmod 700 ~/.config/workit
+cat > ~/.config/workit/credentials.env << 'CRED'
+WK_CLIENT_ID=your-client-id
+WK_CLIENT_SECRET=your-client-secret
+WK_CALLBACK_SERVER=https://your-callback-server.example.com
+CRED
+```
+
+Then build and install:
+
+```bash
+make build
+make install   # copies bin/wk to ~/.local/bin
+```
+
+After building, proceed with [Configure Credentials](#2-configure-credentials) above.
+
+---
+
 ## TL;DR for Agents
 
 ```bash
 # Install
-curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/automagik-dev/workit/main/install.sh | sh
 
 # Update
 wk update
 
 # Configure (if not using pre-built binary)
 export WK_CLIENT_ID="xxx"
-export WK_CLIENT_SECRET="xxx" 
+export WK_CLIENT_SECRET="xxx"
 export WK_CALLBACK_SERVER="https://auth.example.com"
 export WK_KEYRING_BACKEND=file
 export WK_KEYRING_PASSWORD="secure-password"
