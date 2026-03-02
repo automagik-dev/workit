@@ -323,6 +323,14 @@ ln -sfn "$PLUGIN_DIR" "${HOME}/.claude/plugins/workit"
 ok "Claude Code plugin linked: ~/.claude/plugins/workit"
 
 # ---------------------------------------------------------------------------
+# Codex integration (optional)
+# ---------------------------------------------------------------------------
+CODEX_SKILLS_DIR="${HOME}/.agents/skills"
+mkdir -p "$CODEX_SKILLS_DIR"
+ln -sfn "${PLUGIN_DIR}/skills" "${CODEX_SKILLS_DIR}/workit"
+ok "Codex skills linked: ~/.agents/skills/workit"
+
+# ---------------------------------------------------------------------------
 # OpenClaw integration (optional)
 # ---------------------------------------------------------------------------
 if command -v openclaw > /dev/null 2>&1; then
@@ -369,6 +377,8 @@ fi
 printf "\n"
 printf "Binary:  ~/.local/bin/wk\n"
 printf "Plugin:  ~/.workit/plugin/\n"
+printf "Claude:  ~/.claude/plugins/workit\n"
+printf "Codex:   ~/.agents/skills/workit\n"
 printf "Skills:  loaded (Gmail, Calendar, Drive, Sheets, Docs, Slides, Chat, ...)\n"
 printf "Relay:   https://auth.automagik.dev (no GCP setup needed)\n"
 printf "\n"
