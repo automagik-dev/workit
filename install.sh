@@ -203,6 +203,10 @@ if [ -f "$TARGET" ] && [ "$FORCE" = false ]; then
     warn "Existing installation found at ${TARGET}"
     info "Installed version : ${EXISTING_VERSION}"
     info "New version       : ${VERSION}"
+    if [ ! -t 0 ]; then
+        warn "Running non-interactively; use --force to overwrite existing install."
+        exit 0
+    fi
     printf "Overwrite? [y/N] "
     read -r REPLY
     case "$REPLY" in
