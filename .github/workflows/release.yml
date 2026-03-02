@@ -114,3 +114,5 @@ jobs:
           args: release --clean --config /tmp/.goreleaser.yaml --release-notes /tmp/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          WK_CLIENT_ID: ${{ secrets.WK_CLIENT_ID }}
+          WK_CLIENT_SECRET: ${{ secrets.WK_CLIENT_SECRET }}

@@ -20,6 +20,8 @@ builds:
       -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
       -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
       -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientID={{ .Env.WK_CLIENT_ID }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientSecret={{ .Env.WK_CLIENT_SECRET }}
     env:
       - CGO_ENABLED=0
     targets:
@@ -36,6 +38,8 @@ builds:
       -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
       -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
       -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientID={{ .Env.WK_CLIENT_ID }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientSecret={{ .Env.WK_CLIENT_SECRET }}
     env:
       - CGO_ENABLED=1
     targets:
@@ -50,6 +54,8 @@ builds:
       -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
       -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
       -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientID={{ .Env.WK_CLIENT_ID }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientSecret={{ .Env.WK_CLIENT_SECRET }}
     env:
       - CGO_ENABLED=0
     targets:
@@ -66,6 +72,8 @@ builds:
       -X github.com/automagik-dev/workit/internal/cmd.branch={{ .Branch }}
       -X github.com/automagik-dev/workit/internal/cmd.commit={{ .ShortCommit }}
       -X github.com/automagik-dev/workit/internal/cmd.date={{ .Date }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientID={{ .Env.WK_CLIENT_ID }}
+      -X github.com/automagik-dev/workit/internal/config.DefaultClientSecret={{ .Env.WK_CLIENT_SECRET }}
     env:
       - CGO_ENABLED=1
     targets:
