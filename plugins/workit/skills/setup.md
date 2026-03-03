@@ -101,7 +101,7 @@ wk auth service-account unset
 
 ## 8) Recommended pattern in agents
 1. `wk auth status` — check if account already exists
-2. If not: `wk auth manage --no-input` — prints auth URL for user to open
+2. If not: `wk auth manage` — opens auth (prints URL on headless, browser otherwise)
 3. `wk auth services` — verify services are authorized
 4. Read operations: add `--read-only`
 5. Write operations: `--dry-run` first, then without after confirmation
