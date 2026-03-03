@@ -16,6 +16,7 @@ import (
 	"github.com/automagik-dev/workit/internal/googleauth"
 	"github.com/automagik-dev/workit/internal/outfmt"
 	"github.com/automagik-dev/workit/internal/secrets"
+	"github.com/automagik-dev/workit/internal/setup"
 	"github.com/automagik-dev/workit/internal/ui"
 )
 
@@ -730,6 +731,11 @@ func (c *AuthAddCmd) handleRemoteAuthStep(
 func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []googleauth.Service, scopes []string) error {
 	u := ui.FromContext(ctx)
 
+	// Auto-setup keyring password for Linux headless environments.
+	if err := setup.SetupKeyringIfNeeded(os.Stderr); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: keyring auto-setup failed: %v\n", err)
+	}
+
 	// Pre-flight: ensure keychain is accessible before starting headless OAuth.
 	if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
 		return fmt.Errorf("keychain access: %w", keychainErr)
@@ -879,6 +885,11 @@ type AuthPollCmd struct {
 
 func (c *AuthPollCmd) Run(ctx context.Context) error {
 	u := ui.FromContext(ctx)
+
+	// Auto-setup keyring password for Linux headless environments.
+	if err := setup.SetupKeyringIfNeeded(os.Stderr); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: keyring auto-setup failed: %v\n", err)
+	}
 
 	if strings.TrimSpace(c.State) == "" {
 		return usage("state is required")
