@@ -4,14 +4,17 @@ package setup
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/automagik-dev/workit/internal/config"
 	"github.com/automagik-dev/workit/internal/secrets"
@@ -41,8 +44,9 @@ var (
 // NeedsFileBackendSetup reports whether the current environment will use
 // the keyring file backend and therefore needs automatic password setup.
 //
-// Returns true on Linux when the resolved backend is "auto" and no
-// DBUS_SESSION_BUS_ADDRESS is set (headless environment).
+// Returns true on Linux when the resolved backend is "auto" and either
+// no DBUS_SESSION_BUS_ADDRESS is set, or D-Bus is present but the
+// org.freedesktop.secrets service (gnome-keyring/KeePassXC) is not available.
 func NeedsFileBackendSetup(goos string, dbusAddr string) (bool, error) {
 	if goos != "linux" {
 		return false, nil
@@ -59,19 +63,52 @@ func NeedsFileBackendSetup(goos string, dbusAddr string) (bool, error) {
 		return false, nil
 	}
 
-	// D-Bus present means SecretService/gnome-keyring is likely available.
-	if dbusAddr != "" {
-		return false, nil
+	// No D-Bus at all → definitely needs file backend.
+	if dbusAddr == "" {
+		return true, nil
 	}
 
-	return true, nil
+	// D-Bus is present, but SecretService might not be running
+	// (common on headless servers with systemd but no gnome-keyring).
+	// Probe for the org.freedesktop.secrets name on the session bus.
+	if !isSecretServiceAvailable() {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// secretServiceProbeTimeout is the maximum time to wait for dbus-send to respond.
+const secretServiceProbeTimeout = 2 * time.Second
+
+// isSecretServiceAvailable checks whether the org.freedesktop.secrets D-Bus
+// service is registered on the session bus. Returns false if dbus-send is not
+// installed or the service is not available.
+var isSecretServiceAvailable = func() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), secretServiceProbeTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "dbus-send", //nolint:gosec // fixed arguments
+		"--session",
+		"--dest=org.freedesktop.DBus",
+		"--type=method_call",
+		"--print-reply",
+		"/org/freedesktop/DBus",
+		"org.freedesktop.DBus.NameHasOwner",
+		"string:org.freedesktop.secrets",
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), "true")
 }
 
 // SetupKeyringIfNeeded detects whether the file keyring backend will be used
 // and, if so, generates a random password, saves it to keyring.key, writes
 // credentials.env, and configures the user's shell profile to source it.
 //
-// On macOS or Linux with D-Bus present, this is a no-op.
+// On macOS or Linux with a working SecretService, this is a no-op.
 // If keyring.key already exists, the existing password is reused.
 //
 // Status messages are written to w (typically os.Stderr).

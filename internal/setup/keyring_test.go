@@ -11,15 +11,22 @@ import (
 )
 
 func TestNeedsFileBackendSetup(t *testing.T) {
-	// Save and restore the original resolveBackendInfo.
+	// Save and restore the original stubs.
 	origResolve := resolveBackendInfo
+	origProbe := isSecretServiceAvailable
 
-	t.Cleanup(func() { resolveBackendInfo = origResolve })
+	t.Cleanup(func() {
+		resolveBackendInfo = origResolve
+		isSecretServiceAvailable = origProbe
+	})
 
 	// Mock: return "auto" backend with "default" source (typical fresh install).
 	resolveBackendInfo = func() (secrets.KeyringBackendInfo, error) {
 		return secrets.KeyringBackendInfo{Value: "auto", Source: "default"}, nil
 	}
+
+	// Mock: SecretService is available (for dbus-present cases).
+	isSecretServiceAvailable = func() bool { return true }
 
 	tests := []struct {
 		name     string
@@ -28,7 +35,7 @@ func TestNeedsFileBackendSetup(t *testing.T) {
 		want     bool
 	}{
 		{"linux headless", "linux", "", true},
-		{"linux with dbus", "linux", "/run/user/1000/bus", false},
+		{"linux with dbus and secret service", "linux", "/run/user/1000/bus", false},
 		{"darwin", "darwin", "", false},
 		{"darwin with dbus", "darwin", "/tmp/bus", false},
 		{"windows", "windows", "", false},
@@ -46,6 +53,18 @@ func TestNeedsFileBackendSetup(t *testing.T) {
 			}
 		})
 	}
+
+	// D-Bus present but SecretService NOT running → needs file backend.
+	t.Run("linux with dbus but no secret service", func(t *testing.T) {
+		isSecretServiceAvailable = func() bool { return false }
+		got, err := NeedsFileBackendSetup("linux", "/run/user/1000/bus")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !got {
+			t.Error("expected true when D-Bus present but SecretService unavailable")
+		}
+	})
 }
 
 func TestNeedsFileBackendSetup_ExplicitBackend(t *testing.T) {
@@ -371,11 +390,13 @@ func TestSetupKeyringIfNeeded_NoOp_LinuxWithDBus(t *testing.T) {
 	origGOOS := runtimeGOOS
 	origResolve := resolveBackendInfo
 	origGetenv := getenv
+	origProbe := isSecretServiceAvailable
 
 	t.Cleanup(func() {
 		runtimeGOOS = origGOOS
 		resolveBackendInfo = origResolve
 		getenv = origGetenv
+		isSecretServiceAvailable = origProbe
 	})
 
 	runtimeGOOS = "linux"
@@ -389,6 +410,8 @@ func TestSetupKeyringIfNeeded_NoOp_LinuxWithDBus(t *testing.T) {
 
 		return ""
 	}
+	// Mock SecretService as available so setup is a no-op.
+	isSecretServiceAvailable = func() bool { return true }
 
 	var buf bytes.Buffer
 	if err := SetupKeyringIfNeeded(&buf); err != nil {
