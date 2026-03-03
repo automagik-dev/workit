@@ -19,30 +19,28 @@ Check: `wk version` and `wk auth status`
 
 ## Auth flows by environment
 
+### Agent / automation / headless server (recommended)
+```bash
+wk auth add user@example.com --headless
+# Prints a Google login URL → user opens it in any browser
+# CLI polls auth.automagik.dev until token arrives, then stores it
+# Keyring auto-configured on headless Linux — no manual setup needed
+```
+
+### Two-step (scripting / no-poll)
+```bash
+wk auth add user@example.com --headless --no-poll
+# Prints URL + state, returns immediately
+wk auth poll <state>
+# Polls and stores token when ready
+```
+
 ### Desktop / laptop
 ```bash
 wk auth manage   # opens browser, auto-closes after login
 ```
 
-### Remote server / VPS (SSH headless)
-```bash
-wk auth manage   # detects no TTY, prints URL with server outbound IP
-# Open printed URL in your browser — auth completes automatically
-```
-
-### Agent / automation (fully unattended)
-```bash
-wk auth add user@example.com --headless --no-input
-# Prints a Google login URL. User (or automation) opens it.
-# CLI polls auth.automagik.dev until token arrives, then stores it.
-```
-
-### Get just the URL (for scripting)
-```bash
-wk auth manage --print-url   # prints JSON: {"url":"https://...","state":"..."}
-```
-
-**Linux headless keyring:** auto-configured. No manual setup or `source` needed after v2.260227.4+.
+**Linux headless keyring:** auto-configured. No manual setup or `source` needed after v2.260303.2+.
 
 ---
 
@@ -101,7 +99,7 @@ wk auth service-account unset
 
 ## 8) Recommended pattern in agents
 1. `wk auth status` — check if account already exists
-2. If not: `wk auth manage` — opens auth (prints URL on headless, browser otherwise)
+2. If not: `wk auth add user@example.com --headless` — prints auth URL, polls until done
 3. `wk auth services` — verify services are authorized
 4. Read operations: add `--read-only`
 5. Write operations: `--dry-run` first, then without after confirmation
