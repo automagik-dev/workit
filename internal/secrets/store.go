@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -138,6 +139,22 @@ func fileKeyringPasswordFuncFrom(password string, passwordSet bool, isTTY bool) 
 
 func fileKeyringPasswordFunc() keyring.PromptFunc {
 	password, passwordSet := os.LookupEnv(keyringPasswordEnv)
+
+	// Fallback: if env var not set, try reading the auto-generated keyring.key file.
+	// This covers the gap between keyring auto-setup (which writes keyring.key and
+	// updates the shell profile) and the user's next shell session (where the profile
+	// source directive takes effect).
+	if !passwordSet {
+		if dir, err := config.Dir(); err == nil {
+			if data, err := os.ReadFile(filepath.Join(dir, "keyring.key")); err == nil { //nolint:gosec // config path
+				if pw := strings.TrimSpace(string(data)); pw != "" {
+					password = pw
+					passwordSet = true
+				}
+			}
+		}
+	}
+
 	return fileKeyringPasswordFuncFrom(password, passwordSet, term.IsTerminal(int(os.Stdin.Fd())))
 }
 
