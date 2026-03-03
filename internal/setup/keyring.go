@@ -88,7 +88,7 @@ var isSecretServiceAvailable = func() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), secretServiceProbeTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "dbus-send", //nolint:gosec // fixed arguments
+	cmd := exec.CommandContext(ctx, "dbus-send",
 		"--session",
 		"--dest=org.freedesktop.DBus",
 		"--type=method_call",

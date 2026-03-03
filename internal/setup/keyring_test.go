@@ -57,10 +57,12 @@ func TestNeedsFileBackendSetup(t *testing.T) {
 	// D-Bus present but SecretService NOT running → needs file backend.
 	t.Run("linux with dbus but no secret service", func(t *testing.T) {
 		isSecretServiceAvailable = func() bool { return false }
+
 		got, err := NeedsFileBackendSetup("linux", "/run/user/1000/bus")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+
 		if !got {
 			t.Error("expected true when D-Bus present but SecretService unavailable")
 		}
