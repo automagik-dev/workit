@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 // openTestDB opens an in-memory SQLite database with the sync schema.
 func openTestDB(t *testing.T) *DB {
 	t.Helper()
 
-	sqlDB, err := sql.Open("sqlite3", "file::memory:?cache=shared")
+	sqlDB, err := sql.Open("sqlite", "file::memory:?cache=shared")
 	if err != nil {
 		t.Fatalf("open in-memory db: %v", err)
 	}

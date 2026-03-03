@@ -524,6 +524,13 @@ func (c *DriveMkdirCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return usage("empty name")
 	}
 
+	if dryRunErr := dryRunExit(ctx, flags, "drive.mkdir", map[string]any{
+		"name":   name,
+		"parent": strings.TrimSpace(c.Parent),
+	}); dryRunErr != nil {
+		return dryRunErr
+	}
+
 	svc, err := newDriveService(ctx, account)
 	if err != nil {
 		return err
