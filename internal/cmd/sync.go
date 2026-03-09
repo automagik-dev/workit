@@ -420,7 +420,7 @@ type SyncServiceCmd struct {
 
 // SyncServiceInstallCmd installs the sync daemon as a managed service.
 type SyncServiceInstallCmd struct {
-	Manager  string `name:"manager" help:"Service manager: systemd, pm2, launchd (auto-detected if omitted)" enum:"systemd,pm2,launchd,"`
+	Manager  string `name:"manager" help:"Service manager: systemd, pm2, launchd (auto-detected if omitted)" optional:""`
 	Path     string `arg:"" name:"local-path" help:"Local directory path to sync"`
 	Conflict string `name:"conflict" help:"Conflict resolution strategy" default:"rename" enum:"rename,local-wins,remote-wins"`
 }
@@ -473,7 +473,7 @@ func (c *SyncServiceInstallCmd) Run(ctx context.Context, flags *RootFlags) error
 
 // SyncServiceUninstallCmd removes the sync service.
 type SyncServiceUninstallCmd struct {
-	Manager string `name:"manager" help:"Service manager (auto-detected if omitted)" enum:"systemd,pm2,launchd,"`
+	Manager string `name:"manager" help:"Service manager (auto-detected if omitted)" optional:""`
 }
 
 func (c *SyncServiceUninstallCmd) Run(ctx context.Context, flags *RootFlags) error {
@@ -502,7 +502,7 @@ func (c *SyncServiceUninstallCmd) Run(ctx context.Context, flags *RootFlags) err
 
 // SyncServiceStatusCmd checks the status of the sync service.
 type SyncServiceStatusCmd struct {
-	Manager string `name:"manager" help:"Service manager (auto-detected if omitted)" enum:"systemd,pm2,launchd,"`
+	Manager string `name:"manager" help:"Service manager (auto-detected if omitted)" optional:""`
 }
 
 func (c *SyncServiceStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
@@ -535,7 +535,12 @@ func (c *SyncServiceStatusCmd) Run(ctx context.Context, flags *RootFlags) error 
 // resolveServiceManager returns the specified manager or auto-detects one.
 func resolveServiceManager(name string) (sync.ServiceManager, error) {
 	if name != "" {
-		return sync.ServiceManager(name), nil
+		switch sync.ServiceManager(name) {
+		case sync.ServiceManagerSystemd, sync.ServiceManagerPM2, sync.ServiceManagerLaunchd:
+			return sync.ServiceManager(name), nil
+		default:
+			return "", fmt.Errorf("unsupported service manager %q (use systemd, pm2, or launchd)", name)
+		}
 	}
 	return sync.DetectServiceManager()
 }
