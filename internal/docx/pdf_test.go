@@ -76,6 +76,7 @@ func TestLookPathSoffice(t *testing.T) {
 		if path != "" {
 			t.Errorf("expected empty path on error, got %q", path)
 		}
+
 		return
 	}
 

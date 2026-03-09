@@ -570,6 +570,7 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 
 func TestDetectShellProfile_Windows(t *testing.T) {
 	origGOOS := runtimeGOOS
+
 	t.Cleanup(func() { runtimeGOOS = origGOOS })
 
 	runtimeGOOS = "windows"
