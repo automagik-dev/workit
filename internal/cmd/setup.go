@@ -156,7 +156,7 @@ func installHintLibreOffice() string {
 	switch runtime.GOOS {
 	case "darwin":
 		return "brew install --cask libreoffice"
-	case "windows":
+	case windowsOS:
 		return "winget install TheDocumentFoundation.LibreOffice  OR  choco install libreoffice-fresh"
 	default:
 		return "apt install libreoffice-common  OR  snap install libreoffice"
@@ -167,7 +167,7 @@ func installHintPython() string {
 	switch runtime.GOOS {
 	case "darwin":
 		return "brew install python3"
-	case "windows":
+	case windowsOS:
 		return "winget install Python.Python.3  OR  choco install python3"
 	default:
 		return "apt install python3  OR  snap install python3"
@@ -175,7 +175,7 @@ func installHintPython() string {
 }
 
 func installHintLxml() string {
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		return "pip install lxml"
 	}
 	return "pip3 install lxml  OR  apt install python3-lxml"

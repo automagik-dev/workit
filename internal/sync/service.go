@@ -373,7 +373,10 @@ func statusLaunchd() (bool, string, error) {
 
 // --- task scheduler backend ---
 
-const schtasksTaskName = "WorkitSync"
+const (
+	schtasksTaskName     = "WorkitSync"
+	schtasksStateRunning = "Running"
+)
 
 func installTaskScheduler(cfg ServiceConfig) error {
 	// Build the command that Task Scheduler will run.
@@ -435,7 +438,7 @@ func statusTaskScheduler() (bool, string, error) {
 		return false, output, nil
 	}
 
-	running := len(result.Tasks) > 0 && result.Tasks[0].State == "Running"
+	running := len(result.Tasks) > 0 && result.Tasks[0].State == schtasksStateRunning
 
 	return running, output, nil
 }

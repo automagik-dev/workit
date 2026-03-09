@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bytes"
+	"encoding/xml"
 	"runtime"
 	"testing"
 )
@@ -105,6 +106,22 @@ func TestLaunchdPlistTemplate(t *testing.T) {
 	}
 }
 
+func TestInstallService_ValidationFailure(t *testing.T) {
+	t.Parallel()
+
+	// Empty required fields should fail validation before reaching any backend.
+	cfg := ServiceConfig{
+		Executable: "",
+		LocalPath:  "/tmp",
+		Account:    "user@example.com",
+	}
+
+	err := InstallService(cfg, ServiceManagerSystemd)
+	if err == nil {
+		t.Error("expected validation error")
+	}
+}
+
 func TestInstallServiceUnsupportedManager(t *testing.T) {
 	cfg := ServiceConfig{
 		LocalPath:  "/tmp/test",
@@ -177,5 +194,111 @@ func resolveServiceManager(name string) (ServiceManager, error) {
 	if name != "" {
 		return ServiceManager(name), nil
 	}
+
 	return DetectServiceManager()
+}
+
+func TestValidateServiceConfig_Valid(t *testing.T) {
+	t.Parallel()
+
+	cfg := ServiceConfig{
+		Executable: "/usr/local/bin/wk",
+		LocalPath:  "/home/user/sync",
+		Account:    "user@example.com",
+		Conflict:   "rename",
+	}
+
+	if err := validateServiceConfig(cfg); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateServiceConfig_RejectsEmpty(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		cfg  ServiceConfig
+	}{
+		{"empty executable", ServiceConfig{LocalPath: "/tmp", Account: "a@b.com"}},
+		{"empty path", ServiceConfig{Executable: "/bin/wk", Account: "a@b.com"}},
+		{"empty account", ServiceConfig{Executable: "/bin/wk", LocalPath: "/tmp"}},
+	} {
+		if err := validateServiceConfig(tc.cfg); err == nil {
+			t.Errorf("%s: expected error", tc.name)
+		}
+	}
+}
+
+func TestValidateServiceConfig_RejectsBadChars(t *testing.T) {
+	t.Parallel()
+
+	base := ServiceConfig{
+		Executable: "/usr/bin/wk",
+		LocalPath:  "/tmp/path",
+		Account:    "user@example.com",
+		Conflict:   "rename",
+	}
+
+	for _, bad := range []string{"\n", "\r", "\x00", "`", "$", "{", "}"} {
+		cfg := base
+		cfg.LocalPath = "/tmp/path" + bad
+
+		if err := validateServiceConfig(cfg); err == nil {
+			t.Errorf("expected error for %q in path", bad)
+		}
+	}
+}
+
+func TestSchtasksXML_Running(t *testing.T) {
+	t.Parallel()
+
+	data := `<?xml version="1.0"?>
+<ScheduledTasks><Task><State>Running</State></Task></ScheduledTasks>`
+
+	var result schtasksXML
+	if err := xml.Unmarshal([]byte(data), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if len(result.Tasks) != 1 {
+		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
+	}
+
+	if result.Tasks[0].State != schtasksStateRunning {
+		t.Errorf("expected Running, got %q", result.Tasks[0].State)
+	}
+}
+
+func TestSchtasksXML_NotRunning(t *testing.T) {
+	t.Parallel()
+
+	data := `<?xml version="1.0"?>
+<ScheduledTasks><Task><State>Ready</State></Task></ScheduledTasks>`
+
+	var result schtasksXML
+	if err := xml.Unmarshal([]byte(data), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	running := len(result.Tasks) > 0 && result.Tasks[0].State == schtasksStateRunning
+	if running {
+		t.Error("expected not running for Ready state")
+	}
+}
+
+func TestSchtasksXML_Empty(t *testing.T) {
+	t.Parallel()
+
+	data := `<?xml version="1.0"?><ScheduledTasks></ScheduledTasks>`
+
+	var result schtasksXML
+	if err := xml.Unmarshal([]byte(data), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	running := len(result.Tasks) > 0 && result.Tasks[0].State == schtasksStateRunning
+	if running {
+		t.Error("expected not running for empty tasks")
+	}
 }
