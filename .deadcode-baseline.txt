@@ -13,7 +13,7 @@ internal/docx/comments.go:438:6: unreachable func: ReplyToComment
 internal/docx/comments.go:497:6: unreachable func: ResolveComment
 internal/docx/comments.go:548:6: unreachable func: findCommentParaID
 internal/docx/comments.go:613:6: unreachable func: addCommentExtendedWithParent
-internal/docx/pdf.go:89:6: unreachable func: LibreOfficeVersion
+internal/docx/pdf.go:94:6: unreachable func: LibreOfficeVersion
 internal/docx/session.go:103:23: unreachable func: EditSession.RawPart
 internal/docx/session.go:249:23: unreachable func: EditSession.Path
 internal/docx/validate.go:37:6: unreachable func: Validate
