@@ -14,8 +14,8 @@ import (
 type ServiceManager string
 
 const (
-	ServiceManagerSystemd ServiceManager = "systemd"
-	ServiceManagerPM2     ServiceManager = "pm2"
+	ServiceManagerSystemd       ServiceManager = "systemd"
+	ServiceManagerPM2           ServiceManager = "pm2"
 	ServiceManagerLaunchd       ServiceManager = "launchd"
 	ServiceManagerTaskScheduler ServiceManager = "schtasks"
 )
