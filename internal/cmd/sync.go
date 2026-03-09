@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -443,8 +444,13 @@ func (c *SyncServiceInstallCmd) Run(ctx context.Context, flags *RootFlags) error
 		return fmt.Errorf("get executable path: %w", err)
 	}
 
+	localPath, err := filepath.Abs(c.Path)
+	if err != nil {
+		return fmt.Errorf("resolve absolute path: %w", err)
+	}
+
 	cfg := sync.ServiceConfig{
-		LocalPath:  c.Path,
+		LocalPath:  localPath,
 		Account:    account,
 		Conflict:   c.Conflict,
 		Executable: executable,

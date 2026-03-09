@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"encoding/xml"
 	"fmt"
 	"os"
 	"os/exec"
@@ -64,7 +65,7 @@ func validateServiceConfig(cfg ServiceConfig) error {
 		{"account", cfg.Account},
 		{"conflict", cfg.Conflict},
 	} {
-		if strings.ContainsAny(check.val, "\n\r\x00") {
+		if strings.ContainsAny(check.val, "\n\r\x00`${}") {
 			return fmt.Errorf("%s contains invalid characters", check.name)
 		}
 	}
@@ -171,7 +172,12 @@ func installSystemd(cfg ServiceConfig) error {
 		return fmt.Errorf("write unit file: %w", err)
 	}
 
-	// Enable and start the service
+	// Reload unit files and enable+start the service.
+	reloadCmd := exec.Command("systemctl", "--user", "daemon-reload")
+	if out, err := reloadCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("systemctl daemon-reload: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+
 	cmd := exec.Command("systemctl", "--user", "enable", "--now", "wk-sync")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("systemctl enable: %s: %w", strings.TrimSpace(string(out)), err)
@@ -405,8 +411,16 @@ func uninstallTaskScheduler() error {
 	return nil
 }
 
+// schtasksXML mirrors the XML structure returned by schtasks /Query /FO XML.
+type schtasksXML struct {
+	XMLName xml.Name `xml:"ScheduledTasks"`
+	Tasks   []struct {
+		State string `xml:"State"`
+	} `xml:"Task"`
+}
+
 func statusTaskScheduler() (bool, string, error) {
-	cmd := exec.Command("schtasks", "/Query", "/TN", schtasksTaskName, "/FO", "LIST")
+	cmd := exec.Command("schtasks", "/Query", "/TN", schtasksTaskName, "/FO", "XML")
 	out, err := cmd.CombinedOutput()
 	output := strings.TrimSpace(string(out))
 
@@ -414,16 +428,14 @@ func statusTaskScheduler() (bool, string, error) {
 		return false, output, nil
 	}
 
-	// Parse output for "Status:" line.
-	running := false
-	for _, line := range strings.Split(output, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "Status:") {
-			status := strings.TrimSpace(strings.TrimPrefix(line, "Status:"))
-			running = status == "Running"
-			break
-		}
+	// Parse XML (locale-independent) to determine task state.
+	var result schtasksXML
+	if xmlErr := xml.Unmarshal(out, &result); xmlErr != nil {
+		// Fall back to raw output if XML parsing fails.
+		return false, output, nil
 	}
+
+	running := len(result.Tasks) > 0 && result.Tasks[0].State == "Running"
 
 	return running, output, nil
 }
