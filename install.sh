@@ -12,6 +12,10 @@
 #   WK_RELEASE_URL  Base URL for downloads (default: https://github.com/automagik-dev/workit/releases/download)
 #                   Useful for offline/local testing with file:// URLs.
 # ---------------------------------------------------------------------------
+
+# Windows users: use install.ps1 instead:
+#   irm https://raw.githubusercontent.com/automagik-dev/workit/main/install.ps1 | iex
+
 set -e
 
 # ---------------------------------------------------------------------------
@@ -179,6 +183,12 @@ ARCH_RAW="$(uname -m)"
 case "$OS_RAW" in
     Linux)  OS="linux" ;;
     Darwin) OS="darwin" ;;
+    MINGW*|MSYS*|CYGWIN*)
+        warn "Detected Windows shell environment (MSYS/Git Bash)."
+        warn "For native Windows install, use PowerShell:"
+        warn "  irm https://raw.githubusercontent.com/automagik-dev/workit/main/install.ps1 | iex"
+        warn "Continuing with Unix-style install..."
+        OS="linux" ;;
     *)      fail "Unsupported OS: ${OS_RAW}. Only linux and darwin are supported." ;;
 esac
 

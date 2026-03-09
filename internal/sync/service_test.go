@@ -16,7 +16,7 @@ func TestDetectServiceManager(t *testing.T) {
 	}
 
 	switch manager {
-	case ServiceManagerSystemd, ServiceManagerPM2, ServiceManagerLaunchd:
+	case ServiceManagerSystemd, ServiceManagerPM2, ServiceManagerLaunchd, ServiceManagerTaskScheduler:
 		// valid
 	default:
 		t.Errorf("unexpected service manager: %q", manager)
@@ -25,6 +25,10 @@ func TestDetectServiceManager(t *testing.T) {
 	// On darwin, should always return launchd
 	if runtime.GOOS == "darwin" && manager != ServiceManagerLaunchd {
 		t.Errorf("on darwin expected launchd, got %q", manager)
+	}
+
+	if runtime.GOOS == "windows" && manager != ServiceManagerTaskScheduler {
+		t.Errorf("on windows expected schtasks, got %q", manager)
 	}
 }
 
@@ -156,6 +160,14 @@ func TestResolveServiceManager(t *testing.T) {
 	}
 	if m != ServiceManagerLaunchd {
 		t.Errorf("expected launchd, got %q", m)
+	}
+
+	m, err = resolveServiceManager("schtasks")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m != ServiceManagerTaskScheduler {
+		t.Errorf("expected schtasks, got %q", m)
 	}
 }
 

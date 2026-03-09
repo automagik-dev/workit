@@ -420,7 +420,7 @@ type SyncServiceCmd struct {
 
 // SyncServiceInstallCmd installs the sync daemon as a managed service.
 type SyncServiceInstallCmd struct {
-	Manager  string `name:"manager" help:"Service manager: systemd, pm2, launchd (auto-detected if omitted)" optional:""`
+	Manager  string `name:"manager" help:"Service manager: systemd, pm2, launchd, schtasks (auto-detected if omitted)" optional:""`
 	Path     string `arg:"" name:"local-path" help:"Local directory path to sync"`
 	Conflict string `name:"conflict" help:"Conflict resolution strategy" default:"rename" enum:"rename,local-wins,remote-wins"`
 }
@@ -536,10 +536,10 @@ func (c *SyncServiceStatusCmd) Run(ctx context.Context, flags *RootFlags) error 
 func resolveServiceManager(name string) (sync.ServiceManager, error) {
 	if name != "" {
 		switch sync.ServiceManager(name) {
-		case sync.ServiceManagerSystemd, sync.ServiceManagerPM2, sync.ServiceManagerLaunchd:
+		case sync.ServiceManagerSystemd, sync.ServiceManagerPM2, sync.ServiceManagerLaunchd, sync.ServiceManagerTaskScheduler:
 			return sync.ServiceManager(name), nil
 		default:
-			return "", fmt.Errorf("unsupported service manager %q (use systemd, pm2, or launchd)", name)
+			return "", fmt.Errorf("unsupported service manager %q (use systemd, pm2, launchd, or schtasks)", name)
 		}
 	}
 	return sync.DetectServiceManager()

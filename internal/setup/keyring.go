@@ -283,6 +283,11 @@ func configureShellProfile(credentialsEnvPath string) error {
 // detectShellProfile returns the path to the user's shell profile file.
 // Detection order: $SHELL → ~/.zshrc (zsh), ~/.bashrc (bash), ~/.profile (fallback).
 func detectShellProfile() (string, error) {
+	// Windows has no POSIX shell profiles.
+	if runtimeGOOS == "windows" {
+		return "", nil
+	}
+
 	home, err := userHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("detect home dir: %w", err)

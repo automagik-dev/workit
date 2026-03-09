@@ -16,7 +16,8 @@ type ServiceManager string
 const (
 	ServiceManagerSystemd ServiceManager = "systemd"
 	ServiceManagerPM2     ServiceManager = "pm2"
-	ServiceManagerLaunchd ServiceManager = "launchd"
+	ServiceManagerLaunchd       ServiceManager = "launchd"
+	ServiceManagerTaskScheduler ServiceManager = "schtasks"
 )
 
 // DetectServiceManager auto-detects the available service manager.
@@ -34,6 +35,8 @@ func DetectServiceManager() (ServiceManager, error) {
 			return ServiceManagerPM2, nil
 		}
 		return "", fmt.Errorf("no supported service manager found (need systemctl or pm2)")
+	case "windows":
+		return ServiceManagerTaskScheduler, nil
 	default:
 		// Check pm2 as universal fallback
 		if _, err := exec.LookPath("pm2"); err == nil {
@@ -83,6 +86,8 @@ func InstallService(cfg ServiceConfig, manager ServiceManager) error {
 		return installPM2(cfg)
 	case ServiceManagerLaunchd:
 		return installLaunchd(cfg)
+	case ServiceManagerTaskScheduler:
+		return installTaskScheduler(cfg)
 	default:
 		return fmt.Errorf("unsupported service manager: %s", manager)
 	}
@@ -97,6 +102,8 @@ func UninstallService(manager ServiceManager) error {
 		return uninstallPM2()
 	case ServiceManagerLaunchd:
 		return uninstallLaunchd()
+	case ServiceManagerTaskScheduler:
+		return uninstallTaskScheduler()
 	default:
 		return fmt.Errorf("unsupported service manager: %s", manager)
 	}
@@ -112,6 +119,8 @@ func ServiceStatus(manager ServiceManager) (bool, string, error) {
 		return statusPM2()
 	case ServiceManagerLaunchd:
 		return statusLaunchd()
+	case ServiceManagerTaskScheduler:
+		return statusTaskScheduler()
 	default:
 		return false, "", fmt.Errorf("unsupported service manager: %s", manager)
 	}
@@ -354,4 +363,67 @@ func statusLaunchd() (bool, string, error) {
 
 	// If launchctl list succeeds, the service is loaded (running)
 	return true, output, nil
+}
+
+// --- task scheduler backend ---
+
+const schtasksTaskName = "WorkitSync"
+
+func installTaskScheduler(cfg ServiceConfig) error {
+	// Build the command that Task Scheduler will run.
+	tr := fmt.Sprintf(`"%s" sync start "%s" --account "%s" --conflict "%s"`,
+		cfg.Executable, cfg.LocalPath, cfg.Account, cfg.Conflict)
+
+	// Create the scheduled task to run at logon.
+	createArgs := []string{
+		"/Create",
+		"/TN", schtasksTaskName,
+		"/TR", tr,
+		"/SC", "ONLOGON",
+		"/F",
+	}
+
+	cmd := exec.Command("schtasks", createArgs...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("schtasks create: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+
+	// Start the task immediately.
+	runCmd := exec.Command("schtasks", "/Run", "/TN", schtasksTaskName)
+	if out, err := runCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("schtasks run: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+
+	return nil
+}
+
+func uninstallTaskScheduler() error {
+	cmd := exec.Command("schtasks", "/Delete", "/TN", schtasksTaskName, "/F")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("schtasks delete: %s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func statusTaskScheduler() (bool, string, error) {
+	cmd := exec.Command("schtasks", "/Query", "/TN", schtasksTaskName, "/FO", "LIST")
+	out, err := cmd.CombinedOutput()
+	output := strings.TrimSpace(string(out))
+
+	if err != nil {
+		return false, output, nil
+	}
+
+	// Parse output for "Status:" line.
+	running := false
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Status:") {
+			status := strings.TrimSpace(strings.TrimPrefix(line, "Status:"))
+			running = status == "Running"
+			break
+		}
+	}
+
+	return running, output, nil
 }
