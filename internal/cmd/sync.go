@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,12 +18,14 @@ import (
 
 // SyncCmd is the top-level command for Drive sync operations.
 type SyncCmd struct {
-	Init   SyncInitCmd   `cmd:"" help:"Initialize sync between a local folder and Drive folder"`
-	List   SyncListCmd   `cmd:"" help:"List all sync configurations"`
-	Remove SyncRemoveCmd `cmd:"" help:"Remove a sync configuration"`
-	Status SyncStatusCmd `cmd:"" help:"Show sync status for all configurations"`
-	Start  SyncStartCmd  `cmd:"" help:"Start sync daemon"`
-	Stop   SyncStopCmd   `cmd:"" help:"Stop sync daemon"`
+	Init    SyncInitCmd    `cmd:"" help:"Initialize sync between a local folder and Drive folder"`
+	List    SyncListCmd    `cmd:"" help:"List all sync configurations"`
+	Remove  SyncRemoveCmd  `cmd:"" help:"Remove a sync configuration"`
+	Status  SyncStatusCmd  `cmd:"" help:"Show sync status for all configurations"`
+	Start   SyncStartCmd   `cmd:"" help:"Start sync daemon"`
+	Stop    SyncStopCmd    `cmd:"" help:"Stop sync daemon"`
+	Service SyncServiceCmd `cmd:"" help:"Manage sync as a system service"`
+	Repair  SyncRepairCmd  `cmd:"" name:"repair" help:"Diagnose and fix sync state issues"`
 }
 
 // SyncInitCmd initializes a new sync configuration.
@@ -317,13 +320,11 @@ func (c *SyncStartCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return nil
 	}
 
-	// If running as internal daemon, write PID file
-	if c.InternalDaemon {
-		if err := sync.WritePIDFile(); err != nil {
-			return fmt.Errorf("write PID file: %w", err)
-		}
-		defer func() { _ = sync.RemovePIDFile() }()
+	// Write PID file for status detection (both daemon and foreground modes)
+	if err := sync.WritePIDFile(); err != nil {
+		return fmt.Errorf("write PID file: %w", err)
 	}
+	defer func() { _ = sync.RemovePIDFile() }()
 
 	db, err := sync.OpenDB()
 	if err != nil {
@@ -411,6 +412,145 @@ func (c *SyncStopCmd) Run(ctx context.Context, flags *RootFlags) error {
 	return nil
 }
 
+// SyncServiceCmd manages the sync daemon as a system service.
+type SyncServiceCmd struct {
+	Install   SyncServiceInstallCmd   `cmd:"" name:"install" help:"Install sync as a managed service"`
+	Uninstall SyncServiceUninstallCmd `cmd:"" name:"uninstall" help:"Uninstall sync service"`
+	Status    SyncServiceStatusCmd    `cmd:"" name:"status" help:"Check sync service status"`
+}
+
+// SyncServiceInstallCmd installs the sync daemon as a managed service.
+type SyncServiceInstallCmd struct {
+	Manager  string `name:"manager" help:"Service manager: systemd, pm2, launchd, schtasks (auto-detected if omitted)" optional:""`
+	Path     string `arg:"" name:"local-path" help:"Local directory path to sync"`
+	Conflict string `name:"conflict" help:"Conflict resolution strategy" default:"rename" enum:"rename,local-wins,remote-wins"`
+}
+
+func (c *SyncServiceInstallCmd) Run(ctx context.Context, flags *RootFlags) error {
+	u := ui.FromContext(ctx)
+
+	account := flags.Account
+	if account == "" {
+		return fmt.Errorf("--account flag is required for service install")
+	}
+
+	manager, err := resolveServiceManager(c.Manager)
+	if err != nil {
+		return err
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("get executable path: %w", err)
+	}
+
+	localPath, err := filepath.Abs(c.Path)
+	if err != nil {
+		return fmt.Errorf("resolve absolute path: %w", err)
+	}
+
+	cfg := sync.ServiceConfig{
+		LocalPath:  localPath,
+		Account:    account,
+		Conflict:   c.Conflict,
+		Executable: executable,
+	}
+
+	if err := sync.InstallService(cfg, manager); err != nil {
+		return fmt.Errorf("install service: %w", err)
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"installed":  true,
+			"manager":    string(manager),
+			"local_path": c.Path,
+			"account":    account,
+			"conflict":   c.Conflict,
+		})
+	}
+
+	u.Out().Printf("installed\ttrue")
+	u.Out().Printf("manager\t%s", manager)
+	u.Out().Printf("local_path\t%s", c.Path)
+	u.Out().Printf("account\t%s", account)
+	return nil
+}
+
+// SyncServiceUninstallCmd removes the sync service.
+type SyncServiceUninstallCmd struct {
+	Manager string `name:"manager" help:"Service manager (auto-detected if omitted)" optional:""`
+}
+
+func (c *SyncServiceUninstallCmd) Run(ctx context.Context, flags *RootFlags) error {
+	u := ui.FromContext(ctx)
+
+	manager, err := resolveServiceManager(c.Manager)
+	if err != nil {
+		return err
+	}
+
+	if err := sync.UninstallService(manager); err != nil {
+		return fmt.Errorf("uninstall service: %w", err)
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"uninstalled": true,
+			"manager":     string(manager),
+		})
+	}
+
+	u.Out().Printf("uninstalled\ttrue")
+	u.Out().Printf("manager\t%s", manager)
+	return nil
+}
+
+// SyncServiceStatusCmd checks the status of the sync service.
+type SyncServiceStatusCmd struct {
+	Manager string `name:"manager" help:"Service manager (auto-detected if omitted)" optional:""`
+}
+
+func (c *SyncServiceStatusCmd) Run(ctx context.Context, flags *RootFlags) error {
+	u := ui.FromContext(ctx)
+
+	manager, err := resolveServiceManager(c.Manager)
+	if err != nil {
+		return err
+	}
+
+	running, statusText, err := sync.ServiceStatus(manager)
+	if err != nil {
+		return fmt.Errorf("service status: %w", err)
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"running": running,
+			"manager": string(manager),
+			"status":  statusText,
+		})
+	}
+
+	u.Out().Printf("running\t%t", running)
+	u.Out().Printf("manager\t%s", manager)
+	u.Out().Printf("status\t%s", statusText)
+	return nil
+}
+
+// resolveServiceManager returns the specified manager or auto-detects one.
+func resolveServiceManager(name string) (sync.ServiceManager, error) {
+	if name != "" {
+		switch sync.ServiceManager(name) {
+		case sync.ServiceManagerSystemd, sync.ServiceManagerPM2, sync.ServiceManagerLaunchd, sync.ServiceManagerTaskScheduler:
+			return sync.ServiceManager(name), nil
+		default:
+			return "", fmt.Errorf("unsupported service manager %q (use systemd, pm2, launchd, or schtasks)", name)
+		}
+	}
+	return sync.DetectServiceManager()
+}
+
 // getDriveService creates an authenticated Drive service.
 func getDriveService(ctx context.Context, flags *RootFlags) (*drive.Service, error) {
 	account := flags.Account
@@ -419,4 +559,114 @@ func getDriveService(ctx context.Context, flags *RootFlags) (*drive.Service, err
 	}
 
 	return googleapi.NewDrive(ctx, account)
+}
+
+// SyncRepairCmd diagnoses and fixes sync state issues.
+type SyncRepairCmd struct {
+	LocalPath string `arg:"" name:"local-path" help:"Local directory path to repair"`
+	Apply     bool   `name:"apply" help:"Apply repairs (default is dry-run)" default:"false"`
+}
+
+func (c *SyncRepairCmd) Run(ctx context.Context, flags *RootFlags) error {
+	u := ui.FromContext(ctx)
+
+	localPath := strings.TrimSpace(c.LocalPath)
+	if localPath == "" {
+		return usage("empty local-path")
+	}
+
+	db, err := sync.OpenDB()
+	if err != nil {
+		return fmt.Errorf("open sync database: %w", err)
+	}
+	defer db.Close()
+
+	cfg, err := db.GetConfig(localPath)
+	if err != nil {
+		return fmt.Errorf("get sync config: %w", err)
+	}
+	if cfg == nil {
+		return fmt.Errorf("sync config not found: %s (use 'wk sync init' first)", localPath)
+	}
+
+	driveService, err := getDriveService(ctx, flags)
+	if err != nil {
+		return fmt.Errorf("get Drive service: %w", err)
+	}
+
+	repairer := sync.NewRepairer(db, cfg, driveService)
+
+	// Always scan first
+	report, err := repairer.Scan(ctx)
+	if err != nil {
+		return fmt.Errorf("scan: %w", err)
+	}
+
+	if outfmt.IsJSON(ctx) {
+		result := map[string]any{
+			"report":  report,
+			"applied": false,
+		}
+
+		if c.Apply && report.HasIssues() {
+			if applyErr := repairer.Apply(ctx, report); applyErr != nil {
+				return fmt.Errorf("apply repairs: %w", applyErr)
+			}
+			result["applied"] = true
+		}
+
+		return outfmt.WriteJSON(ctx, os.Stdout, result)
+	}
+
+	// Print scan results
+	u.Err().Printf("%d duplicate folder groups found", len(report.DuplicateFolders))
+	u.Err().Printf("%d files with stale hashes", len(report.StaleHashes))
+	u.Err().Printf("%d orphaned items", len(report.OrphanedItems))
+
+	if len(report.DuplicateFolders) > 0 {
+		u.Err().Println("")
+		u.Err().Println("Duplicate folders:")
+		for _, dup := range report.DuplicateFolders {
+			u.Err().Printf("  %s (parent: %s) - %d copies", dup.Name, dup.ParentID, len(dup.FolderIDs))
+		}
+	}
+
+	if len(report.StaleHashes) > 0 {
+		u.Err().Println("")
+		u.Err().Println("Stale hashes:")
+		for _, s := range report.StaleHashes {
+			u.Err().Printf("  %s (stored: %s, actual: %s)", s.LocalPath, s.StoredMD5, s.ActualMD5)
+		}
+	}
+
+	if len(report.OrphanedItems) > 0 {
+		u.Err().Println("")
+		u.Err().Println("Orphaned items:")
+		for _, o := range report.OrphanedItems {
+			u.Err().Printf("  %s (%s)", o.LocalPath, o.Reason)
+		}
+	}
+
+	if !report.HasIssues() {
+		u.Err().Println("")
+		u.Err().Println("No issues found")
+		return nil
+	}
+
+	if c.Apply {
+		u.Err().Println("")
+		if err := repairer.Apply(ctx, report); err != nil {
+			return fmt.Errorf("apply repairs: %w", err)
+		}
+		u.Err().Println("Repairs applied successfully")
+		u.Out().Printf("applied\ttrue")
+		u.Out().Printf("duplicate_folders_merged\t%d", len(report.DuplicateFolders))
+		u.Out().Printf("stale_hashes_fixed\t%d", len(report.StaleHashes))
+		u.Out().Printf("orphaned_items_removed\t%d", len(report.OrphanedItems))
+	} else {
+		u.Err().Println("")
+		u.Err().Println("Run with --apply to fix these issues")
+	}
+
+	return nil
 }

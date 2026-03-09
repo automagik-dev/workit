@@ -160,3 +160,180 @@ func TestListPendingUploads_FiltersByConfigID(t *testing.T) {
 		t.Errorf("expected config1-file.txt, got %s", items[0].LocalPath)
 	}
 }
+
+func TestCreateSyncFolder_And_GetByDriveID(t *testing.T) {
+	d := openTestDB(t)
+	configID := insertTestConfig(t, d)
+
+	// Create a folder mapping
+	if err := d.CreateSyncFolder(configID, "drive-folder-1", "subdir/docs"); err != nil {
+		t.Fatalf("CreateSyncFolder: %v", err)
+	}
+
+	// Look up by Drive ID
+	f, err := d.GetSyncFolderByDriveID(configID, "drive-folder-1")
+	if err != nil {
+		t.Fatalf("GetSyncFolderByDriveID: %v", err)
+	}
+	if f == nil {
+		t.Fatal("expected folder, got nil")
+	}
+	if f.DriveID != "drive-folder-1" {
+		t.Errorf("DriveID = %q, want %q", f.DriveID, "drive-folder-1")
+	}
+	if f.LocalPath != "subdir/docs" {
+		t.Errorf("LocalPath = %q, want %q", f.LocalPath, "subdir/docs")
+	}
+	if f.ConfigID != configID {
+		t.Errorf("ConfigID = %d, want %d", f.ConfigID, configID)
+	}
+}
+
+func TestGetSyncFolderByDriveID_NotFound(t *testing.T) {
+	d := openTestDB(t)
+	configID := insertTestConfig(t, d)
+
+	f, err := d.GetSyncFolderByDriveID(configID, "nonexistent")
+	if err != nil {
+		t.Fatalf("GetSyncFolderByDriveID: %v", err)
+	}
+	if f != nil {
+		t.Errorf("expected nil, got %+v", f)
+	}
+}
+
+func TestGetSyncFolderByPath(t *testing.T) {
+	d := openTestDB(t)
+	configID := insertTestConfig(t, d)
+
+	if err := d.CreateSyncFolder(configID, "drive-folder-2", "images/photos"); err != nil {
+		t.Fatalf("CreateSyncFolder: %v", err)
+	}
+
+	f, err := d.GetSyncFolderByPath(configID, "images/photos")
+	if err != nil {
+		t.Fatalf("GetSyncFolderByPath: %v", err)
+	}
+	if f == nil {
+		t.Fatal("expected folder, got nil")
+	}
+	if f.DriveID != "drive-folder-2" {
+		t.Errorf("DriveID = %q, want %q", f.DriveID, "drive-folder-2")
+	}
+}
+
+func TestGetSyncFolderByPath_NotFound(t *testing.T) {
+	d := openTestDB(t)
+	configID := insertTestConfig(t, d)
+
+	f, err := d.GetSyncFolderByPath(configID, "nonexistent/path")
+	if err != nil {
+		t.Fatalf("GetSyncFolderByPath: %v", err)
+	}
+	if f != nil {
+		t.Errorf("expected nil, got %+v", f)
+	}
+}
+
+func TestCreateSyncFolder_UpsertOnConflict(t *testing.T) {
+	d := openTestDB(t)
+	configID := insertTestConfig(t, d)
+
+	// Create initial mapping
+	if err := d.CreateSyncFolder(configID, "drive-folder-3", "old-path"); err != nil {
+		t.Fatalf("CreateSyncFolder (initial): %v", err)
+	}
+
+	// Upsert with same drive_id but different path
+	if err := d.CreateSyncFolder(configID, "drive-folder-3", "new-path"); err != nil {
+		t.Fatalf("CreateSyncFolder (upsert): %v", err)
+	}
+
+	// Verify the path was updated
+	f, err := d.GetSyncFolderByDriveID(configID, "drive-folder-3")
+	if err != nil {
+		t.Fatalf("GetSyncFolderByDriveID: %v", err)
+	}
+	if f.LocalPath != "new-path" {
+		t.Errorf("LocalPath = %q, want %q (should be updated by upsert)", f.LocalPath, "new-path")
+	}
+}
+
+func TestListSyncFolderDriveIDs(t *testing.T) {
+	d := openTestDB(t)
+	configID := insertTestConfig(t, d)
+
+	// Create several folder mappings
+	for _, folder := range []struct{ driveID, path string }{
+		{"folder-a", "docs"},
+		{"folder-b", "images"},
+		{"folder-c", "docs/subdir"},
+	} {
+		if err := d.CreateSyncFolder(configID, folder.driveID, folder.path); err != nil {
+			t.Fatalf("CreateSyncFolder(%s): %v", folder.driveID, err)
+		}
+	}
+
+	ids, err := d.ListSyncFolderDriveIDs(configID)
+	if err != nil {
+		t.Fatalf("ListSyncFolderDriveIDs: %v", err)
+	}
+
+	if len(ids) != 3 {
+		t.Fatalf("expected 3 folder IDs, got %d", len(ids))
+	}
+
+	for _, expected := range []string{"folder-a", "folder-b", "folder-c"} {
+		if !ids[expected] {
+			t.Errorf("expected %q in result", expected)
+		}
+	}
+}
+
+func TestListSyncFolderDriveIDs_Empty(t *testing.T) {
+	d := openTestDB(t)
+	configID := insertTestConfig(t, d)
+
+	ids, err := d.ListSyncFolderDriveIDs(configID)
+	if err != nil {
+		t.Fatalf("ListSyncFolderDriveIDs: %v", err)
+	}
+
+	if len(ids) != 0 {
+		t.Fatalf("expected 0 folder IDs, got %d", len(ids))
+	}
+}
+
+func TestListSyncFolderDriveIDs_FiltersByConfigID(t *testing.T) {
+	d := openTestDB(t)
+	configID1 := insertTestConfig(t, d)
+
+	// Insert a second config
+	result, err := d.db.Exec(
+		`INSERT INTO sync_configs (local_path, drive_folder_id, drive_id, created_at)
+		 VALUES (?, ?, ?, ?)`,
+		"/tmp/test-sync-2", "folder-def", "", time.Now(),
+	)
+	if err != nil {
+		t.Fatalf("insert config 2: %v", err)
+	}
+	configID2, _ := result.LastInsertId()
+
+	// Create folders for both configs
+	_ = d.CreateSyncFolder(configID1, "folder-config1", "docs")
+	_ = d.CreateSyncFolder(configID2, "folder-config2", "images")
+
+	// Query for config 1 only
+	ids, err := d.ListSyncFolderDriveIDs(configID1)
+	if err != nil {
+		t.Fatalf("ListSyncFolderDriveIDs: %v", err)
+	}
+
+	if len(ids) != 1 {
+		t.Fatalf("expected 1 folder ID for config %d, got %d", configID1, len(ids))
+	}
+
+	if !ids["folder-config1"] {
+		t.Error("expected folder-config1 in result")
+	}
+}

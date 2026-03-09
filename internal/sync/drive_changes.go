@@ -16,6 +16,7 @@ type DriveChange struct {
 	FileID    string
 	FileName  string
 	MimeType  string
+	MD5       string
 	Op        DriveChangeOp
 	Removed   bool // File was deleted/trashed
 	Timestamp time.Time
@@ -203,7 +204,7 @@ func (p *DrivePoller) pollChanges(ctx context.Context, pageToken string) ([]Driv
 			Context(ctx).
 			PageSize(1000).
 			IncludeRemoved(true).
-			Fields("nextPageToken,newStartPageToken,changes(fileId,file(id,name,mimeType,parents,trashed),removed,time)")
+			Fields("nextPageToken,newStartPageToken,changes(fileId,file(id,name,mimeType,md5Checksum,parents,trashed),removed,time)")
 
 		resp, err := req.Do()
 		if err != nil {
@@ -265,6 +266,7 @@ func (p *DrivePoller) convertChange(change *drive.Change) *DriveChange {
 	if change.File != nil {
 		driveChange.FileName = change.File.Name
 		driveChange.MimeType = change.File.MimeType
+		driveChange.MD5 = change.File.Md5Checksum
 
 		if change.File.Trashed {
 			driveChange.Op = DriveOpDelete
@@ -280,13 +282,27 @@ func (p *DrivePoller) convertChange(change *drive.Change) *DriveChange {
 }
 
 // isInFolderByParents checks if a file is within our synced folder by checking parents.
+//
+// Deprecated: Use isInSyncTree instead, which also checks registered subfolders.
 func (p *DrivePoller) isInFolderByParents(parents []string) bool {
+	return p.isInSyncTree(parents)
+}
+
+// isInSyncTree checks if a file's parent is any known folder in the sync tree.
+func (p *DrivePoller) isInSyncTree(parents []string) bool {
 	if parents == nil {
 		return false
 	}
 	for _, parent := range parents {
+		// Check root folder
 		if parent == p.folderID {
 			return true
+		}
+		// Check registered subfolders
+		if p.db != nil {
+			if f, _ := p.db.GetSyncFolderByDriveID(p.configID, parent); f != nil {
+				return true
+			}
 		}
 	}
 	return false

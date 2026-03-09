@@ -157,10 +157,6 @@ func (c *UpdateCmd) Run(ctx context.Context) error {
 }
 
 func updateBinary(ctx context.Context, repo, version string) (tag string, assetName string, binaryPath string, err error) {
-	if runtime.GOOS == windowsOS {
-		return "", "", "", errors.New("wk update binary self-replacement is not supported on windows yet")
-	}
-
 	release, err := fetchRelease(ctx, repo, version)
 	if err != nil {
 		return "", "", "", err
@@ -537,6 +533,10 @@ func installBinaries(binaries map[string][]byte, selfPath string) (string, error
 }
 
 func writeAtomicExecutable(path string, content []byte) error {
+	if runtime.GOOS == windowsOS {
+		return writeAtomicExecutableWindows(path, content)
+	}
+	// Existing Unix logic unchanged:
 	tmp := path + ".tmp-" + fmt.Sprintf("%d", os.Getpid())
 	if err := os.WriteFile(tmp, content, 0o600); err != nil {
 		if os.IsPermission(err) {
@@ -552,9 +552,40 @@ func writeAtomicExecutable(path string, content []byte) error {
 		}
 		return fmt.Errorf("replace executable %s: %w", path, err)
 	}
-	//nolint:gosec // installed executable must remain executable for users.
 	if err := os.Chmod(path, 0o755); err != nil {
 		return fmt.Errorf("set executable mode on %s: %w", path, err)
+	}
+
+	return nil
+}
+
+func writeAtomicExecutableWindows(path string, content []byte) error {
+	oldPath := path + ".old"
+
+	// Remove any leftover .old from previous update.
+	_ = os.Remove(oldPath)
+
+	// If the target exists (possibly running), rename it out of the way.
+	if _, err := os.Stat(path); err == nil {
+		if err := os.Rename(path, oldPath); err != nil {
+			return fmt.Errorf("rename existing %s: %w", path, err)
+		}
+	}
+
+	// Write the new binary.
+	if err := os.WriteFile(path, content, 0o600); err != nil {
+		// Try to restore the old binary.
+		_ = os.Rename(oldPath, path)
+		if os.IsPermission(err) {
+			return fmt.Errorf("write %s: %w (try running with permissions that can write this path)", path, err)
+		}
+		return fmt.Errorf("write executable %s: %w", path, err)
+	}
+
+	// Best-effort cleanup of old binary (may fail if still running).
+	if err := os.Remove(oldPath); err != nil {
+		// Not fatal — old binary will be cleaned up on next update.
+		fmt.Fprintf(os.Stderr, "note: could not remove %s (will be cleaned up on next update)\n", oldPath)
 	}
 
 	return nil

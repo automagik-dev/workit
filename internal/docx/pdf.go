@@ -2,20 +2,57 @@ package docx
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
+
+// ErrSofficeNotFound is returned when soffice is not found in PATH or common install paths.
+var ErrSofficeNotFound = errors.New("soffice not found in PATH")
+
+// LookPathSoffice finds the soffice binary. On Windows it also checks common install paths.
+func LookPathSoffice() (string, error) {
+	if p, err := exec.LookPath("soffice"); err == nil {
+		return p, nil
+	}
+
+	if runtime.GOOS == "windows" {
+		for _, dir := range []string{
+			filepath.Join(os.Getenv("ProgramFiles"), "LibreOffice", "program"),
+			filepath.Join(os.Getenv("ProgramFiles(x86)"), "LibreOffice", "program"),
+		} {
+			p := filepath.Join(dir, "soffice.exe")
+			if _, err := os.Stat(p); err == nil {
+				return p, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("%w%s", ErrSofficeNotFound, sofficeInstallHint())
+}
+
+func sofficeInstallHint() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "; install with: brew install --cask libreoffice"
+	case "windows":
+		return "; install with: winget install TheDocumentFoundation.LibreOffice"
+	default:
+		return "; install with: apt install libreoffice-common"
+	}
+}
 
 // ConvertToPDF converts a DOCX file to PDF using LibreOffice headless.
 // outputPath can be empty (defaults to same directory as input, .pdf extension).
 // Returns the path to the generated PDF.
 func ConvertToPDF(ctx context.Context, inputPath, outputPath string) (string, error) {
 	// Check LibreOffice is available.
-	sofficePath, err := exec.LookPath("soffice")
+	sofficePath, err := LookPathSoffice()
 	if err != nil {
-		return "", fmt.Errorf("LibreOffice not found: install with 'apt install libreoffice-common' or 'brew install libreoffice': %w", err)
+		return "", fmt.Errorf("LibreOffice not found: %w", err)
 	}
 
 	outDir := filepath.Dir(inputPath)
@@ -56,7 +93,7 @@ func ConvertToPDF(ctx context.Context, inputPath, outputPath string) (string, er
 // LibreOfficeVersion returns the LibreOffice version string, or an error
 // if soffice is not installed.
 func LibreOfficeVersion(ctx context.Context) (string, error) {
-	sofficePath, err := exec.LookPath("soffice")
+	sofficePath, err := LookPathSoffice()
 	if err != nil {
 		return "", fmt.Errorf("soffice not found: %w", err)
 	}

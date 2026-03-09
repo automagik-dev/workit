@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/automagik-dev/workit/internal/docx"
 	"github.com/automagik-dev/workit/internal/outfmt"
 	"github.com/automagik-dev/workit/internal/ui"
 )
@@ -104,14 +105,14 @@ func checkLibreOffice(ctx context.Context) depStatus {
 		Required: false,
 	}
 
-	sofficePath, err := exec.LookPath("soffice")
+	sofficePath, err := docx.LookPathSoffice()
 	if err != nil {
 		d.Status = statusMissing
 		d.Install = installHintLibreOffice()
 		return d
 	}
 
-	out, err := exec.CommandContext(ctx, sofficePath, "--version").CombinedOutput() //nolint:gosec // sofficePath from LookPath
+	out, err := exec.CommandContext(ctx, sofficePath, "--version").CombinedOutput() //nolint:gosec // sofficePath from LookPathSoffice
 	if err != nil {
 		d.Status = statusMissing
 		d.Install = installHintLibreOffice()
@@ -129,17 +130,20 @@ func checkPython3Lxml(ctx context.Context) depStatus {
 		Required: false,
 	}
 
-	python3, err := exec.LookPath("python3")
+	pythonBin, err := exec.LookPath("python3")
+	if err != nil {
+		pythonBin, err = exec.LookPath("python")
+	}
 	if err != nil {
 		d.Status = statusMissing
-		d.Install = "apt install python3 python3-lxml  OR  pip3 install lxml"
+		d.Install = installHintPython()
 		return d
 	}
 
-	out, err := exec.CommandContext(ctx, python3, "-c", "import lxml; print(lxml.__version__)").CombinedOutput() //nolint:gosec // python3 from LookPath
+	out, err := exec.CommandContext(ctx, pythonBin, "-c", "import lxml; print(lxml.__version__)").CombinedOutput() //nolint:gosec // pythonBin from LookPath
 	if err != nil {
 		d.Status = statusMissing
-		d.Install = "pip3 install lxml  OR  apt install python3-lxml"
+		d.Install = installHintLxml()
 		return d
 	}
 
@@ -152,7 +156,27 @@ func installHintLibreOffice() string {
 	switch runtime.GOOS {
 	case "darwin":
 		return "brew install --cask libreoffice"
+	case windowsOS:
+		return "winget install TheDocumentFoundation.LibreOffice  OR  choco install libreoffice-fresh"
 	default:
 		return "apt install libreoffice-common  OR  snap install libreoffice"
 	}
+}
+
+func installHintPython() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "brew install python3"
+	case windowsOS:
+		return "winget install Python.Python.3  OR  choco install python3"
+	default:
+		return "apt install python3  OR  snap install python3"
+	}
+}
+
+func installHintLxml() string {
+	if runtime.GOOS == windowsOS {
+		return "pip install lxml"
+	}
+	return "pip3 install lxml  OR  apt install python3-lxml"
 }

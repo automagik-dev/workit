@@ -15,6 +15,8 @@ import (
 type Downloader struct {
 	service   *drive.Service
 	localRoot string
+	db        *DB
+	configID  int64
 }
 
 // DownloadResult contains the result of a download operation.
@@ -24,10 +26,12 @@ type DownloadResult struct {
 }
 
 // NewDownloader creates a new downloader.
-func NewDownloader(service *drive.Service, localRoot string) *Downloader {
+func NewDownloader(service *drive.Service, localRoot string, db *DB, configID int64) *Downloader {
 	return &Downloader{
 		service:   service,
 		localRoot: localRoot,
+		db:        db,
+		configID:  configID,
 	}
 }
 
@@ -48,9 +52,13 @@ func (d *Downloader) DownloadFile(ctx context.Context, fileID, fileName string) 
 		return nil, fmt.Errorf("cannot download Google Docs type: %s", file.MimeType)
 	}
 
-	// Build local path (for now, just use the filename in root)
-	// TODO: Reconstruct full path from Drive folder hierarchy
+	// Resolve full relative path using folder registry
 	localPath := file.Name
+	if len(file.Parents) > 0 && d.db != nil {
+		if folder, err := d.db.GetSyncFolderByDriveID(d.configID, file.Parents[0]); err == nil && folder != nil {
+			localPath = filepath.Join(folder.LocalPath, file.Name)
+		}
+	}
 
 	absPath := filepath.Join(d.localRoot, localPath)
 

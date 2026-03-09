@@ -66,3 +66,21 @@ func TestLibreOfficeVersion(t *testing.T) {
 		t.Error("expected non-empty version string")
 	}
 }
+
+func TestLookPathSoffice(t *testing.T) {
+	t.Parallel()
+
+	path, err := docx.LookPathSoffice()
+	if err != nil {
+		// Not found is expected on CI — verify error message is useful.
+		if path != "" {
+			t.Errorf("expected empty path on error, got %q", path)
+		}
+
+		return
+	}
+
+	if path == "" {
+		t.Error("LookPathSoffice returned nil error but empty path")
+	}
+}

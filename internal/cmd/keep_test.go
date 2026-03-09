@@ -601,6 +601,527 @@ func TestGetKeepService_ServiceAccountOverride_CallsBuilder(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// KeepCreateCmd tests
+// ---------------------------------------------------------------------------
+
+func TestKeepCreate_TextNote_JSON(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/v1/notes" && r.Method == http.MethodPost:
+			body, _ := io.ReadAll(r.Body)
+			var note map[string]any
+			_ = json.Unmarshal(body, &note)
+			if note["title"] != "Test Note" {
+				http.Error(w, "bad title", http.StatusBadRequest)
+				return
+			}
+			_, _ = io.WriteString(w, `{"name":"notes/new123","title":"Test Note","createTime":"2026-01-01T00:00:00Z","updateTime":"2026-01-01T00:00:00Z"}`)
+			return
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(ctx context.Context, _, _ string) (*keepapi.Service, error) {
+		return keepapi.NewService(ctx,
+			option.WithEndpoint(srv.URL+"/"),
+			option.WithHTTPClient(srv.Client()),
+			option.WithoutAuthentication(),
+		)
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			if err := Execute([]string{"--json", "keep", "create", "--title", "Test Note", "--body", "Hello", "--account", account}); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+		})
+	})
+
+	var payload struct {
+		Note map[string]any `json:"note"`
+	}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("json parse: %v\nout=%q", err, out)
+	}
+	if payload.Note["name"] != "notes/new123" {
+		t.Fatalf("unexpected note: %#v", payload.Note)
+	}
+}
+
+func TestKeepCreate_ListNote_Plain(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/v1/notes" && r.Method == http.MethodPost:
+			body, _ := io.ReadAll(r.Body)
+			var note map[string]any
+			_ = json.Unmarshal(body, &note)
+			if note["title"] != "List" {
+				http.Error(w, "bad title", http.StatusBadRequest)
+				return
+			}
+			// Verify it has a list body
+			b, ok := note["body"].(map[string]any)
+			if !ok {
+				http.Error(w, "no body", http.StatusBadRequest)
+				return
+			}
+			if _, hasList := b["list"]; !hasList {
+				http.Error(w, "no list", http.StatusBadRequest)
+				return
+			}
+			_, _ = io.WriteString(w, `{"name":"notes/list123","title":"List","createTime":"2026-01-01T00:00:00Z","updateTime":"2026-01-01T00:00:00Z"}`)
+			return
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(ctx context.Context, _, _ string) (*keepapi.Service, error) {
+		return keepapi.NewService(ctx,
+			option.WithEndpoint(srv.URL+"/"),
+			option.WithHTTPClient(srv.Client()),
+			option.WithoutAuthentication(),
+		)
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			if err := Execute([]string{"keep", "create", "--title", "List", "--list-items", "A,B,C", "--plain", "--account", account}); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+		})
+	})
+
+	if !strings.Contains(out, "notes/list123") {
+		t.Fatalf("unexpected output: %q", out)
+	}
+}
+
+func TestKeepCreate_MutuallyExclusive(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(context.Context, string, string) (*keepapi.Service, error) {
+		return &keepapi.Service{}, nil
+	}
+
+	err := (&KeepCreateCmd{Title: "T", Body: "B", ListItems: "A,B"}).Run(
+		context.Background(), &RootFlags{Account: account}, &KeepCmd{})
+	if err == nil {
+		t.Fatalf("expected error for mutual exclusion")
+	}
+	if !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestKeepCreate_DryRun(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	called := false
+	newKeepServiceWithSA = func(context.Context, string, string) (*keepapi.Service, error) {
+		called = true
+		return &keepapi.Service{}, nil
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			err := Execute([]string{"--json", "--dry-run", "keep", "create", "--title", "Test", "--body", "Hi", "--account", account})
+			if err != nil {
+				// dry-run exits with ExitError code 0
+				if ExitCode(err) != 0 {
+					t.Fatalf("Execute: %v", err)
+				}
+			}
+		})
+	})
+
+	if called {
+		t.Fatalf("expected no service call in dry run")
+	}
+	if !strings.Contains(out, "dry_run") {
+		t.Fatalf("unexpected output: %q", out)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// KeepDeleteCmd tests
+// ---------------------------------------------------------------------------
+
+func TestKeepDelete_WithForce_JSON(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		if r.URL.Path == "/v1/notes/abc123" && r.Method == http.MethodDelete {
+			_, _ = io.WriteString(w, `{}`)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(ctx context.Context, _, _ string) (*keepapi.Service, error) {
+		return keepapi.NewService(ctx,
+			option.WithEndpoint(srv.URL+"/"),
+			option.WithHTTPClient(srv.Client()),
+			option.WithoutAuthentication(),
+		)
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			if err := Execute([]string{"--json", "--force", "keep", "delete", "abc123", "--account", account}); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+		})
+	})
+
+	if gotMethod != http.MethodDelete {
+		t.Fatalf("expected DELETE, got %s", gotMethod)
+	}
+	if gotPath != "/v1/notes/abc123" {
+		t.Fatalf("unexpected path: %s", gotPath)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("json parse: %v\nout=%q", err, out)
+	}
+	if payload["deleted"] != true {
+		t.Fatalf("unexpected payload: %#v", payload)
+	}
+	if payload["name"] != "notes/abc123" {
+		t.Fatalf("unexpected name: %v", payload["name"])
+	}
+}
+
+func TestKeepDelete_RequiresConfirmation(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(context.Context, string, string) (*keepapi.Service, error) {
+		return &keepapi.Service{}, nil
+	}
+
+	// Without --force and with --no-input, delete should fail.
+	err := (&KeepDeleteCmd{NoteID: "abc"}).Run(
+		context.Background(), &RootFlags{Account: account, NoInput: true}, &KeepCmd{})
+	if err == nil {
+		t.Fatalf("expected error without --force")
+	}
+	if ExitCode(err) != 2 {
+		t.Fatalf("expected exit code 2, got %d", ExitCode(err))
+	}
+}
+
+func TestKeepDelete_WithNotesPrefix(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		if r.Method == http.MethodDelete {
+			_, _ = io.WriteString(w, `{}`)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(ctx context.Context, _, _ string) (*keepapi.Service, error) {
+		return keepapi.NewService(ctx,
+			option.WithEndpoint(srv.URL+"/"),
+			option.WithHTTPClient(srv.Client()),
+			option.WithoutAuthentication(),
+		)
+	}
+
+	_ = captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			// Pass noteId with "notes/" prefix already included
+			if err := Execute([]string{"--force", "--plain", "keep", "delete", "notes/xyz", "--account", account}); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+		})
+	})
+
+	if gotPath != "/v1/notes/xyz" {
+		t.Fatalf("unexpected path: %s (should not double-prefix)", gotPath)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// KeepPermissionsAddCmd tests
+// ---------------------------------------------------------------------------
+
+func TestKeepPermissionsAdd_JSON(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// batchCreate endpoint
+		if r.URL.Path == "/v1/notes/note1/permissions:batchCreate" && r.Method == http.MethodPost {
+			body, _ := io.ReadAll(r.Body)
+			var req map[string]any
+			_ = json.Unmarshal(body, &req)
+			_, _ = io.WriteString(w, `{"permissions":[{"name":"notes/note1/permissions/perm1","email":"user@example.com","role":"WRITER"}]}`)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(ctx context.Context, _, _ string) (*keepapi.Service, error) {
+		return keepapi.NewService(ctx,
+			option.WithEndpoint(srv.URL+"/"),
+			option.WithHTTPClient(srv.Client()),
+			option.WithoutAuthentication(),
+		)
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			if err := Execute([]string{"--json", "keep", "permissions", "add", "note1", "--email", "user@example.com", "--role", "WRITER", "--account", account}); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+		})
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("json parse: %v\nout=%q", err, out)
+	}
+	if payload["noteId"] != "notes/note1" {
+		t.Fatalf("unexpected noteId: %v", payload["noteId"])
+	}
+}
+
+func TestKeepPermissionsAdd_DryRun(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	called := false
+	newKeepServiceWithSA = func(context.Context, string, string) (*keepapi.Service, error) {
+		called = true
+		return &keepapi.Service{}, nil
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			err := Execute([]string{"--json", "--dry-run", "keep", "permissions", "add", "note1", "--email", "user@example.com", "--account", account})
+			if err != nil {
+				if ExitCode(err) != 0 {
+					t.Fatalf("Execute: %v", err)
+				}
+			}
+		})
+	})
+
+	if called {
+		t.Fatalf("expected no service call in dry run")
+	}
+	if !strings.Contains(out, "dry_run") {
+		t.Fatalf("unexpected output: %q", out)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// KeepPermissionsRemoveCmd tests
+// ---------------------------------------------------------------------------
+
+func TestKeepPermissionsRemove_JSON(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/v1/notes/note1" && r.Method == http.MethodGet:
+			_, _ = io.WriteString(w, `{"name":"notes/note1","title":"T","permissions":[{"name":"notes/note1/permissions/owner","email":"owner@example.com","role":"OWNER"},{"name":"notes/note1/permissions/perm1","email":"user@example.com","role":"WRITER"}]}`)
+			return
+		case r.URL.Path == "/v1/notes/note1/permissions:batchDelete" && r.Method == http.MethodPost:
+			body, _ := io.ReadAll(r.Body)
+			var req map[string]any
+			_ = json.Unmarshal(body, &req)
+			names, ok := req["names"].([]any)
+			if !ok || len(names) == 0 {
+				http.Error(w, "no names", http.StatusBadRequest)
+				return
+			}
+			_, _ = io.WriteString(w, `{}`)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(ctx context.Context, _, _ string) (*keepapi.Service, error) {
+		return keepapi.NewService(ctx,
+			option.WithEndpoint(srv.URL+"/"),
+			option.WithHTTPClient(srv.Client()),
+			option.WithoutAuthentication(),
+		)
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			if err := Execute([]string{"--json", "--force", "keep", "permissions", "remove", "note1", "--email", "user@example.com", "--account", account}); err != nil {
+				t.Fatalf("Execute: %v", err)
+			}
+		})
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("json parse: %v\nout=%q", err, out)
+	}
+	if payload["removed"] != true {
+		t.Fatalf("unexpected payload: %#v", payload)
+	}
+	if payload["email"] != "user@example.com" {
+		t.Fatalf("unexpected email: %v", payload["email"])
+	}
+}
+
+func TestKeepPermissionsRemove_NotFound(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/notes/note1" && r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, `{"name":"notes/note1","title":"T","permissions":[{"name":"notes/note1/permissions/owner","email":"owner@example.com","role":"OWNER"}]}`)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(ctx context.Context, _, _ string) (*keepapi.Service, error) {
+		return keepapi.NewService(ctx,
+			option.WithEndpoint(srv.URL+"/"),
+			option.WithHTTPClient(srv.Client()),
+			option.WithoutAuthentication(),
+		)
+	}
+
+	_ = captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			err := Execute([]string{"--force", "--plain", "keep", "permissions", "remove", "note1", "--email", "nonexist@example.com", "--account", account})
+			if err == nil {
+				t.Fatalf("expected error for missing permission")
+			}
+			if !strings.Contains(err.Error(), "no permission found") {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	})
+}
+
+func TestKeepPermissionsRemove_RequiresConfirmation(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "xdg-config"))
+
+	account := "a@b.com"
+	_ = writeKeepSA(t, account)
+
+	orig := newKeepServiceWithSA
+	t.Cleanup(func() { newKeepServiceWithSA = orig })
+	newKeepServiceWithSA = func(context.Context, string, string) (*keepapi.Service, error) {
+		return &keepapi.Service{}, nil
+	}
+
+	err := (&KeepPermissionsRemoveCmd{NoteID: "abc", Email: "user@example.com"}).Run(
+		context.Background(), &RootFlags{Account: account, NoInput: true}, &KeepCmd{})
+	if err == nil {
+		t.Fatalf("expected error without --force")
+	}
+	if ExitCode(err) != 2 {
+		t.Fatalf("expected exit code 2, got %d", ExitCode(err))
+	}
+}
+
 func TestGetKeepService_UsesLegacyPath(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

@@ -568,6 +568,23 @@ func TestSetupKeyringIfNeeded_FullFlow(t *testing.T) {
 	}
 }
 
+func TestDetectShellProfile_Windows(t *testing.T) {
+	origGOOS := runtimeGOOS
+
+	t.Cleanup(func() { runtimeGOOS = origGOOS })
+
+	runtimeGOOS = "windows"
+
+	path, err := detectShellProfile()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if path != "" {
+		t.Errorf("detectShellProfile() on windows = %q, want empty", path)
+	}
+}
+
 func TestDetectShellProfile_Zsh(t *testing.T) {
 	dir := t.TempDir()
 

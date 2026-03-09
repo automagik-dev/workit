@@ -279,13 +279,13 @@ func TestScopesForManageWithOptions_Readonly(t *testing.T) {
 	}
 }
 
-func TestScopes_ServiceKeep_DefaultIsReadonly(t *testing.T) {
+func TestScopes_ServiceKeep_FullScope(t *testing.T) {
 	scopes, err := Scopes(ServiceKeep)
 	if err != nil {
 		t.Fatalf("Scopes: %v", err)
 	}
 
-	if len(scopes) != 1 || scopes[0] != "https://www.googleapis.com/auth/keep.readonly" {
+	if len(scopes) != 1 || scopes[0] != "https://www.googleapis.com/auth/keep" {
 		t.Fatalf("unexpected keep scopes: %#v", scopes)
 	}
 }
@@ -296,7 +296,8 @@ func TestScopesForServiceWithOptions_ServiceKeep_Readonly(t *testing.T) {
 		t.Fatalf("scopesForServiceWithOptions: %v", err)
 	}
 
-	if len(scopes) != 1 || scopes[0] != "https://www.googleapis.com/auth/keep.readonly" {
+	// Keep has no separate readonly scope; it always returns the full keep scope.
+	if len(scopes) != 1 || scopes[0] != "https://www.googleapis.com/auth/keep" {
 		t.Fatalf("unexpected keep readonly scopes: %#v", scopes)
 	}
 }

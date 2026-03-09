@@ -508,6 +508,112 @@ func TestWatcher_IgnoreNodeModules(t *testing.T) {
 	}
 }
 
+func TestWatcher_IgnoreSymlinkToDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a real subdirectory with a file
+	realDir := filepath.Join(tmpDir, "realdir")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	// Create a symlink to a directory
+	targetDir := t.TempDir()
+	symlinkDir := filepath.Join(tmpDir, "linked-dir")
+	if err := os.Symlink(targetDir, symlinkDir); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+
+	// NewWatcher should not crash on symlinks
+	w, err := NewWatcher(tmpDir, 50*time.Millisecond)
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	defer w.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = w.Start(ctx)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Create a file in the real directory (should trigger event)
+	normalFile := filepath.Join(realDir, "normal.txt")
+	if err := os.WriteFile(normalFile, []byte("normal"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	timeout := time.After(1 * time.Second)
+	for {
+		select {
+		case event := <-w.Events():
+			if event.Path == normalFile {
+				return // success - watcher works without crashing
+			}
+		case err := <-w.Errors():
+			t.Fatalf("unexpected error: %v", err)
+		case <-timeout:
+			t.Fatal("timeout waiting for normal file event")
+		}
+	}
+}
+
+func TestWatcher_IgnoreSymlinkEvents(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	w, err := NewWatcher(tmpDir, 50*time.Millisecond)
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	defer w.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = w.Start(ctx)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+
+	// Create a target file and a symlink to it
+	targetFile := filepath.Join(t.TempDir(), "target.txt")
+	if err := os.WriteFile(targetFile, []byte("target"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	symlinkFile := filepath.Join(tmpDir, "link.txt")
+	if err := os.Symlink(targetFile, symlinkFile); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+
+	// Also create a normal file
+	normalFile := filepath.Join(tmpDir, "normal.txt")
+	if err := os.WriteFile(normalFile, []byte("normal"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Should only get event for normal file, not the symlink
+	timeout := time.After(500 * time.Millisecond)
+	for {
+		select {
+		case event := <-w.Events():
+			if event.Path == symlinkFile {
+				t.Errorf("received event for symlink: %v", event.Path)
+			}
+			if event.Path == normalFile {
+				return // success
+			}
+		case err := <-w.Errors():
+			t.Fatalf("unexpected error: %v", err)
+		case <-timeout:
+			t.Fatal("timeout waiting for normal file event")
+		}
+	}
+}
+
 func TestWatchOp_String(t *testing.T) {
 	tests := []struct {
 		op   WatchOp
