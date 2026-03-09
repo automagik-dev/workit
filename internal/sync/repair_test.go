@@ -138,7 +138,7 @@ func (m *mockDriveState) handler() http.HandlerFunc {
 	}
 }
 
-func createTestDriveService(t *testing.T, handler http.HandlerFunc) (*drive.Service, *httptest.Server) {
+func createTestDriveService(t *testing.T, handler http.HandlerFunc) *drive.Service {
 	t.Helper()
 	ts := httptest.NewServer(handler)
 	t.Cleanup(ts.Close)
@@ -150,7 +150,8 @@ func createTestDriveService(t *testing.T, handler http.HandlerFunc) (*drive.Serv
 	if err != nil {
 		t.Fatalf("create drive service: %v", err)
 	}
-	return svc, ts
+
+	return svc
 }
 
 func TestScan_FindsDuplicateFolders(t *testing.T) {
@@ -166,7 +167,7 @@ func TestScan_FindsDuplicateFolders(t *testing.T) {
 		{"id": "folder-3", "name": "images"},
 	}
 
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 	repairer := NewRepairer(d, cfg, svc)
 
 	report, err := repairer.Scan(context.Background())
@@ -224,7 +225,7 @@ func TestScan_FindsStaleHashes(t *testing.T) {
 	mock := newMockDriveState()
 	mock.files["drive-id-1"] = true
 	mock.files["drive-id-2"] = true
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 	report, err := repairer.Scan(context.Background())
@@ -297,7 +298,7 @@ func TestScan_FindsOrphanedItems(t *testing.T) {
 	mock := newMockDriveState()
 	mock.files["drive-exists"] = true
 	// drive-gone and drive-missing return 404
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 	report, err := repairer.Scan(context.Background())
@@ -353,7 +354,7 @@ func TestScan_NoIssues(t *testing.T) {
 
 	mock := newMockDriveState()
 	mock.files["drive-good"] = true
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 	report, err := repairer.Scan(context.Background())
@@ -393,7 +394,7 @@ func TestApply_FixesStaleHashes(t *testing.T) {
 	itemID, _ := result.LastInsertId()
 
 	mock := newMockDriveState()
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 
@@ -443,7 +444,7 @@ func TestApply_RemovesOrphanedItems(t *testing.T) {
 	itemID, _ := result.LastInsertId()
 
 	mock := newMockDriveState()
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 
@@ -488,7 +489,7 @@ func TestApply_MergesDuplicateFolders(t *testing.T) {
 	// Root has no subfolders after merge (for rebuild)
 	mock.folders["folder-abc"] = []map[string]string{}
 
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 
@@ -544,7 +545,7 @@ func TestScan_DryRunMakesNoChanges(t *testing.T) {
 
 	mock := newMockDriveState()
 	mock.files["drive-id-1"] = true
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 
@@ -698,7 +699,7 @@ func TestScan_OrphanedItem_NoRemoteDueToEmptyDriveID(t *testing.T) {
 	}
 
 	mock := newMockDriveState()
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 
 	repairer := NewRepairer(d, cfg, svc)
 	report, err := repairer.Scan(context.Background())
@@ -735,7 +736,7 @@ func TestApply_RebuildsFolderRegistryAfterMerge(t *testing.T) {
 	mock.folders["folder-keep"] = []map[string]string{}
 	mock.folders["folder-dup"] = []map[string]string{}
 
-	svc, _ := createTestDriveService(t, mock.handler())
+	svc := createTestDriveService(t, mock.handler())
 	repairer := NewRepairer(d, cfg, svc)
 
 	report := &RepairReport{

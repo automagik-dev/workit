@@ -2,6 +2,7 @@ package docx
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,11 +10,15 @@ import (
 	"runtime"
 )
 
+// ErrSofficeNotFound is returned when soffice is not found in PATH or common install paths.
+var ErrSofficeNotFound = errors.New("soffice not found in PATH")
+
 // LookPathSoffice finds the soffice binary. On Windows it also checks common install paths.
 func LookPathSoffice() (string, error) {
 	if p, err := exec.LookPath("soffice"); err == nil {
 		return p, nil
 	}
+
 	if runtime.GOOS == "windows" {
 		for _, dir := range []string{
 			filepath.Join(os.Getenv("ProgramFiles"), "LibreOffice", "program"),
@@ -25,7 +30,7 @@ func LookPathSoffice() (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("soffice not found in PATH%s", sofficeInstallHint())
+	return "", fmt.Errorf("%w%s", ErrSofficeNotFound, sofficeInstallHint())
 }
 
 func sofficeInstallHint() string {

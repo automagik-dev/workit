@@ -268,27 +268,22 @@ func (r *Repairer) findOrphanedItems(ctx context.Context) ([]OrphanedItem, error
 			remoteExists = false
 		}
 
-		if !localExists && !remoteExists {
+		var reason string
+
+		switch {
+		case !localExists && !remoteExists:
+			reason = "both_missing"
+		case !localExists:
+			reason = "no_local_file"
+		case !remoteExists:
+			reason = "no_remote_file"
+		}
+
+		if reason != "" {
 			orphans = append(orphans, OrphanedItem{
 				LocalPath: item.LocalPath,
 				DriveID:   item.DriveID,
-				Reason:    "both_missing",
-				ItemID:    item.ID,
-				ConfigID:  item.ConfigID,
-			})
-		} else if !localExists {
-			orphans = append(orphans, OrphanedItem{
-				LocalPath: item.LocalPath,
-				DriveID:   item.DriveID,
-				Reason:    "no_local_file",
-				ItemID:    item.ID,
-				ConfigID:  item.ConfigID,
-			})
-		} else if !remoteExists {
-			orphans = append(orphans, OrphanedItem{
-				LocalPath: item.LocalPath,
-				DriveID:   item.DriveID,
-				Reason:    "no_remote_file",
+				Reason:    reason,
 				ItemID:    item.ID,
 				ConfigID:  item.ConfigID,
 			})

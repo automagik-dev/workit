@@ -573,7 +573,7 @@ func writeAtomicExecutableWindows(path string, content []byte) error {
 	}
 
 	// Write the new binary.
-	if err := os.WriteFile(path, content, 0o644); err != nil {
+	if err := os.WriteFile(path, content, 0o600); err != nil {
 		// Try to restore the old binary.
 		_ = os.Rename(oldPath, path)
 		if os.IsPermission(err) {

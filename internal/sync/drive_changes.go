@@ -282,6 +282,7 @@ func (p *DrivePoller) convertChange(change *drive.Change) *DriveChange {
 }
 
 // isInFolderByParents checks if a file is within our synced folder by checking parents.
+//
 // Deprecated: Use isInSyncTree instead, which also checks registered subfolders.
 func (p *DrivePoller) isInFolderByParents(parents []string) bool {
 	return p.isInSyncTree(parents)
