@@ -59,8 +59,8 @@ func NewEngine(opts EngineOptions) (*Engine, error) {
 		opts.PollInterval,
 	)
 
-	uploader := NewUploader(opts.DriveService, opts.Config.DriveFolderID, opts.Config.DriveID)
-	dloader := NewDownloader(opts.DriveService, opts.Config.LocalPath)
+	uploader := NewUploader(opts.DriveService, opts.Config.DriveFolderID, opts.Config.DriveID, opts.DB, opts.Config.ID)
+	dloader := NewDownloader(opts.DriveService, opts.Config.LocalPath, opts.DB, opts.Config.ID)
 
 	return &Engine{
 		db:       opts.DB,
@@ -213,6 +213,15 @@ func (e *Engine) handleLocalEvent(ctx context.Context, event WatchEvent) {
 
 			_ = e.db.AddLogEntry(e.config.ID, "upload", relPath, map[string]any{"type": "folder"})
 		} else {
+			// Check if content actually changed before uploading
+			item, _ := e.db.GetSyncItem(e.config.ID, relPath)
+			if item != nil {
+				currentMD5, err := computeMD5(absPath)
+				if err == nil && currentMD5 == item.LocalMD5 {
+					return // Content unchanged, skip upload
+				}
+			}
+
 			// Upload file
 			result, err := e.uploader.UploadFile(ctx, relPath, absPath)
 			if err != nil {
@@ -310,7 +319,7 @@ func (e *Engine) handleRemoteChange(ctx context.Context, change DriveChange) {
 			return
 		}
 
-		if item != nil && item.RemoteMD5 == change.FileID {
+		if item != nil && change.MD5 != "" && item.RemoteMD5 == change.MD5 {
 			// No change needed
 			return
 		}
@@ -344,6 +353,15 @@ func (e *Engine) handleRemoteChange(ctx context.Context, change DriveChange) {
 
 // initialScan scans the local directory and populates sync_items.
 func (e *Engine) initialScan(ctx context.Context) error {
+	// Pre-populate folder registry from Drive
+	if err := e.populateFolderRegistry(ctx); err != nil {
+		// Log warning but don't fail — folders will be discovered lazily
+		_ = e.db.AddLogEntry(e.config.ID, "warning", "", map[string]any{
+			"action": "populate_folder_registry",
+			"error":  err.Error(),
+		})
+	}
+
 	return filepath.WalkDir(e.config.LocalPath, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -372,6 +390,18 @@ func (e *Engine) initialScan(ctx context.Context) error {
 			return nil
 		}
 
+		// Detect and skip symlinks
+		linfo, lErr := os.Lstat(path)
+		if lErr == nil && linfo.Mode()&os.ModeSymlink != 0 {
+			if u := ui.FromContext(ctx); u != nil {
+				u.Err().Printf("Skipping symlink: %s", relPath)
+			}
+			if linfo.IsDir() || d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
 		if d.IsDir() {
 			// Track directory but don't upload yet
 			return nil
@@ -384,7 +414,15 @@ func (e *Engine) initialScan(ctx context.Context) error {
 		}
 
 		if item != nil {
-			// Already tracked
+			// Re-check if local file has changed while sync was stopped
+			currentMD5, err := computeMD5(path)
+			if err != nil {
+				return nil // Skip on error, don't block scan
+			}
+			if currentMD5 != item.LocalMD5 {
+				// File was modified offline — mark for upload
+				_ = e.db.UpdateSyncItem(item.ID, item.DriveID, currentMD5, item.RemoteMD5, StatePendingUpload)
+			}
 			return nil
 		}
 
@@ -502,6 +540,64 @@ func (e *Engine) processPendingUploads(ctx context.Context) error {
 		})
 
 		logPendingUploadProgress(ctx, "Uploading pre-existing files: %d/%d", i+1, total)
+	}
+
+	return nil
+}
+
+// populateFolderRegistry lists all folders in the Drive sync root and registers them.
+func (e *Engine) populateFolderRegistry(ctx context.Context) error {
+	if e.service == nil {
+		return nil
+	}
+	return e.listDriveFolders(ctx, e.config.DriveFolderID, "")
+}
+
+// listDriveFolders recursively lists folders in a Drive folder and registers them.
+func (e *Engine) listDriveFolders(ctx context.Context, parentID, parentPath string) error {
+	query := fmt.Sprintf("'%s' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false", parentID)
+
+	var pageToken string
+	for {
+		call := e.service.Files.List().
+			Context(ctx).
+			Q(query).
+			Fields("nextPageToken,files(id,name)").
+			PageSize(100)
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
+		}
+
+		resp, err := call.Do()
+		if err != nil {
+			return fmt.Errorf("list folders in %s: %w", parentID, err)
+		}
+
+		for _, f := range resp.Files {
+			folderPath := f.Name
+			if parentPath != "" {
+				folderPath = filepath.Join(parentPath, f.Name)
+			}
+
+			// Register in DB
+			_ = e.db.CreateSyncFolder(e.config.ID, f.Id, folderPath)
+			// Also populate uploader cache
+			e.uploader.SetFolderID(folderPath, f.Id)
+
+			// Recurse into subfolder
+			if err := e.listDriveFolders(ctx, f.Id, folderPath); err != nil {
+				// Log but continue with other folders
+				_ = e.db.AddLogEntry(e.config.ID, "warning", folderPath, map[string]any{
+					"action": "list_subfolders",
+					"error":  err.Error(),
+				})
+			}
+		}
+
+		if resp.NextPageToken == "" {
+			break
+		}
+		pageToken = resp.NextPageToken
 	}
 
 	return nil

@@ -106,6 +106,17 @@ func (d *DB) migrate() error {
 
 	CREATE INDEX IF NOT EXISTS idx_sync_log_config_id ON sync_log(config_id);
 	CREATE INDEX IF NOT EXISTS idx_sync_log_timestamp ON sync_log(timestamp);
+
+	CREATE TABLE IF NOT EXISTS sync_folders (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		config_id INTEGER NOT NULL,
+		drive_id TEXT NOT NULL,
+		local_path TEXT NOT NULL,
+		FOREIGN KEY (config_id) REFERENCES sync_configs(id) ON DELETE CASCADE
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_folders_config_drive ON sync_folders(config_id, drive_id);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_folders_config_path ON sync_folders(config_id, local_path);
+	CREATE INDEX IF NOT EXISTS idx_sync_folders_drive_id ON sync_folders(drive_id);
 	`
 
 	_, err := d.db.Exec(schema)
@@ -511,4 +522,150 @@ func (d *DB) ListPendingUploads(configID int64) ([]SyncItem, error) {
 	}
 
 	return items, rows.Err()
+}
+
+// ListAllItems returns all sync items for a config, regardless of state.
+func (d *DB) ListAllItems(configID int64) ([]SyncItem, error) {
+	rows, err := d.db.Query(
+		`SELECT id, config_id, local_path, drive_id, local_md5, remote_md5,
+		        local_mtime, remote_mtime, sync_state
+		 FROM sync_items WHERE config_id = ?`,
+		configID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query all items: %w", err)
+	}
+	defer rows.Close()
+
+	var items []SyncItem
+	for rows.Next() {
+		var item SyncItem
+		var localMtime, remoteMtime sql.NullTime
+
+		if err := rows.Scan(&item.ID, &item.ConfigID, &item.LocalPath, &item.DriveID,
+			&item.LocalMD5, &item.RemoteMD5, &localMtime, &remoteMtime, &item.SyncState); err != nil {
+			return nil, fmt.Errorf("scan item: %w", err)
+		}
+
+		if localMtime.Valid {
+			item.LocalMtime = localMtime.Time
+		}
+
+		if remoteMtime.Valid {
+			item.RemoteMtime = remoteMtime.Time
+		}
+
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+// ListSyncedItems returns all sync items with state "synced" for a config.
+func (d *DB) ListSyncedItems(configID int64) ([]SyncItem, error) {
+	rows, err := d.db.Query(
+		`SELECT id, config_id, local_path, drive_id, local_md5, remote_md5,
+		        local_mtime, remote_mtime, sync_state
+		 FROM sync_items WHERE config_id = ? AND sync_state = ?`,
+		configID, StateSynced,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query synced items: %w", err)
+	}
+	defer rows.Close()
+
+	var items []SyncItem
+	for rows.Next() {
+		var item SyncItem
+		var localMtime, remoteMtime sql.NullTime
+
+		if err := rows.Scan(&item.ID, &item.ConfigID, &item.LocalPath, &item.DriveID,
+			&item.LocalMD5, &item.RemoteMD5, &localMtime, &remoteMtime, &item.SyncState); err != nil {
+			return nil, fmt.Errorf("scan synced item: %w", err)
+		}
+
+		if localMtime.Valid {
+			item.LocalMtime = localMtime.Time
+		}
+
+		if remoteMtime.Valid {
+			item.RemoteMtime = remoteMtime.Time
+		}
+
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
+// DeleteSyncFolders deletes all sync_folders for a config.
+func (d *DB) DeleteSyncFolders(configID int64) error {
+	_, err := d.db.Exec(`DELETE FROM sync_folders WHERE config_id = ?`, configID)
+	return err
+}
+
+// RemoveSyncItemByID removes a sync item by its ID.
+func (d *DB) RemoveSyncItemByID(itemID int64) error {
+	_, err := d.db.Exec(`DELETE FROM sync_items WHERE id = ?`, itemID)
+	return err
+}
+
+// CreateSyncFolder creates or updates a folder mapping.
+func (d *DB) CreateSyncFolder(configID int64, driveID, localPath string) error {
+	_, err := d.db.Exec(
+		`INSERT INTO sync_folders (config_id, drive_id, local_path) VALUES (?, ?, ?)
+		 ON CONFLICT(config_id, drive_id) DO UPDATE SET local_path = excluded.local_path`,
+		configID, driveID, localPath,
+	)
+	return err
+}
+
+// GetSyncFolderByDriveID looks up a folder by its Drive ID.
+func (d *DB) GetSyncFolderByDriveID(configID int64, driveID string) (*SyncFolder, error) {
+	row := d.db.QueryRow(
+		`SELECT id, config_id, drive_id, local_path FROM sync_folders WHERE config_id = ? AND drive_id = ?`,
+		configID, driveID,
+	)
+	var f SyncFolder
+	if err := row.Scan(&f.ID, &f.ConfigID, &f.DriveID, &f.LocalPath); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &f, nil
+}
+
+// GetSyncFolderByPath looks up a folder by its local path.
+func (d *DB) GetSyncFolderByPath(configID int64, localPath string) (*SyncFolder, error) {
+	row := d.db.QueryRow(
+		`SELECT id, config_id, drive_id, local_path FROM sync_folders WHERE config_id = ? AND local_path = ?`,
+		configID, localPath,
+	)
+	var f SyncFolder
+	if err := row.Scan(&f.ID, &f.ConfigID, &f.DriveID, &f.LocalPath); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &f, nil
+}
+
+// ListSyncFolderDriveIDs returns all known Drive folder IDs for a config.
+func (d *DB) ListSyncFolderDriveIDs(configID int64) (map[string]bool, error) {
+	rows, err := d.db.Query(`SELECT drive_id FROM sync_folders WHERE config_id = ?`, configID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := make(map[string]bool)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids[id] = true
+	}
+	return ids, rows.Err()
 }

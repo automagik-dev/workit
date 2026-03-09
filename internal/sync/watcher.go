@@ -157,6 +157,11 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 		return
 	}
 
+	// Skip symlink events
+	if linfo, err := os.Lstat(path); err == nil && linfo.Mode()&os.ModeSymlink != 0 {
+		return
+	}
+
 	// Convert to our event type
 	var op WatchOp
 	switch {
@@ -316,6 +321,15 @@ func (w *Watcher) addRecursive(root string) error {
 				return filepath.SkipDir
 			}
 			return err
+		}
+
+		// Skip symlinks
+		linfo, lErr := os.Lstat(path)
+		if lErr == nil && linfo.Mode()&os.ModeSymlink != 0 {
+			if linfo.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 
 		// Only add directories

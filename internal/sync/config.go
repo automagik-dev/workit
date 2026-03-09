@@ -67,6 +67,14 @@ type SyncLogEntry struct {
 	Details   string    `json:"details,omitempty"` // JSON details
 }
 
+// SyncFolder represents a tracked folder in the sync tree.
+type SyncFolder struct {
+	ID        int64  `json:"id"`
+	ConfigID  int64  `json:"config_id"`
+	DriveID   string `json:"drive_id"`
+	LocalPath string `json:"local_path"` // Relative to config's local_path
+}
+
 // SyncStatus represents the current status of a sync configuration.
 type SyncStatus struct {
 	Config        SyncConfig `json:"config"`

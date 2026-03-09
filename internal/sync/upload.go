@@ -20,7 +20,11 @@ type Uploader struct {
 	rootFolder string
 	driveID    string            // For shared drives
 	mu         gosync.Mutex      // Protects folderIDs
-	folderIDs  map[string]string // Maps relative paths to Drive folder IDs
+	folderIDs  map[string]string // in-memory cache (path -> drive folder ID)
+
+	db       *DB          // DB for persistent folder registry
+	configID int64        // Config ID for DB queries
+	createMu gosync.Mutex // Serializes folder creation to prevent duplicates
 }
 
 // UploadResult contains the result of an upload operation.
@@ -31,12 +35,14 @@ type UploadResult struct {
 }
 
 // NewUploader creates a new uploader.
-func NewUploader(service *drive.Service, rootFolder, driveID string) *Uploader {
+func NewUploader(service *drive.Service, rootFolder, driveID string, db *DB, configID int64) *Uploader {
 	return &Uploader{
 		service:    service,
 		rootFolder: rootFolder,
 		driveID:    driveID,
 		folderIDs:  make(map[string]string),
+		db:         db,
+		configID:   configID,
 	}
 }
 
@@ -53,6 +59,11 @@ func (u *Uploader) setFolderID(relPath, id string) {
 	u.mu.Lock()
 	u.folderIDs[relPath] = id
 	u.mu.Unlock()
+}
+
+// SetFolderID sets a folder ID in the in-memory cache (for external population).
+func (u *Uploader) SetFolderID(path, id string) {
+	u.setFolderID(path, id)
 }
 
 // UploadFile uploads a file to Drive.
@@ -275,11 +286,21 @@ func (u *Uploader) ensureParentFolders(ctx context.Context, relPath string) (str
 
 		currentPath = filepath.Join(currentPath, part)
 
-		// Check cache
+		// Check in-memory cache
 		if id, ok := u.getFolderID(currentPath); ok {
 			currentID = id
 
 			continue
+		}
+
+		// Check DB
+		if u.db != nil {
+			if f, _ := u.db.GetSyncFolderByPath(u.configID, currentPath); f != nil {
+				u.setFolderID(currentPath, f.DriveID)
+				currentID = f.DriveID
+
+				continue
+			}
 		}
 
 		// Check if folder exists in Drive
@@ -289,10 +310,27 @@ func (u *Uploader) ensureParentFolders(ctx context.Context, relPath string) (str
 		}
 
 		if existingID != "" {
+			if u.db != nil {
+				_ = u.db.CreateSyncFolder(u.configID, existingID, currentPath)
+			}
 			u.setFolderID(currentPath, existingID)
 			currentID = existingID
 
 			continue
+		}
+
+		// Acquire creation lock to prevent duplicate folder creation
+		u.createMu.Lock()
+
+		// Double-check: another goroutine may have created it while we waited
+		if u.db != nil {
+			if f, _ := u.db.GetSyncFolderByPath(u.configID, currentPath); f != nil {
+				u.createMu.Unlock()
+				u.setFolderID(currentPath, f.DriveID)
+				currentID = f.DriveID
+
+				continue
+			}
 		}
 
 		// Create folder
@@ -311,10 +349,15 @@ func (u *Uploader) ensureParentFolders(ctx context.Context, relPath string) (str
 		}
 
 		result, err := call.Do()
+		u.createMu.Unlock()
 		if err != nil {
 			return "", fmt.Errorf("create folder %s: %w", part, err)
 		}
 
+		// Save to DB
+		if u.db != nil {
+			_ = u.db.CreateSyncFolder(u.configID, result.Id, currentPath)
+		}
 		u.setFolderID(currentPath, result.Id)
 		currentID = result.Id
 	}

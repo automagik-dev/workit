@@ -22,10 +22,13 @@ type KeepCmd struct {
 	ServiceAccount string `name:"service-account" help:"Path to service account JSON file"`
 	Impersonate    string `name:"impersonate" help:"Email to impersonate (required with service-account)"`
 
-	List       KeepListCmd       `cmd:"" default:"withargs" help:"List notes"`
-	Get        KeepGetCmd        `cmd:"" name:"get" help:"Get a note"`
-	Search     KeepSearchCmd     `cmd:"" name:"search" help:"Search notes by text (client-side)"`
-	Attachment KeepAttachmentCmd `cmd:"" name:"attachment" help:"Download an attachment"`
+	List        KeepListCmd        `cmd:"" default:"withargs" help:"List notes"`
+	Get         KeepGetCmd         `cmd:"" name:"get" help:"Get a note"`
+	Search      KeepSearchCmd      `cmd:"" name:"search" help:"Search notes by text (client-side)"`
+	Attachment  KeepAttachmentCmd  `cmd:"" name:"attachment" help:"Download an attachment"`
+	Create      KeepCreateCmd      `cmd:"" name:"create" help:"Create a note"`
+	Delete      KeepDeleteCmd      `cmd:"" name:"delete" help:"Delete a note"`
+	Permissions KeepPermissionsCmd `cmd:"" name:"permissions" help:"Manage note permissions"`
 }
 
 type KeepListCmd struct {
@@ -362,4 +365,271 @@ func getKeepService(ctx context.Context, flags *RootFlags, keepCmd *KeepCmd) (*k
 	}
 
 	return nil, usage("Keep is Workspace-only and requires a service account. Configure it with: wk auth service-account set <email> --key <service-account.json> (or legacy: wk auth keep <email> --key <service-account.json>)")
+}
+
+// ---------------------------------------------------------------------------
+// KeepCreateCmd
+// ---------------------------------------------------------------------------
+
+type KeepCreateCmd struct {
+	Title     string `name:"title" required:"" help:"Note title"`
+	Body      string `name:"body" help:"Note body text (for text notes)"`
+	ListItems string `name:"list-items" help:"Comma-separated list items (for checklist notes)"`
+}
+
+func (c *KeepCreateCmd) Run(ctx context.Context, flags *RootFlags, keep *KeepCmd) error {
+	u := ui.FromContext(ctx)
+
+	title := strings.TrimSpace(c.Title)
+	if title == "" {
+		return usage("empty title")
+	}
+
+	note := &keepapi.Note{Title: title}
+
+	body := strings.TrimSpace(c.Body)
+	listItems := strings.TrimSpace(c.ListItems)
+
+	if body != "" && listItems != "" {
+		return usage("--body and --list-items are mutually exclusive")
+	}
+
+	if body != "" {
+		note.Body = &keepapi.Section{
+			Text: &keepapi.TextContent{Text: body},
+		}
+	} else if listItems != "" {
+		items := strings.Split(listItems, ",")
+		listEntries := make([]*keepapi.ListItem, 0, len(items))
+		for _, item := range items {
+			item = strings.TrimSpace(item)
+			if item == "" {
+				continue
+			}
+			listEntries = append(listEntries, &keepapi.ListItem{
+				Text: &keepapi.TextContent{Text: item},
+			})
+		}
+		note.Body = &keepapi.Section{
+			List: &keepapi.ListContent{ListItems: listEntries},
+		}
+	}
+
+	if dryRunErr := dryRunExit(ctx, flags, "keep.create", map[string]any{
+		"title":      title,
+		"body":       body,
+		"list_items": listItems,
+	}); dryRunErr != nil {
+		return dryRunErr
+	}
+
+	svc, err := getKeepService(ctx, flags, keep)
+	if err != nil {
+		return err
+	}
+
+	created, err := svc.Notes.Create(note).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{"note": created})
+	}
+
+	u.Out().Printf("name\t%s", created.Name)
+	u.Out().Printf("title\t%s", created.Title)
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// KeepDeleteCmd
+// ---------------------------------------------------------------------------
+
+type KeepDeleteCmd struct {
+	NoteID string `arg:"" name:"noteId" help:"Note ID to delete"`
+}
+
+func (c *KeepDeleteCmd) Run(ctx context.Context, flags *RootFlags, keep *KeepCmd) error {
+	u := ui.FromContext(ctx)
+
+	noteID := strings.TrimSpace(c.NoteID)
+	if noteID == "" {
+		return usage("empty noteId")
+	}
+
+	name := noteID
+	if !strings.HasPrefix(name, "notes/") {
+		name = "notes/" + name
+	}
+
+	if confirmErr := confirmDestructive(ctx, flags, fmt.Sprintf("delete keep note %s", name)); confirmErr != nil {
+		return confirmErr
+	}
+
+	svc, err := getKeepService(ctx, flags, keep)
+	if err != nil {
+		return err
+	}
+
+	if _, err := svc.Notes.Delete(name).Context(ctx).Do(); err != nil {
+		return err
+	}
+
+	return writeResult(ctx, u,
+		kv("deleted", true),
+		kv("name", name),
+	)
+}
+
+// ---------------------------------------------------------------------------
+// KeepPermissionsCmd — container for add/remove subcommands
+// ---------------------------------------------------------------------------
+
+type KeepPermissionsCmd struct {
+	Add    KeepPermissionsAddCmd    `cmd:"" name:"add" help:"Share a note"`
+	Remove KeepPermissionsRemoveCmd `cmd:"" name:"remove" help:"Unshare a note"`
+}
+
+// ---------------------------------------------------------------------------
+// KeepPermissionsAddCmd
+// ---------------------------------------------------------------------------
+
+type KeepPermissionsAddCmd struct {
+	NoteID string `arg:"" name:"noteId" help:"Note ID"`
+	Email  string `name:"email" required:"" help:"Email address to share with"`
+	Role   string `name:"role" default:"WRITER" help:"Permission role (WRITER)"`
+}
+
+func (c *KeepPermissionsAddCmd) Run(ctx context.Context, flags *RootFlags, keep *KeepCmd) error {
+	u := ui.FromContext(ctx)
+
+	noteID := strings.TrimSpace(c.NoteID)
+	if noteID == "" {
+		return usage("empty noteId")
+	}
+	email := strings.TrimSpace(c.Email)
+	if email == "" {
+		return usage("empty email")
+	}
+	role := strings.TrimSpace(c.Role)
+	if role == "" {
+		role = "WRITER"
+	}
+
+	parent := noteID
+	if !strings.HasPrefix(parent, "notes/") {
+		parent = "notes/" + parent
+	}
+
+	if dryRunErr := dryRunExit(ctx, flags, "keep.permissions.add", map[string]any{
+		"noteId": parent,
+		"email":  email,
+		"role":   role,
+	}); dryRunErr != nil {
+		return dryRunErr
+	}
+
+	svc, err := getKeepService(ctx, flags, keep)
+	if err != nil {
+		return err
+	}
+
+	req := &keepapi.BatchCreatePermissionsRequest{
+		Requests: []*keepapi.CreatePermissionRequest{
+			{
+				Parent: parent,
+				Permission: &keepapi.Permission{
+					Email: email,
+					Role:  role,
+				},
+			},
+		},
+	}
+
+	resp, err := svc.Notes.Permissions.BatchCreate(parent, req).Context(ctx).Do()
+	if err != nil {
+		return err
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
+			"noteId":      parent,
+			"permissions": resp.Permissions,
+		})
+	}
+
+	u.Out().Printf("noteId\t%s", parent)
+	u.Out().Printf("shared_with\t%s", email)
+	u.Out().Printf("role\t%s", role)
+	if len(resp.Permissions) > 0 {
+		u.Out().Printf("permission\t%s", resp.Permissions[0].Name)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// KeepPermissionsRemoveCmd
+// ---------------------------------------------------------------------------
+
+type KeepPermissionsRemoveCmd struct {
+	NoteID string `arg:"" name:"noteId" help:"Note ID"`
+	Email  string `name:"email" required:"" help:"Email address to remove"`
+}
+
+func (c *KeepPermissionsRemoveCmd) Run(ctx context.Context, flags *RootFlags, keep *KeepCmd) error {
+	u := ui.FromContext(ctx)
+
+	noteID := strings.TrimSpace(c.NoteID)
+	if noteID == "" {
+		return usage("empty noteId")
+	}
+	email := strings.TrimSpace(c.Email)
+	if email == "" {
+		return usage("empty email")
+	}
+
+	parent := noteID
+	if !strings.HasPrefix(parent, "notes/") {
+		parent = "notes/" + parent
+	}
+
+	if confirmErr := confirmDestructive(ctx, flags, fmt.Sprintf("remove permission for %s from %s", email, parent)); confirmErr != nil {
+		return confirmErr
+	}
+
+	svc, err := getKeepService(ctx, flags, keep)
+	if err != nil {
+		return err
+	}
+
+	// Retrieve the note to find the permission name for the given email.
+	note, err := svc.Notes.Get(parent).Context(ctx).Do()
+	if err != nil {
+		return fmt.Errorf("get note permissions: %w", err)
+	}
+
+	var permNames []string
+	for _, p := range note.Permissions {
+		if strings.EqualFold(p.Email, email) {
+			permNames = append(permNames, p.Name)
+		}
+	}
+	if len(permNames) == 0 {
+		return fmt.Errorf("no permission found for %s on %s", email, parent)
+	}
+
+	req := &keepapi.BatchDeletePermissionsRequest{
+		Names: permNames,
+	}
+
+	if _, err := svc.Notes.Permissions.BatchDelete(parent, req).Context(ctx).Do(); err != nil {
+		return err
+	}
+
+	return writeResult(ctx, u,
+		kv("removed", true),
+		kv("noteId", parent),
+		kv("email", email),
+	)
 }

@@ -10,6 +10,10 @@ Use `--dry-run` when available on mutating paths.
 - `get <noteId>`
 - `search <query>`
 - `attachment <attachmentName>`
+- `create --title <title> [--body <text> | --list-items <a,b,c>]`
+- `delete <noteId> [--force]`
+- `permissions add <noteId> --email <email> [--role WRITER]`
+- `permissions remove <noteId> --email <email> [--force]`
 
 ## Service-account flags
 - `--service-account <json-key>`
@@ -19,4 +23,9 @@ Use `--dry-run` when available on mutating paths.
 ```bash
 wk keep list --read-only --json
 wk keep get <noteId> --read-only --plain
+wk keep create --title "Meeting Notes" --body "Agenda items here" --json
+wk keep create --title "Shopping List" --list-items "Milk,Eggs,Bread"
+wk keep delete <noteId> --force
+wk keep permissions add <noteId> --email user@example.com --role WRITER
+wk keep permissions remove <noteId> --email user@example.com --force
 ```
