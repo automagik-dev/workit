@@ -489,39 +489,7 @@ func (d *DB) RemoveSyncItem(configID int64, localPath string) error {
 
 // ListPendingUploads returns all sync items with pending_upload state for a config.
 func (d *DB) ListPendingUploads(configID int64) ([]SyncItem, error) {
-	rows, err := d.db.Query(
-		`SELECT id, config_id, local_path, drive_id, local_md5, remote_md5,
-		        local_mtime, remote_mtime, sync_state
-		 FROM sync_items WHERE config_id = ? AND sync_state = ?`,
-		configID, StatePendingUpload,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("query pending uploads: %w", err)
-	}
-	defer rows.Close()
-
-	var items []SyncItem
-	for rows.Next() {
-		var item SyncItem
-		var localMtime, remoteMtime sql.NullTime
-
-		if err := rows.Scan(&item.ID, &item.ConfigID, &item.LocalPath, &item.DriveID,
-			&item.LocalMD5, &item.RemoteMD5, &localMtime, &remoteMtime, &item.SyncState); err != nil {
-			return nil, fmt.Errorf("scan pending upload: %w", err)
-		}
-
-		if localMtime.Valid {
-			item.LocalMtime = localMtime.Time
-		}
-
-		if remoteMtime.Valid {
-			item.RemoteMtime = remoteMtime.Time
-		}
-
-		items = append(items, item)
-	}
-
-	return items, rows.Err()
+	return d.listItemsByState(configID, StatePendingUpload)
 }
 
 // ListAllItems returns all sync items for a config, regardless of state.
@@ -563,14 +531,18 @@ func (d *DB) ListAllItems(configID int64) ([]SyncItem, error) {
 
 // ListSyncedItems returns all sync items with state "synced" for a config.
 func (d *DB) ListSyncedItems(configID int64) ([]SyncItem, error) {
+	return d.listItemsByState(configID, StateSynced)
+}
+
+func (d *DB) listItemsByState(configID int64, state SyncState) ([]SyncItem, error) {
 	rows, err := d.db.Query(
 		`SELECT id, config_id, local_path, drive_id, local_md5, remote_md5,
 		        local_mtime, remote_mtime, sync_state
 		 FROM sync_items WHERE config_id = ? AND sync_state = ?`,
-		configID, StateSynced,
+		configID, state,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("query synced items: %w", err)
+		return nil, fmt.Errorf("query items by state %s: %w", state, err)
 	}
 	defer rows.Close()
 
@@ -581,7 +553,7 @@ func (d *DB) ListSyncedItems(configID int64) ([]SyncItem, error) {
 
 		if err := rows.Scan(&item.ID, &item.ConfigID, &item.LocalPath, &item.DriveID,
 			&item.LocalMD5, &item.RemoteMD5, &localMtime, &remoteMtime, &item.SyncState); err != nil {
-			return nil, fmt.Errorf("scan synced item: %w", err)
+			return nil, fmt.Errorf("scan item: %w", err)
 		}
 
 		if localMtime.Valid {

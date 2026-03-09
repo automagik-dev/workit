@@ -30,6 +30,7 @@ func LookPathSoffice() (string, error) {
 			}
 		}
 	}
+
 	return "", fmt.Errorf("%w%s", ErrSofficeNotFound, sofficeInstallHint())
 }
 
