@@ -14,6 +14,7 @@ import (
 	"github.com/automagik-dev/workit/internal/authclient"
 	"github.com/automagik-dev/workit/internal/config"
 	"github.com/automagik-dev/workit/internal/googleauth"
+	"github.com/automagik-dev/workit/internal/msauth"
 	"github.com/automagik-dev/workit/internal/outfmt"
 	"github.com/automagik-dev/workit/internal/secrets"
 	"github.com/automagik-dev/workit/internal/setup"
@@ -1371,12 +1372,12 @@ type AuthServicesCmd struct {
 }
 
 func (c *AuthServicesCmd) Run(ctx context.Context, _ *RootFlags) error {
-	infos := googleauth.ServicesInfo()
+	infos := appendAuthServiceInfos(googleauth.ServicesInfo(), msauth.ServicesInfo())
 	if outfmt.IsJSON(ctx) {
 		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{"services": infos})
 	}
 	if c.Markdown {
-		_, err := io.WriteString(os.Stdout, googleauth.ServicesMarkdown(infos))
+		_, err := io.WriteString(os.Stdout, authServicesMarkdown(infos))
 		return err
 	}
 
