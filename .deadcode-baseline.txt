@@ -40,8 +40,8 @@ internal/googleauth/scopes.go:34:6: unreachable func: ScopesForCommands
 internal/googleauth/scopes.go:72:6: unreachable func: AllScopes
 internal/googleauth/scopes.go:96:6: unreachable func: knownCommandNames
 internal/msauth/scopes.go:17:6: unreachable func: canonicalPilotScope
-internal/msauth/scopes.go:28:6: unreachable func: PilotAllowedScopes
-internal/msauth/scopes.go:38:6: unreachable func: GuardPilotScopes
+internal/msauth/scopes.go:29:6: unreachable func: PilotAllowedScopes
+internal/msauth/scopes.go:40:6: unreachable func: GuardPilotScopes
 internal/officetext/extract.go:46:6: unreachable func: ExtractTextByMIME
 internal/secrets/keychain_other.go:11:6: unreachable func: CheckKeychainLocked
 internal/secrets/keychain_other.go:16:6: unreachable func: UnlockKeychain

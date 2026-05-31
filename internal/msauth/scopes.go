@@ -20,6 +20,7 @@ func canonicalPilotScope(raw string) (string, bool) {
 			return scope, true
 		}
 	}
+
 	return "", false
 }
 
@@ -28,6 +29,7 @@ func canonicalPilotScope(raw string) (string, bool) {
 func PilotAllowedScopes() []string {
 	out := make([]string, len(pilotAllowedScopes))
 	copy(out, pilotAllowedScopes)
+
 	return out
 }
 
@@ -46,6 +48,7 @@ func GuardPilotScopes(requested []string) ([]string, error) {
 		if trimmed == "" {
 			continue
 		}
+
 		canonical, allowed := canonicalPilotScope(trimmed)
 		if !allowed {
 			return nil, fmt.Errorf("%w: %s", ErrPilotScopeNotAllowed, trimmed)
@@ -59,8 +62,10 @@ func GuardPilotScopes(requested []string) ([]string, error) {
 			out = append(out, scope)
 		}
 	}
+
 	if len(out) == 0 {
 		return PilotAllowedScopes(), nil
 	}
+
 	return out, nil
 }
