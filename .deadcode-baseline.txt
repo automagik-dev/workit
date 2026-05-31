@@ -41,8 +41,8 @@ internal/googleauth/scopes.go:72:6: unreachable func: AllScopes
 internal/googleauth/scopes.go:96:6: unreachable func: knownCommandNames
 internal/msauth/broker_store.go:28:6: unreachable func: NewMemoryBrokerStore
 internal/msauth/broker_store.go:32:29: unreachable func: MemoryBrokerStore.Save
-internal/msauth/broker_store.go:46:29: unreachable func: MemoryBrokerStore.Consume
-internal/msauth/broker_store.go:72:6: unreachable func: ValidateBrokerAuthorizedEmail
+internal/msauth/broker_store.go:50:29: unreachable func: MemoryBrokerStore.Consume
+internal/msauth/broker_store.go:76:6: unreachable func: ValidateBrokerAuthorizedEmail
 internal/msauth/scopes.go:17:6: unreachable func: canonicalPilotScope
 internal/msauth/scopes.go:40:6: unreachable func: GuardPilotScopes
 internal/officetext/extract.go:46:6: unreachable func: ExtractTextByMIME

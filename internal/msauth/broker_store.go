@@ -38,6 +38,10 @@ func (s *MemoryBrokerStore) Save(_ context.Context, session BrokerSession) error
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if s.sessions == nil {
+		s.sessions = make(map[string]BrokerSession)
+	}
+
 	s.sessions[state] = session
 
 	return nil

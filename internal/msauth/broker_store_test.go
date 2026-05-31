@@ -30,6 +30,24 @@ func TestMemoryBrokerStoreConsumesSessionOnce(t *testing.T) {
 	}
 }
 
+func TestMemoryBrokerStoreZeroValueSaveInitializesSessionMap(t *testing.T) {
+	var store MemoryBrokerStore
+	session := BrokerSession{State: "state", ExpectedEmail: "pilot@example.com", ExpiresAt: time.Now().Add(time.Minute)}
+
+	if err := store.Save(context.Background(), session); err != nil {
+		t.Fatalf("save zero-value store: %v", err)
+	}
+
+	got, err := store.Consume(context.Background(), "state")
+	if err != nil {
+		t.Fatalf("consume zero-value store: %v", err)
+	}
+
+	if got.ExpectedEmail != "pilot@example.com" {
+		t.Fatalf("session = %#v", got)
+	}
+}
+
 func TestMemoryBrokerStoreRejectsExpiredSession(t *testing.T) {
 	store := NewMemoryBrokerStore()
 	session := BrokerSession{State: "expired", ExpectedEmail: "pilot@example.com", ExpiresAt: time.Now().Add(-time.Minute)}
