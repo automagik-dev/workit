@@ -38,7 +38,7 @@ func TestPilotScopesDefaultToReadOnlyBaseline(t *testing.T) {
 }
 
 func TestGuardPilotScopesAcceptsOnlyPilotReadScopes(t *testing.T) {
-	got, err := GuardPilotScopes([]string{" Mail.Read ", "User.Read", "Mail.Read", "Calendars.Read"})
+	got, err := GuardPilotScopes([]string{" mail.read ", "user.read", "Mail.Read", "CALENDARS.READ"})
 	if err != nil {
 		t.Fatalf("GuardPilotScopes(read scopes) err: %v", err)
 	}

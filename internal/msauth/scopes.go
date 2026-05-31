@@ -14,10 +14,13 @@ var pilotAllowedScopes = []string{
 	"Calendars.Read",
 }
 
-var pilotAllowedScopeSet = map[string]bool{
-	"User.Read":      true,
-	"Mail.Read":      true,
-	"Calendars.Read": true,
+func canonicalPilotScope(raw string) (string, bool) {
+	for _, scope := range pilotAllowedScopes {
+		if strings.EqualFold(raw, scope) {
+			return scope, true
+		}
+	}
+	return "", false
 }
 
 // PilotAllowedScopes returns a defensive copy of the only Microsoft Graph scopes
@@ -39,14 +42,15 @@ func GuardPilotScopes(requested []string) ([]string, error) {
 
 	seen := make(map[string]bool, len(requested))
 	for _, raw := range requested {
-		scope := strings.TrimSpace(raw)
-		if scope == "" {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
 			continue
 		}
-		if !pilotAllowedScopeSet[scope] {
-			return nil, fmt.Errorf("%w: %s", ErrPilotScopeNotAllowed, scope)
+		canonical, allowed := canonicalPilotScope(trimmed)
+		if !allowed {
+			return nil, fmt.Errorf("%w: %s", ErrPilotScopeNotAllowed, trimmed)
 		}
-		seen[scope] = true
+		seen[canonical] = true
 	}
 
 	out := make([]string, 0, len(pilotAllowedScopes))
