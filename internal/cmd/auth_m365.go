@@ -42,26 +42,8 @@ func (c *AuthAddCmd) runM365(ctx context.Context, flags *RootFlags, u *ui.UI) er
 	if c.Step != 0 && !c.Remote {
 		return usage("--step requires --remote")
 	}
-	if c.Remote || c.Step == 1 {
-		if c.Step == 2 || c.AuthURL != "" {
-			return usage("m365 remote step 2 is not supported yet; use browser OAuth on this machine")
-		}
-		result, err := m365ManualAuthURL(ctx, msauth.ManualAuthURLOptions{Readonly: c.Readonly, ForceConsent: c.ForceConsent})
-		if err != nil {
-			return err
-		}
-		if outfmt.IsJSON(ctx) {
-			return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{
-				"provider":   "microsoft_graph",
-				"auth_url":   result.URL,
-				"state":      result.State,
-				"expires_in": result.ExpiresIn,
-			})
-		}
-		u.Out().Printf("provider\tmicrosoft_graph")
-		u.Out().Printf("auth_url\t%s", result.URL)
-		u.Out().Printf("state\t%s", result.State)
-		return nil
+	if c.Remote || c.Step != 0 || c.AuthURL != "" {
+		return usage("m365 remote auth is not supported yet; use browser OAuth on this machine")
 	}
 	if dryRunErr := dryRunExit(ctx, flags, "auth.add.m365", map[string]any{
 		"email":    strings.TrimSpace(c.Email),
@@ -91,6 +73,10 @@ func (c *AuthAddCmd) runM365(ctx context.Context, flags *RootFlags, u *ui.UI) er
 }
 
 func (c *AuthManageCmd) runM365(ctx context.Context) error {
+	if !outfmt.IsJSON(ctx) && !c.PrintURL {
+		return usage("m365 auth manage requires --print-url")
+	}
+
 	result, err := m365ManualAuthURL(ctx, msauth.ManualAuthURLOptions{Readonly: true, ForceConsent: c.ForceConsent})
 	if err != nil {
 		return err
@@ -103,9 +89,6 @@ func (c *AuthManageCmd) runM365(ctx context.Context) error {
 			"expires_in": result.ExpiresIn,
 		})
 	}
-	u := ui.FromContext(ctx)
-	u.Err().Println("Opening Microsoft 365 authorization in your browser…")
-	u.Err().Println(result.URL)
 	return nil
 }
 
@@ -115,7 +98,7 @@ func storeM365Token(ctx context.Context, u *ui.UI, email string, refreshToken st
 		return err
 	}
 	serviceNames := []string{"m365"}
-	scopes := msauth.PilotAllowedScopes()
+	scopes := append([]string(nil), msauth.PilotAllowedScopes()...)
 	sort.Strings(scopes)
 	if err := store.MergeToken(msauth.ClientName, email, secrets.Token{
 		Client:       msauth.ClientName,

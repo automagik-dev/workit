@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/automagik-dev/workit/internal/msauth"
@@ -28,4 +29,16 @@ func TestAuthManageM365PrintURLPropagatesForceConsent(t *testing.T) {
 	if !got.Readonly || !got.ForceConsent {
 		t.Fatalf("options = %#v", got)
 	}
+}
+
+func TestAuthManageM365RequiresPrintURLForTextMode(t *testing.T) {
+	_ = captureStderr(t, func() {
+		err := Execute([]string{"auth", "manage", "--services", "m365"})
+		if err == nil {
+			t.Fatal("expected m365 manage text mode to fail closed")
+		}
+		if !strings.Contains(err.Error(), "requires --print-url") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
 }

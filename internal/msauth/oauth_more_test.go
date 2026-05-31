@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
-	"time"
 
 	"golang.org/x/oauth2"
 
@@ -20,7 +20,7 @@ func TestFetchEmailUsesMailThenUserPrincipalName(t *testing.T) {
 			t.Fatalf("Authorization = %q", got)
 		}
 
-		_, _ = w.Write([]byte(`{"mail":"","userPrincipalName":"bernardo@hapvida.com.br"}`))
+		_, _ = w.Write([]byte(`{"mail":"","userPrincipalName":"pilot@example.com"}`))
 	}))
 	defer server.Close()
 
@@ -34,7 +34,7 @@ func TestFetchEmailUsesMailThenUserPrincipalName(t *testing.T) {
 		t.Fatalf("FetchEmail: %v", err)
 	}
 
-	if email != "bernardo@hapvida.com.br" {
+	if email != "pilot@example.com" {
 		t.Fatalf("email = %q", email)
 	}
 }
@@ -149,7 +149,7 @@ func TestExchangeCodeAndProfileStoresSuccessfulProfileEmail(t *testing.T) {
 
 	graphServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"mail":"bernardo@hapvida.com.br"}`))
+		_, _ = w.Write([]byte(`{"mail":"pilot@example.com"}`))
 	}))
 	defer graphServer.Close()
 
@@ -170,7 +170,7 @@ func TestExchangeCodeAndProfileStoresSuccessfulProfileEmail(t *testing.T) {
 		t.Fatalf("exchangeCodeAndProfile: %v", err)
 	}
 
-	if result.Email != "bernardo@hapvida.com.br" || result.RefreshToken != "refresh-token" {
+	if result.Email != "pilot@example.com" || result.RefreshToken != "refresh-token" {
 		t.Fatalf("result = %#v", result)
 	}
 }
@@ -182,6 +182,7 @@ func TestAuthorizeCompletesBrowserOAuthWithPKCE(t *testing.T) {
 	origOpen := openBrowserFn
 	origOAuthConfig := oauthConfigFn
 	origGraphURL := graphMeURL
+	origPort := localAuthPort
 
 	t.Cleanup(func() {
 		config.DefaultM365ClientID = origClientID
@@ -190,10 +191,12 @@ func TestAuthorizeCompletesBrowserOAuthWithPKCE(t *testing.T) {
 		openBrowserFn = origOpen
 		oauthConfigFn = origOAuthConfig
 		graphMeURL = origGraphURL
+		localAuthPort = origPort
 	})
 
 	config.DefaultM365ClientID = "client-id"
 	config.DefaultM365TenantID = "organizations"
+	localAuthPort = 18085
 	randomStateFn = func() (string, error) { return "fixed-state", nil }
 
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -204,7 +207,7 @@ func TestAuthorizeCompletesBrowserOAuthWithPKCE(t *testing.T) {
 
 	graphServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"mail":"bernardo@hapvida.com.br"}`))
+		_, _ = w.Write([]byte(`{"mail":"pilot@example.com"}`))
 	}))
 	defer graphServer.Close()
 	graphMeURL = graphServer.URL
@@ -217,12 +220,20 @@ func TestAuthorizeCompletesBrowserOAuthWithPKCE(t *testing.T) {
 			Scopes:      scopes,
 		}
 	}
-	openBrowserFn = func(_ string) error {
-		go func() {
-			time.Sleep(25 * time.Millisecond)
-			callbackURL := "http://localhost:8085/oauth2/callback?state=fixed-state&" + "code=ok"
+	openBrowserFn = func(ctx context.Context, authURL string) error {
+		parsed, err := url.Parse(authURL)
+		if err != nil {
+			t.Fatalf("parse auth url: %v", err)
+		}
 
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, callbackURL, nil)
+		redirectURI := parsed.Query().Get("redirect_uri")
+		if redirectURI == "" {
+			t.Fatal("missing redirect_uri")
+		}
+		callbackURL := redirectURI + "?state=fixed-state&" + "code=ok"
+
+		go func() {
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, callbackURL, nil)
 			if err != nil {
 				return
 			}
@@ -241,7 +252,7 @@ func TestAuthorizeCompletesBrowserOAuthWithPKCE(t *testing.T) {
 		t.Fatalf("Authorize: %v", err)
 	}
 
-	if result.Email != "bernardo@hapvida.com.br" || result.RefreshToken != "refresh-token" {
+	if result.Email != "pilot@example.com" || result.RefreshToken != "refresh-token" {
 		t.Fatalf("result = %#v", result)
 	}
 }

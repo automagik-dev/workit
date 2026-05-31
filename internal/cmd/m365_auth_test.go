@@ -25,12 +25,12 @@ func TestAuthAddM365UsesOAuthAndStoresToken(t *testing.T) {
 	openSecretsStore = func() (secrets.Store, error) { return store, nil }
 	ensureKeychainAccess = func() error { return nil }
 	authorizeM365 = func(context.Context, msauth.AuthorizeOptions) (msauth.AuthorizeResult, error) {
-		return msauth.AuthorizeResult{Email: "bernardo@hapvida.com.br", RefreshToken: "m365-refresh-token"}, nil
+		return msauth.AuthorizeResult{Email: "pilot@example.com", RefreshToken: "m365-refresh-token"}, nil
 	}
 
 	out := captureStdout(t, func() {
 		_ = captureStderr(t, func() {
-			if err := Execute([]string{"--json", "auth", "add", "bernardo@hapvida.com.br", "--services", "m365", "--readonly"}); err != nil {
+			if err := Execute([]string{"--json", "auth", "add", "pilot@example.com", "--services", "m365", "--readonly"}); err != nil {
 				t.Fatalf("auth add m365: %v", err)
 			}
 		})
@@ -43,7 +43,7 @@ func TestAuthAddM365UsesOAuthAndStoresToken(t *testing.T) {
 	if payload["provider"] != "microsoft_graph" || payload["stored"] != true {
 		t.Fatalf("unexpected output: %#v", payload)
 	}
-	tok, err := store.GetToken(msauth.ClientName, "bernardo@hapvida.com.br")
+	tok, err := store.GetToken(msauth.ClientName, "pilot@example.com")
 	if err != nil {
 		t.Fatalf("stored m365 token: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestAuthAddM365UsesOAuthAndStoresToken(t *testing.T) {
 
 func TestAuthAddM365RequiresReadonly(t *testing.T) {
 	_ = captureStderr(t, func() {
-		err := Execute([]string{"--json", "auth", "add", "bernardo@hapvida.com.br", "--services", "m365"})
+		err := Execute([]string{"--json", "auth", "add", "pilot@example.com", "--services", "m365"})
 		if err == nil {
 			t.Fatal("expected missing --readonly to fail closed")
 		}
@@ -67,23 +67,16 @@ func TestAuthAddM365RequiresReadonly(t *testing.T) {
 	})
 }
 
-func TestAuthAddM365RemoteStepOnePrintsMicrosoftURL(t *testing.T) {
-	origURL := m365ManualAuthURL
-	t.Cleanup(func() { m365ManualAuthURL = origURL })
-	m365ManualAuthURL = func(context.Context, msauth.ManualAuthURLOptions) (msauth.ManualAuthURLResult, error) {
-		return msauth.ManualAuthURLResult{URL: "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=test", State: "state"}, nil
-	}
-
-	out := captureStdout(t, func() {
-		_ = captureStderr(t, func() {
-			if err := Execute([]string{"--json", "auth", "add", "bernardo@hapvida.com.br", "--services", "m365", "--readonly", "--remote", "--step", "1"}); err != nil {
-				t.Fatalf("remote step 1: %v", err)
-			}
-		})
+func TestAuthAddM365RemoteModeFailsClosed(t *testing.T) {
+	_ = captureStderr(t, func() {
+		err := Execute([]string{"--json", "auth", "add", "pilot@example.com", "--services", "m365", "--readonly", "--remote", "--step", "1"})
+		if err == nil {
+			t.Fatal("expected remote m365 auth to fail closed")
+		}
+		if !strings.Contains(err.Error(), "remote auth is not supported yet") {
+			t.Fatalf("unexpected error: %v", err)
+		}
 	})
-	if !strings.Contains(out, "login.microsoftonline.com") || !strings.Contains(out, "auth_url") {
-		t.Fatalf("unexpected output: %s", out)
-	}
 }
 
 func TestAuthManageM365PrintURLIsNonTechnicalOAuthHandoff(t *testing.T) {

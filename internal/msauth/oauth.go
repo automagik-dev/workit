@@ -24,6 +24,8 @@ const (
 	DefaultLocalAuthPort = 8085
 )
 
+var localAuthPort = DefaultLocalAuthPort
+
 var (
 	ErrMissingClientID     = errors.New("m365 oauth client id missing")
 	ErrMissingScopes       = errors.New("m365 oauth scopes missing")
@@ -34,10 +36,13 @@ var (
 	ErrProfileStatus       = errors.New("fetch m365 profile status error")
 	ErrProfileMissingEmail = errors.New("m365 profile missing email")
 	ErrContextDone         = errors.New("m365 oauth context done")
-	openBrowserFn          = openBrowser
-	randomStateFn          = randomURLToken
-	oauthConfigFn          = oauthConfig
-	graphMeURL             = "https://graph.microsoft.com/v1.0/me"
+)
+
+var (
+	openBrowserFn func(context.Context, string) error = openBrowser
+	randomStateFn                                     = randomURLToken
+	oauthConfigFn                                     = oauthConfig
+	graphMeURL                                        = "https://graph.microsoft.com/v1.0/me"
 )
 
 type AuthorizeOptions struct {
@@ -93,14 +98,14 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (AuthorizeResult, err
 		return AuthorizeResult{}, err
 	}
 
-	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", fmt.Sprintf("localhost:%d", DefaultLocalAuthPort))
+	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", fmt.Sprintf("localhost:%d", localAuthPort))
 	if err != nil {
-		return AuthorizeResult{}, fmt.Errorf("listen for m365 callback on port %d: %w", DefaultLocalAuthPort, err)
+		return AuthorizeResult{}, fmt.Errorf("listen for m365 callback on port %d: %w", localAuthPort, err)
 	}
 
 	defer func() { _ = ln.Close() }()
 
-	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", DefaultLocalAuthPort)
+	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", localAuthPort)
 	cfg := oauthConfigFn(settings, redirectURI, scopes)
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
@@ -125,7 +130,7 @@ func Authorize(ctx context.Context, opts AuthorizeOptions) (AuthorizeResult, err
 	fmt.Fprintln(os.Stderr, "Opening browser for Microsoft 365 authorization…")
 	fmt.Fprintln(os.Stderr, "If the browser doesn't open, visit this URL:")
 	fmt.Fprintln(os.Stderr, authURL)
-	_ = openBrowserFn(authURL)
+	_ = openBrowserFn(ctx, authURL)
 
 	select {
 	case code := <-codeCh:
@@ -153,7 +158,7 @@ func ManualAuthURL(_ context.Context, opts ManualAuthURLOptions) (ManualAuthURLR
 		return ManualAuthURLResult{}, err
 	}
 
-	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", DefaultLocalAuthPort)
+	redirectURI := fmt.Sprintf("http://localhost:%d/oauth2/callback", localAuthPort)
 	cfg := oauthConfigFn(settings, redirectURI, scopes)
 	url := cfg.AuthCodeURL(state, authParams(opts.ForceConsent, challenge)...)
 
