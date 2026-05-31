@@ -50,13 +50,13 @@ jobs:
     needs: [test, worker]
     runs-on: macos-latest
     env:
-      GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          token: ${{ github.token }}
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -113,6 +113,6 @@ jobs:
           version: latest
           args: release --clean --config /tmp/.goreleaser.yaml --release-notes /tmp/release-notes.md
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           WK_CLIENT_ID: ${{ secrets.WK_CLIENT_ID }}
           WK_CLIENT_SECRET: ${{ secrets.WK_CLIENT_SECRET }}
