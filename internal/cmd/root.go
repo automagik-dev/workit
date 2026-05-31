@@ -84,6 +84,7 @@ type CLI struct {
 	Sheets     SheetsCmd             `cmd:"" aliases:"sheet" help:"Google Sheets"`
 	Forms      FormsCmd              `cmd:"" aliases:"form" help:"Google Forms"`
 	AppScript  AppScriptCmd          `cmd:"" name:"appscript" aliases:"script,apps-script" help:"Google Apps Script"`
+	M365       M365Cmd               `cmd:"" name:"m365" aliases:"microsoft,graph" help:"Microsoft 365 read-only pilot"`
 	Sync       SyncCmd               `cmd:"" help:"Google Drive sync"`
 	Templates  TemplatesCmd          `cmd:"" help:"Manage document templates"`
 	Setup      SetupCmd              `cmd:"" help:"Validate environment dependencies"`
