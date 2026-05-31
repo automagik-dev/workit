@@ -28,6 +28,8 @@ var (
 	checkRefreshToken    = googleauth.CheckRefreshToken
 	ensureKeychainAccess = secrets.EnsureKeychainAccess
 	fetchAuthorizedEmail = googleauth.EmailForRefreshToken
+	authorizeM365        = msauth.Authorize
+	m365ManualAuthURL    = msauth.ManualAuthURL
 	headlessAuthorize    = googleauth.HeadlessAuthorize
 	pollForToken         = googleauth.PollForToken
 	callbackServerURLFn  = googleauth.CallbackServerURL
@@ -504,6 +506,10 @@ type AuthAddCmd struct {
 
 func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
+
+	if isM365ServicesCSV(c.ServicesCSV) {
+		return c.runM365(ctx, flags, u)
+	}
 
 	override := authclient.ClientOverrideFromContext(ctx)
 	client, err := authclient.ResolveClientWithOverride(c.Email, override)
@@ -1439,6 +1445,10 @@ type AuthManageCmd struct {
 }
 
 func (c *AuthManageCmd) Run(ctx context.Context, _ *RootFlags) error {
+	if isM365ServicesCSV(c.ServicesCSV) {
+		return c.runM365(ctx)
+	}
+
 	services, err := parseAuthServices(c.ServicesCSV)
 	if err != nil {
 		return err

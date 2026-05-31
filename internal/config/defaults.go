@@ -11,6 +11,11 @@ var (
 	DefaultClientID     string
 	DefaultClientSecret string
 
+	// DefaultM365ClientID and DefaultM365TenantID are optional Microsoft 365 OAuth defaults
+	// injected into internal builds so non-technical users can log in with a browser.
+	DefaultM365ClientID string
+	DefaultM365TenantID string
+
 	// DefaultCallbackServer is the default OAuth relay used when WK_CALLBACK_SERVER is not set.
 	// Override at build time via: -ldflags "-X github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=https://custom.example.com"
 	DefaultCallbackServer = "https://auth.automagik.dev"

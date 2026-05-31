@@ -34,6 +34,8 @@ LINT_NEW_FROM ?= origin/main
 WK_CLIENT_ID ?= $(GOG_CLIENT_ID)
 WK_CLIENT_SECRET ?= $(GOG_CLIENT_SECRET)
 WK_CALLBACK_SERVER ?= $(GOG_CALLBACK_SERVER)
+WK_M365_CLIENT_ID ?= $(GOG_M365_CLIENT_ID)
+WK_M365_TENANT_ID ?= $(GOG_M365_TENANT_ID)
 
 # Allow passing CLI args as extra "targets":
 #   make workit -- --help
@@ -60,7 +62,9 @@ build-internal:
 	@go build -ldflags "$(LDFLAGS) \
 		-X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=$(WK_CLIENT_ID)' \
 		-X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=$(WK_CLIENT_SECRET)' \
-		-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$(WK_CALLBACK_SERVER)'" \
+		-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$(WK_CALLBACK_SERVER)' \
+		-X 'github.com/automagik-dev/workit/internal/config.DefaultM365ClientID=$(WK_M365_CLIENT_ID)' \
+		-X 'github.com/automagik-dev/workit/internal/config.DefaultM365TenantID=$(WK_M365_TENANT_ID)'" \
 		-o $(BIN) $(CMD)
 
 # Build with credentials from ~/.config/workit/credentials.env (WK_* primary contract).
@@ -73,20 +77,28 @@ build-automagik:
 		wk_client_id="$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}" && \
 		wk_client_secret="$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}" && \
 		wk_callback_server="$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}" && \
+		wk_m365_client_id="$${WK_M365_CLIENT_ID:-$${GOG_M365_CLIENT_ID}}" && \
+		wk_m365_tenant_id="$${WK_M365_TENANT_ID:-$${GOG_M365_TENANT_ID}}" && \
 		go build -ldflags "$(LDFLAGS) \
 			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=$$wk_client_id' \
 			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=$$wk_client_secret' \
-			-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$$wk_callback_server'" \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$$wk_callback_server' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultM365ClientID=$$wk_m365_client_id' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultM365TenantID=$$wk_m365_tenant_id'" \
 			-o $(BIN) $(CMD); \
 	elif [ -f "$(HOME)/.config/gog/credentials.env" ]; then \
 		. $(HOME)/.config/gog/credentials.env && \
 		wk_client_id="$${WK_CLIENT_ID:-$${GOG_CLIENT_ID}}" && \
 		wk_client_secret="$${WK_CLIENT_SECRET:-$${GOG_CLIENT_SECRET}}" && \
 		wk_callback_server="$${WK_CALLBACK_SERVER:-$${GOG_CALLBACK_SERVER}}" && \
+		wk_m365_client_id="$${WK_M365_CLIENT_ID:-$${GOG_M365_CLIENT_ID}}" && \
+		wk_m365_tenant_id="$${WK_M365_TENANT_ID:-$${GOG_M365_TENANT_ID}}" && \
 		go build -ldflags "$(LDFLAGS) \
 			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientID=$$wk_client_id' \
 			-X 'github.com/automagik-dev/workit/internal/config.DefaultClientSecret=$$wk_client_secret' \
-			-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$$wk_callback_server'" \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultCallbackServer=$$wk_callback_server' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultM365ClientID=$$wk_m365_client_id' \
+			-X 'github.com/automagik-dev/workit/internal/config.DefaultM365TenantID=$$wk_m365_tenant_id'" \
 			-o $(BIN) $(CMD); \
 	else \
 		echo "Missing credentials file: $(HOME)/.config/workit/credentials.env"; \
