@@ -74,3 +74,15 @@ func TestAuthM365LoginLinkUsesCallbackServerDefaultWhenURLsOmitted(t *testing.T)
 		t.Fatalf("callback url = %q", got.CallbackURL)
 	}
 }
+
+func TestAuthM365LoginLinkRejectsInvalidCallbackURL(t *testing.T) {
+	_ = captureStderr(t, func() {
+		err := Execute([]string{"auth", "m365", "login-link", "bernardo@hapvida.com.br", "--base-url", "https://auth.hv.example", "--callback-url", "not-a-url"})
+		if err == nil {
+			t.Fatal("expected invalid callback URL failure")
+		}
+		if !strings.Contains(err.Error(), "callback-url") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}

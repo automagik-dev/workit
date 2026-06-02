@@ -66,6 +66,13 @@ func (s *m365SessionStore) save(session m365Session) {
 		s.sessions = make(map[string]m365Session)
 	}
 
+	now := time.Now()
+	for state, existing := range s.sessions {
+		if !existing.ExpiresAt.IsZero() && now.After(existing.ExpiresAt) {
+			delete(s.sessions, state)
+		}
+	}
+
 	s.sessions[session.State] = session
 }
 
@@ -142,6 +149,7 @@ func (s *Server) handleM365Sessions(w http.ResponseWriter, r *http.Request) {
 		ExpectedEmail string `json:"expected_email"`
 		ForceConsent  bool   `json:"force_consent"`
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, err)
 		return
@@ -180,7 +188,7 @@ func (s *Server) handleM365Start(w http.ResponseWriter, r *http.Request) {
 	state := strings.TrimPrefix(r.URL.Path, "/m365/start/")
 	session, err := s.m365Sessions.get(state)
 	if err != nil {
-		writeJSONError(w, http.StatusNotFound, err)
+		s.renderErrorPage(w, "Microsoft 365 login link expired or not found", http.StatusNotFound)
 		return
 	}
 
@@ -283,7 +291,7 @@ func (s *Server) m365OAuthConfig(redirectURL string) oauth2.Config {
 
 	return oauth2.Config{
 		ClientID:    s.m365ClientID,
-		Endpoint:    oauth2.Endpoint{AuthURL: base + "/authorize", TokenURL: base + "/token"},
+		Endpoint:    oauth2.Endpoint{AuthURL: base + "/authorize", TokenURL: base + "/token", AuthStyle: oauth2.AuthStyleInParams},
 		RedirectURL: redirectURL,
 		Scopes:      []string{"offline_access", "User.Read", "Mail.Read", "Calendars.Read"},
 	}
@@ -381,7 +389,7 @@ func validateM365Email(expected string, actual string) error {
 	want := strings.ToLower(strings.TrimSpace(expected))
 	got := strings.ToLower(strings.TrimSpace(actual))
 	if want == "" || got == "" || want != got {
-		return fmt.Errorf("%w: expected %s got %s", errM365EmailMismatch, want, got)
+		return fmt.Errorf("%w: email mismatch", errM365EmailMismatch)
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestM365SessionsCreatesEnterpriseOneClickURL(t *testing.T) {
@@ -86,6 +87,53 @@ func TestM365StartRedirectsToMicrosoftAuthorize(t *testing.T) {
 		if strings.Contains(location, forbidden) {
 			t.Fatalf("redirect contains forbidden scope %s: %s", forbidden, location)
 		}
+	}
+}
+
+func TestM365StartUnknownStateRendersHTML(t *testing.T) {
+	server := NewServerWithOptions(ServerOptions{
+		Store:              NewTokenStore(DefaultTTL),
+		GoogleClientID:     "google-client",
+		GoogleClientSecret: "google-secret",
+		GoogleRedirectURL:  "https://auth.hv.example/callback",
+		M365Enabled:        true,
+		M365ClientID:       "m365-client",
+		M365TenantID:       "hapvida-tenant",
+		PublicBaseURL:      "https://auth.hv.example",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/m365/start/missing", nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Header().Get("Content-Type"), "text/html") {
+		t.Fatalf("content-type = %q", rec.Header().Get("Content-Type"))
+	}
+}
+
+func TestValidateM365EmailDoesNotExposePII(t *testing.T) {
+	err := validateM365Email("bernardo@hapvida.com.br", "other@hapvida.com.br")
+	if err == nil {
+		t.Fatal("expected mismatch")
+	}
+	if strings.Contains(err.Error(), "bernardo") || strings.Contains(err.Error(), "other") {
+		t.Fatalf("PII leaked in error: %v", err)
+	}
+}
+
+func TestM365SessionStorePrunesExpiredOnSave(t *testing.T) {
+	store := newM365SessionStore()
+	store.save(m365Session{State: "expired", ExpectedEmail: "pilot@example.com", ExpiresAt: time.Now().Add(-time.Minute)})
+	store.save(m365Session{State: "fresh", ExpectedEmail: "pilot@example.com", ExpiresAt: time.Now().Add(time.Minute)})
+
+	if _, err := store.get("expired"); err == nil {
+		t.Fatal("expected expired session to be pruned")
+	}
+	if _, err := store.get("fresh"); err != nil {
+		t.Fatalf("fresh session: %v", err)
 	}
 }
 

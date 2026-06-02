@@ -48,6 +48,10 @@ func (c *AuthM365LoginLinkCmd) resolveBrokerURLs() (string, string, error) {
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
 		return "", "", usage("invalid m365 broker --base-url")
 	}
+	parsedCallback, err := url.Parse(callbackURL)
+	if err != nil || parsedCallback.Scheme == "" || parsedCallback.Host == "" {
+		return "", "", usage("invalid m365 broker --callback-url")
+	}
 
 	return baseURL, callbackURL, nil
 }

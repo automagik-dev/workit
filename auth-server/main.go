@@ -80,11 +80,6 @@ func main() {
 		log.Fatal("Public base URL is required for M365 broker (--public-base-url, WK_PUBLIC_BASE_URL, or WK_CALLBACK_SERVER)")
 	}
 
-	// Default redirect URL if not specified
-	if *redirectURL == "" {
-		*redirectURL = fmt.Sprintf("http://localhost:%d/callback", *port)
-	}
-
 	// Create token store with TTL and start cleanup
 	store := NewTokenStore(*ttl)
 	store.StartCleanup(CleanupInterval)

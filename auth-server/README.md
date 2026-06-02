@@ -101,12 +101,9 @@ services:
       - WK_CLIENT_SECRET=${WK_CLIENT_SECRET}
       - WK_REDIRECT_URL=https://auth.example.com/callback
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
 ```
+
+The runtime image is distroless and has no shell utilities such as `wget`; configure Kubernetes/OCI HTTP probes against `/health` instead of a container-local shell healthcheck.
 
 ### Reverse Proxy (nginx)
 
