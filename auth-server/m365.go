@@ -19,13 +19,15 @@ import (
 )
 
 var (
-	errM365Disabled        = errors.New("m365 broker disabled")
-	errM365MissingClientID = errors.New("m365 client id missing")
-	errM365MissingBaseURL  = errors.New("m365 public base url missing")
-	errM365MissingEmail    = errors.New("m365 expected email missing")
-	errM365StateNotFound   = errors.New("m365 broker state not found")
-	errM365StateExpired    = errors.New("m365 broker state expired")
-	errM365EmailMismatch   = errors.New("m365 authorized email mismatch")
+	errM365Disabled          = errors.New("m365 broker disabled")
+	errM365MissingClientID   = errors.New("m365 client id missing")
+	errM365MissingBaseURL    = errors.New("m365 public base url missing")
+	errM365MissingEmail      = errors.New("m365 expected email missing")
+	errM365StateNotFound     = errors.New("m365 broker state not found")
+	errM365StateExpired      = errors.New("m365 broker state expired")
+	errM365EmailMismatch     = errors.New("m365 authorized email mismatch")
+	errM365MissingAdminToken = errors.New("m365 broker admin token missing")
+	errM365Unauthorized      = errors.New("m365 broker session creation unauthorized")
 )
 
 const defaultM365TenantID = "organizations"
@@ -38,6 +40,7 @@ type ServerOptions struct {
 	M365Enabled        bool
 	M365ClientID       string
 	M365TenantID       string
+	M365AdminToken     string
 	PublicBaseURL      string
 }
 
@@ -122,6 +125,7 @@ func NewServerWithOptions(opts ServerOptions) *Server {
 	s := NewServer(store, opts.GoogleClientID, opts.GoogleClientSecret, opts.GoogleRedirectURL)
 	s.m365Enabled = opts.M365Enabled
 	s.m365ClientID = strings.TrimSpace(opts.M365ClientID)
+	s.m365AdminToken = strings.TrimSpace(opts.M365AdminToken)
 	s.m365TenantID = strings.TrimSpace(opts.M365TenantID)
 	if s.m365TenantID == "" {
 		s.m365TenantID = defaultM365TenantID
@@ -142,6 +146,10 @@ func (s *Server) handleM365Sessions(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.validateM365Config(); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if !s.authorizeM365SessionRequest(r) {
+		writeJSONError(w, http.StatusUnauthorized, errM365Unauthorized)
 		return
 	}
 
@@ -251,8 +259,8 @@ func (s *Server) validateM365Config() error {
 	if s.m365ClientID == "" {
 		return errM365MissingClientID
 	}
-	if s.publicBaseURL == "" {
-		return errM365MissingBaseURL
+	if s.m365AdminToken == "" {
+		return errM365MissingAdminToken
 	}
 
 	parsed, err := url.Parse(s.publicBaseURL)
@@ -261,6 +269,15 @@ func (s *Server) validateM365Config() error {
 	}
 
 	return nil
+}
+
+func (s *Server) authorizeM365SessionRequest(r *http.Request) bool {
+	auth := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(auth, "Bearer ") {
+		return false
+	}
+
+	return strings.TrimSpace(strings.TrimPrefix(auth, "Bearer ")) == s.m365AdminToken
 }
 
 func (s *Server) createM365Session(expectedEmail string, forceConsent bool) (m365Session, error) {

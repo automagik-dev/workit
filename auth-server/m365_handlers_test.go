@@ -18,10 +18,12 @@ func TestM365SessionsCreatesEnterpriseOneClickURL(t *testing.T) {
 		M365Enabled:        true,
 		M365ClientID:       "m365-client",
 		M365TenantID:       "hapvida-tenant",
+		M365AdminToken:     "admin-token",
 		PublicBaseURL:      "https://auth.hv.example",
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/m365/sessions", strings.NewReader(`{"expected_email":"Bernardo@Hapvida.com.br"}`))
+	req.Header.Set("Authorization", "Bearer admin-token")
 	rec := httptest.NewRecorder()
 
 	server.ServeHTTP(rec, req)
@@ -47,6 +49,28 @@ func TestM365SessionsCreatesEnterpriseOneClickURL(t *testing.T) {
 	}
 }
 
+func TestM365SessionsRequireAdminBearerToken(t *testing.T) {
+	server := NewServerWithOptions(ServerOptions{
+		Store:              NewTokenStore(DefaultTTL),
+		GoogleClientID:     "google-client",
+		GoogleClientSecret: "google-secret",
+		GoogleRedirectURL:  "https://auth.hv.example/callback",
+		M365Enabled:        true,
+		M365ClientID:       "m365-client",
+		M365TenantID:       "hapvida-tenant",
+		M365AdminToken:     "admin-token",
+		PublicBaseURL:      "https://auth.hv.example",
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/m365/sessions", strings.NewReader(`{"expected_email":"bernardo@hapvida.com.br"}`))
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestM365StartRedirectsToMicrosoftAuthorize(t *testing.T) {
 	server := NewServerWithOptions(ServerOptions{
 		Store:              NewTokenStore(DefaultTTL),
@@ -56,10 +80,12 @@ func TestM365StartRedirectsToMicrosoftAuthorize(t *testing.T) {
 		M365Enabled:        true,
 		M365ClientID:       "m365-client",
 		M365TenantID:       "hapvida-tenant",
+		M365AdminToken:     "admin-token",
 		PublicBaseURL:      "https://auth.hv.example",
 	})
 
 	createReq := httptest.NewRequest(http.MethodPost, "/m365/sessions", strings.NewReader(`{"expected_email":"bernardo@hapvida.com.br"}`))
+	createReq.Header.Set("Authorization", "Bearer admin-token")
 	createRec := httptest.NewRecorder()
 	server.ServeHTTP(createRec, createReq)
 
@@ -99,6 +125,7 @@ func TestM365StartUnknownStateRendersHTML(t *testing.T) {
 		M365Enabled:        true,
 		M365ClientID:       "m365-client",
 		M365TenantID:       "hapvida-tenant",
+		M365AdminToken:     "admin-token",
 		PublicBaseURL:      "https://auth.hv.example",
 	})
 

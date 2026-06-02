@@ -59,6 +59,7 @@ When users authenticate via the headless OAuth flow:
 | `WK_CALLBACK_SERVER` | Backward-compatible public base URL fallback |
 | `WK_M365_CLIENT_ID` | Microsoft Entra application/client ID for M365 broker |
 | `WK_M365_TENANT_ID` | Microsoft tenant ID; defaults to `organizations` |
+| `WK_M365_BROKER_TOKEN` | Required bearer token for trusted callers creating `/m365/sessions` |
 
 Command-line flags take precedence over environment variables.
 
@@ -80,6 +81,7 @@ docker run -p 8080:8080 \
   -e WK_PUBLIC_BASE_URL="https://auth.hv.example" \
   -e WK_M365_CLIENT_ID="<hapvida-entra-app-client-id>" \
   -e WK_M365_TENANT_ID="<hapvida-tenant-id>" \
+  -e WK_M365_BROKER_TOKEN="<strong-random-admin-token>" \
   workit-auth-server
 ```
 

@@ -33,18 +33,20 @@ func main() {
 	publicBaseURL := flag.String("public-base-url", "", "Public HTTPS base URL for this auth server (env WK_PUBLIC_BASE_URL; defaults redirect URLs when set)")
 	m365ClientID := flag.String("m365-client-id", "", "Microsoft 365 OAuth client ID (env WK_M365_CLIENT_ID)")
 	m365TenantID := flag.String("m365-tenant-id", "", "Microsoft 365 tenant ID (env WK_M365_TENANT_ID; default organizations)")
+	m365AdminToken := flag.String("m365-broker-token", "", "Admin bearer token required to create Microsoft 365 broker sessions")
 	credentialsFile := flag.String("credentials-file", "", "Path to OAuth credentials JSON file (workit format)")
 	ttl := flag.Duration("ttl", DefaultTTL, "Token time-to-live")
 	flag.Parse()
 
 	resolved := resolveServerConfig(serverConfigInput{
-		Port:          *port,
-		ClientID:      *clientID,
-		ClientSecret:  *clientSecret,
-		RedirectURL:   *redirectURL,
-		PublicBaseURL: *publicBaseURL,
-		M365ClientID:  *m365ClientID,
-		M365TenantID:  *m365TenantID,
+		Port:           *port,
+		ClientID:       *clientID,
+		ClientSecret:   *clientSecret,
+		RedirectURL:    *redirectURL,
+		PublicBaseURL:  *publicBaseURL,
+		M365ClientID:   *m365ClientID,
+		M365TenantID:   *m365TenantID,
+		M365AdminToken: *m365AdminToken,
 	})
 	*clientID = resolved.clientID
 	*clientSecret = resolved.clientSecret
@@ -52,6 +54,7 @@ func main() {
 	*publicBaseURL = resolved.publicBaseURL
 	*m365ClientID = resolved.m365ClientID
 	*m365TenantID = resolved.m365TenantID
+	*m365AdminToken = resolved.m365AdminToken
 
 	// Load credentials from file if specified (fills empty client ID/secret)
 	if *credentialsFile != "" {
@@ -79,6 +82,9 @@ func main() {
 	if *m365ClientID != "" && *publicBaseURL == "" {
 		log.Fatal("Public base URL is required for M365 broker (--public-base-url, WK_PUBLIC_BASE_URL, or WK_CALLBACK_SERVER)")
 	}
+	if *m365ClientID != "" && *m365AdminToken == "" {
+		log.Fatal("M365 broker admin token is required (--m365-broker-token, WK_M365_BROKER_TOKEN, or WK_BROKER_ADMIN_TOKEN)")
+	}
 
 	// Create token store with TTL and start cleanup
 	store := NewTokenStore(*ttl)
@@ -94,6 +100,7 @@ func main() {
 		M365Enabled:        *m365ClientID != "",
 		M365ClientID:       *m365ClientID,
 		M365TenantID:       *m365TenantID,
+		M365AdminToken:     *m365AdminToken,
 		PublicBaseURL:      *publicBaseURL,
 	})
 

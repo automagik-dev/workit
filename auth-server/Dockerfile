@@ -17,6 +17,7 @@ COPY --from=build /out/workit-auth-server /app/workit-auth-server
 ENV WK_PUBLIC_BASE_URL=""
 ENV WK_M365_CLIENT_ID=""
 ENV WK_M365_TENANT_ID="organizations"
+ENV WK_M365_BROKER_TOKEN=""
 EXPOSE 8080
 
 USER nonroot:nonroot
