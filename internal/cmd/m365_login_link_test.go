@@ -43,14 +43,34 @@ func TestAuthM365LoginLinkPrintsOneClickURL(t *testing.T) {
 	}
 }
 
-func TestAuthM365LoginLinkRequiresExplicitBrokerURLs(t *testing.T) {
-	_ = captureStderr(t, func() {
-		err := Execute([]string{"auth", "m365", "login-link", "bernardo@hapvida.com.br"})
-		if err == nil {
-			t.Fatal("expected missing broker URL failure")
-		}
-		if !strings.Contains(err.Error(), "base-url") {
-			t.Fatalf("unexpected error: %v", err)
-		}
+func TestAuthM365LoginLinkUsesCallbackServerDefaultWhenURLsOmitted(t *testing.T) {
+	origCreate := createM365BrokerSession
+	t.Cleanup(func() { createM365BrokerSession = origCreate })
+	t.Setenv("WK_CALLBACK_SERVER", "https://auth.hv.example")
+
+	var got msauth.BrokerSessionOptions
+	createM365BrokerSession = func(_ context.Context, opts msauth.BrokerSessionOptions) (msauth.BrokerSession, error) {
+		got = opts
+		return msauth.BrokerSession{
+			State:         "state",
+			ExpectedEmail: "bernardo@hapvida.com.br",
+			LoginURL:      "https://auth.hv.example/m365/start/state",
+			ExpiresAt:     time.Unix(1893456000, 0).UTC(),
+		}, nil
+	}
+
+	_ = captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			if err := Execute([]string{"--json", "auth", "m365", "login-link", "bernardo@hapvida.com.br"}); err != nil {
+				t.Fatalf("login-link: %v", err)
+			}
+		})
 	})
+
+	if got.BaseURL != "https://auth.hv.example" {
+		t.Fatalf("base url = %q", got.BaseURL)
+	}
+	if got.CallbackURL != "https://auth.hv.example/m365/callback" {
+		t.Fatalf("callback url = %q", got.CallbackURL)
+	}
 }

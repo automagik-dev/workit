@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/automagik-dev/workit/internal/googleauth"
 	"github.com/automagik-dev/workit/internal/msauth"
 	"github.com/automagik-dev/workit/internal/outfmt"
 	"github.com/automagik-dev/workit/internal/ui"
@@ -25,22 +27,45 @@ type AuthM365LoginLinkCmd struct {
 	ForceConsent bool          `name:"force-consent" help:"Force Microsoft consent screen"`
 }
 
+func (c *AuthM365LoginLinkCmd) resolveBrokerURLs() (string, string, error) {
+	baseURL := strings.TrimSpace(c.BaseURL)
+	callbackURL := strings.TrimSpace(c.CallbackURL)
+	if baseURL == "" || callbackURL == "" {
+		callbackServer, err := googleauth.CallbackServerURL(baseURL)
+		if err != nil {
+			return "", "", err
+		}
+
+		if baseURL == "" {
+			baseURL = strings.TrimRight(callbackServer, "/")
+		}
+		if callbackURL == "" {
+			callbackURL = strings.TrimRight(callbackServer, "/") + "/m365/callback"
+		}
+	}
+
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "", "", usage("invalid m365 broker --base-url")
+	}
+
+	return baseURL, callbackURL, nil
+}
+
 func (c *AuthM365LoginLinkCmd) Run(ctx context.Context, _ *RootFlags) error {
 	email := strings.TrimSpace(c.Email)
 	if email == "" {
 		return usage("empty email")
 	}
-	if strings.TrimSpace(c.BaseURL) == "" {
-		return usage("m365 login-link requires --base-url")
-	}
-	if strings.TrimSpace(c.CallbackURL) == "" {
-		return usage("m365 login-link requires --callback-url")
+	baseURL, callbackURL, err := c.resolveBrokerURLs()
+	if err != nil {
+		return err
 	}
 
 	session, err := createM365BrokerSession(ctx, msauth.BrokerSessionOptions{
 		ExpectedEmail: email,
-		BaseURL:       c.BaseURL,
-		CallbackURL:   c.CallbackURL,
+		BaseURL:       baseURL,
+		CallbackURL:   callbackURL,
 		Readonly:      true,
 		ForceConsent:  c.ForceConsent,
 		TTL:           c.TTL,

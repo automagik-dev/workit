@@ -1,39 +1,22 @@
-# Build stage
-FROM golang:1.25-alpine AS builder
+# syntax=docker/dockerfile:1.7
 
-WORKDIR /app
+FROM golang:1.25-alpine AS build
+WORKDIR /src
 
-# Copy go.mod and go.sum first for better caching
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
-COPY *.go ./
+COPY . ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/workit-auth-server .
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o auth-server .
-
-# Runtime stage
-FROM alpine:3.19
-
-# Add ca-certificates for HTTPS calls to Google OAuth
-RUN apk --no-cache add ca-certificates
-
+FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
+COPY --from=build /out/workit-auth-server /app/workit-auth-server
 
-# Copy the binary from builder
-COPY --from=builder /app/auth-server .
-
-# Create non-root user
-RUN adduser -D -u 1000 appuser
-USER appuser
-
-# Expose default port
+ENV WK_PUBLIC_BASE_URL=""
+ENV WK_M365_CLIENT_ID=""
+ENV WK_M365_TENANT_ID="organizations"
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-
-# Run the server
-ENTRYPOINT ["./auth-server"]
+USER nonroot:nonroot
+ENTRYPOINT ["/app/workit-auth-server"]

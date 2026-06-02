@@ -17,9 +17,12 @@ When users authenticate via the headless OAuth flow:
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Health check, returns `{"status": "ok"}` |
-| `/callback` | GET | OAuth callback, exchanges code for token |
+| `/callback` | GET | Google OAuth callback, exchanges code for token |
 | `/token/{state}` | GET | Retrieve token (consumes it) |
 | `/status/{state}` | GET | Check token status without consuming |
+| `/m365/sessions` | POST | Create a one-click Microsoft 365 read-only login session |
+| `/m365/start/{state}` | GET | Redirect user to Microsoft authorize URL |
+| `/m365/callback` | GET | Microsoft OAuth callback with PKCE/email validation |
 
 ### Response Codes
 
@@ -51,7 +54,11 @@ When users authenticate via the headless OAuth flow:
 |----------|-------------|
 | `WK_CLIENT_ID` | OAuth client ID |
 | `WK_CLIENT_SECRET` | OAuth client secret |
-| `WK_REDIRECT_URL` | OAuth redirect URL |
+| `WK_REDIRECT_URL` | Google OAuth redirect URL |
+| `WK_PUBLIC_BASE_URL` | Public HTTPS base URL for the deployed auth server; M365 derives `/m365/callback` from this |
+| `WK_CALLBACK_SERVER` | Backward-compatible public base URL fallback |
+| `WK_M365_CLIENT_ID` | Microsoft Entra application/client ID for M365 broker |
+| `WK_M365_TENANT_ID` | Microsoft tenant ID; defaults to `organizations` |
 
 Command-line flags take precedence over environment variables.
 
@@ -68,13 +75,15 @@ go build -o auth-server .
 ### Docker Build
 
 ```bash
-docker build -t auth-server .
+docker build -t workit-auth-server .
 docker run -p 8080:8080 \
-  -e WK_CLIENT_ID="your-client-id" \
-  -e WK_CLIENT_SECRET="your-client-secret" \
-  -e WK_REDIRECT_URL="https://auth.example.com/callback" \
-  auth-server
+  -e WK_PUBLIC_BASE_URL="https://auth.hv.example" \
+  -e WK_M365_CLIENT_ID="<hapvida-entra-app-client-id>" \
+  -e WK_M365_TENANT_ID="<hapvida-tenant-id>" \
+  workit-auth-server
 ```
+
+For Google relay compatibility, also set `WK_CLIENT_ID`, `WK_CLIENT_SECRET`, and optionally `WK_REDIRECT_URL`.
 
 ## Deployment
 
