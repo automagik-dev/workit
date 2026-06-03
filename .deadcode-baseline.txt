@@ -39,6 +39,8 @@ internal/googleauth/oauth_flow_manual_redirect.go:54:6: unreachable func: extrac
 internal/googleauth/scopes.go:34:6: unreachable func: ScopesForCommands
 internal/googleauth/scopes.go:72:6: unreachable func: AllScopes
 internal/googleauth/scopes.go:96:6: unreachable func: knownCommandNames
+internal/msauth/broker.go:37:6: unreachable func: CreateBrokerSession
+internal/msauth/broker.go:91:6: unreachable func: parseHTTPSURL
 internal/msauth/broker_store.go:28:6: unreachable func: NewMemoryBrokerStore
 internal/msauth/broker_store.go:32:29: unreachable func: MemoryBrokerStore.Save
 internal/msauth/broker_store.go:50:29: unreachable func: MemoryBrokerStore.Consume

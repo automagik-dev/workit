@@ -4,7 +4,7 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := build
 
 .PHONY: build build-gog wk workit gog wk-help workit-help help fmt fmt-check lint lint-full test ci tools
-.PHONY: worker-ci build-internal build-automagik deadcode race coverage
+.PHONY: worker-ci build-internal build-automagik build-auth-server docker-auth-server deadcode race coverage
 
 BIN_DIR := $(CURDIR)/bin
 BIN := $(BIN_DIR)/wk
@@ -48,6 +48,13 @@ endif
 build:
 	@mkdir -p $(BIN_DIR)
 	@go build -ldflags "$(LDFLAGS)" -o $(BIN) $(CMD)
+
+build-auth-server:
+	@mkdir -p $(BIN_DIR)
+	@cd auth-server && go build -o $(BIN_DIR)/workit-auth-server .
+
+docker-auth-server:
+	@docker build -t workit-auth-server:local auth-server
 
 # Build the deprecated "gog" backward-compat alias binary.
 build-gog:

@@ -30,20 +30,31 @@ func main() {
 	clientID := flag.String("client-id", "", "OAuth client ID")
 	clientSecret := flag.String("client-secret", "", "OAuth client secret")
 	redirectURL := flag.String("redirect-url", "", "OAuth redirect URL (defaults to http://localhost:{port}/callback)")
+	publicBaseURL := flag.String("public-base-url", "", "Public HTTPS base URL for this auth server (env WK_PUBLIC_BASE_URL; defaults redirect URLs when set)")
+	m365ClientID := flag.String("m365-client-id", "", "Microsoft 365 OAuth client ID (env WK_M365_CLIENT_ID)")
+	m365TenantID := flag.String("m365-tenant-id", "", "Microsoft 365 tenant ID (env WK_M365_TENANT_ID; default organizations)")
+	m365AdminToken := flag.String("m365-broker-token", "", "Admin bearer token required to create Microsoft 365 broker sessions")
 	credentialsFile := flag.String("credentials-file", "", "Path to OAuth credentials JSON file (workit format)")
 	ttl := flag.Duration("ttl", DefaultTTL, "Token time-to-live")
 	flag.Parse()
 
-	// Allow environment variables to override flags
-	if *clientID == "" {
-		*clientID = os.Getenv("WK_CLIENT_ID")
-	}
-	if *clientSecret == "" {
-		*clientSecret = os.Getenv("WK_CLIENT_SECRET")
-	}
-	if *redirectURL == "" {
-		*redirectURL = os.Getenv("WK_REDIRECT_URL")
-	}
+	resolved := resolveServerConfig(serverConfigInput{
+		Port:           *port,
+		ClientID:       *clientID,
+		ClientSecret:   *clientSecret,
+		RedirectURL:    *redirectURL,
+		PublicBaseURL:  *publicBaseURL,
+		M365ClientID:   *m365ClientID,
+		M365TenantID:   *m365TenantID,
+		M365AdminToken: *m365AdminToken,
+	})
+	*clientID = resolved.clientID
+	*clientSecret = resolved.clientSecret
+	*redirectURL = resolved.redirectURL
+	*publicBaseURL = resolved.publicBaseURL
+	*m365ClientID = resolved.m365ClientID
+	*m365TenantID = resolved.m365TenantID
+	*m365AdminToken = resolved.m365AdminToken
 
 	// Load credentials from file if specified (fills empty client ID/secret)
 	if *credentialsFile != "" {
@@ -60,17 +71,19 @@ func main() {
 		log.Printf("Loaded credentials from %s", *credentialsFile)
 	}
 
-	// Validate required configuration
-	if *clientID == "" {
-		log.Fatal("OAuth client ID is required (--client-id, WK_CLIENT_ID, or --credentials-file)")
+	// Validate required configuration. Google OAuth is optional when the pod is deployed
+	// as an M365-only enterprise broker.
+	if *clientID == "" && *m365ClientID == "" {
+		log.Fatal("OAuth client ID is required (--client-id, WK_CLIENT_ID, --m365-client-id, or WK_M365_CLIENT_ID)")
 	}
-	if *clientSecret == "" {
-		log.Fatal("OAuth client secret is required (--client-secret, WK_CLIENT_SECRET, or --credentials-file)")
+	if *clientID != "" && *clientSecret == "" {
+		log.Fatal("OAuth client secret is required for Google OAuth (--client-secret, WK_CLIENT_SECRET, or --credentials-file)")
 	}
-
-	// Default redirect URL if not specified
-	if *redirectURL == "" {
-		*redirectURL = fmt.Sprintf("http://localhost:%d/callback", *port)
+	if *m365ClientID != "" && *publicBaseURL == "" {
+		log.Fatal("Public base URL is required for M365 broker (--public-base-url, WK_PUBLIC_BASE_URL, or WK_CALLBACK_SERVER)")
+	}
+	if *m365ClientID != "" && *m365AdminToken == "" {
+		log.Fatal("M365 broker admin token is required (--m365-broker-token, WK_M365_BROKER_TOKEN, or WK_BROKER_ADMIN_TOKEN)")
 	}
 
 	// Create token store with TTL and start cleanup
@@ -79,7 +92,17 @@ func main() {
 	defer store.StopCleanup()
 
 	// Create server
-	server := NewServer(store, *clientID, *clientSecret, *redirectURL)
+	server := NewServerWithOptions(ServerOptions{
+		Store:              store,
+		GoogleClientID:     *clientID,
+		GoogleClientSecret: *clientSecret,
+		GoogleRedirectURL:  *redirectURL,
+		M365Enabled:        *m365ClientID != "",
+		M365ClientID:       *m365ClientID,
+		M365TenantID:       *m365TenantID,
+		M365AdminToken:     *m365AdminToken,
+		PublicBaseURL:      *publicBaseURL,
+	})
 
 	// Create HTTP server
 	httpServer := &http.Server{
@@ -107,6 +130,12 @@ func main() {
 	// Start server
 	log.Printf("Auth callback server starting on port %d", *port)
 	log.Printf("Redirect URL: %s", *redirectURL)
+	if *publicBaseURL != "" {
+		log.Printf("Public base URL: %s", *publicBaseURL)
+	}
+	if *m365ClientID != "" {
+		log.Printf("M365 broker enabled for tenant: %s", firstNonEmpty(*m365TenantID, defaultM365TenantID))
+	}
 	log.Printf("Token TTL: %s", *ttl)
 
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {

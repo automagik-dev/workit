@@ -19,6 +19,13 @@ type Server struct {
 	oauthConfig  *oauth2.Config
 	mux          *http.ServeMux
 	exchangeFunc func(ctx context.Context, code string) (*oauth2.Token, error)
+
+	m365Enabled    bool
+	m365ClientID   string
+	m365TenantID   string
+	m365AdminToken string
+	publicBaseURL  string
+	m365Sessions   *m365SessionStore
 }
 
 // NewServer creates a new Server with the given configuration.
