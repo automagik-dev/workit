@@ -50,6 +50,7 @@ var readOnlyClassification = map[string]readOnlyClass{
 	"auth manage":                           roLocal,
 	"auth poll":                             roLocal,
 	"auth remove":                           roLocal,
+	"auth scopes":                           roRead,  // reads the stored token and asks Google for its granted scopes; writes nothing
 	"auth service-account set":              roWrite, // local credential state; blocked by the nested-verb rule
 	"auth service-account status":           roRead,
 	"auth service-account unset":            roWrite, // local credential state; blocked by the nested-verb rule
