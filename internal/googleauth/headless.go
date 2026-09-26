@@ -46,6 +46,7 @@ type HeadlessOptions struct {
 	Services       []Service
 	Scopes         []string
 	ForceConsent   bool
+	Readonly       bool
 	Client         string
 	CallbackServer string
 }
@@ -107,7 +108,7 @@ func HeadlessAuthorize(ctx context.Context, opts HeadlessOptions) (HeadlessAuthI
 		Scopes:       opts.Scopes,
 	}
 
-	authURL := cfg.AuthCodeURL(state, authURLParams(opts.ForceConsent)...)
+	authURL := cfg.AuthCodeURL(state, authURLParams(opts.ForceConsent, opts.Readonly)...)
 
 	pollURL := strings.TrimSuffix(callbackServer, "/") + "/token/" + state
 

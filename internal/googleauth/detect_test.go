@@ -47,7 +47,7 @@ func TestResolveAuthMode_ExplicitHeadless(t *testing.T) {
 	clearTestConfig(t)
 	t.Setenv("WK_CALLBACK_SERVER", "https://example.com")
 
-	result := ResolveAuthMode(context.Background(), true, false, "")
+	result := ResolveAuthMode(context.Background(), true, false, false, "")
 	if result.Mode != AuthModeHeadless {
 		t.Fatalf("expected headless, got %s", result.Mode)
 	}
@@ -60,7 +60,7 @@ func TestResolveAuthMode_ExplicitHeadless(t *testing.T) {
 func TestResolveAuthMode_ExplicitManual(t *testing.T) {
 	clearTestConfig(t)
 
-	result := ResolveAuthMode(context.Background(), false, true, "")
+	result := ResolveAuthMode(context.Background(), false, true, false, "")
 	if result.Mode != AuthModeManual {
 		t.Fatalf("expected manual, got %s", result.Mode)
 	}
@@ -73,7 +73,7 @@ func TestResolveAuthMode_ExplicitManual(t *testing.T) {
 func TestResolveAuthMode_ConfigBrowser(t *testing.T) {
 	setupTestConfig(t, `{"auth_mode":"browser"}`)
 
-	result := ResolveAuthMode(context.Background(), false, false, "")
+	result := ResolveAuthMode(context.Background(), false, false, false, "")
 	if result.Mode != AuthModeBrowser {
 		t.Fatalf("expected browser, got %s", result.Mode)
 	}
@@ -88,7 +88,7 @@ func TestResolveAuthMode_ConfigHeadless(t *testing.T) {
 	// Clear env so config callback_server is used
 	t.Setenv("WK_CALLBACK_SERVER", "")
 
-	result := ResolveAuthMode(context.Background(), false, false, "")
+	result := ResolveAuthMode(context.Background(), false, false, false, "")
 	if result.Mode != AuthModeHeadless {
 		t.Fatalf("expected headless, got %s", result.Mode)
 	}
@@ -106,7 +106,7 @@ func TestResolveAuthMode_ConfigHeadless_WithDefaultCallbackServer(t *testing.T) 
 	setupTestConfig(t, `{"auth_mode":"headless"}`)
 	t.Setenv("WK_CALLBACK_SERVER", "")
 
-	result := ResolveAuthMode(context.Background(), false, false, "")
+	result := ResolveAuthMode(context.Background(), false, false, false, "")
 	// Headless mode with no explicit callback server uses the default callback server.
 	if result.Mode != AuthModeHeadless {
 		t.Fatalf("expected headless, got %s", result.Mode)
@@ -116,7 +116,7 @@ func TestResolveAuthMode_ConfigHeadless_WithDefaultCallbackServer(t *testing.T) 
 func TestResolveAuthMode_ConfigManual(t *testing.T) {
 	setupTestConfig(t, `{"auth_mode":"manual"}`)
 
-	result := ResolveAuthMode(context.Background(), false, false, "")
+	result := ResolveAuthMode(context.Background(), false, false, false, "")
 	if result.Mode != AuthModeManual {
 		t.Fatalf("expected manual, got %s", result.Mode)
 	}
@@ -150,7 +150,7 @@ func TestResolveAuthMode_AutoDetect_NoTTY_ReachableServer(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	result := ResolveAuthMode(context.Background(), false, false, srv.URL)
+	result := ResolveAuthMode(context.Background(), false, false, false, srv.URL)
 	if result.Mode != AuthModeHeadless {
 		t.Fatalf("expected headless via auto-detect, got %s", result.Mode)
 	}
@@ -171,7 +171,7 @@ func TestResolveAuthMode_AutoDetect_WithTTY(t *testing.T) {
 
 	isTerminal = func() bool { return true }
 
-	result := ResolveAuthMode(context.Background(), false, false, "")
+	result := ResolveAuthMode(context.Background(), false, false, false, "")
 	if result.Mode != AuthModeBrowser {
 		t.Fatalf("expected browser with TTY, got %s", result.Mode)
 	}
@@ -182,7 +182,7 @@ func TestResolveAuthMode_FlagOverridesConfig(t *testing.T) {
 	t.Setenv("WK_CALLBACK_SERVER", "https://example.com")
 
 	// Explicit headless flag should override config=browser
-	result := ResolveAuthMode(context.Background(), true, false, "")
+	result := ResolveAuthMode(context.Background(), true, false, false, "")
 	if result.Mode != AuthModeHeadless {
 		t.Fatalf("expected headless (flag override), got %s", result.Mode)
 	}
@@ -208,5 +208,76 @@ func TestCallbackServerReachable_Healthy(t *testing.T) {
 func TestCallbackServerReachable_Unreachable(t *testing.T) {
 	if callbackServerReachable(context.Background(), "http://127.0.0.1:1") {
 		t.Fatal("expected unreachable")
+	}
+}
+
+func TestResolveAuthMode_NoRelay_OverridesConfigHeadless(t *testing.T) {
+	setupTestConfig(t, `{"auth_mode":"headless","callback_server":"https://test.example.com"}`)
+	t.Setenv("WK_CALLBACK_SERVER", "")
+
+	result := ResolveAuthMode(context.Background(), false, false, true, "")
+	if result.Mode != AuthModeBrowser {
+		t.Fatalf("expected browser (loopback) with --no-relay, got %s", result.Mode)
+	}
+
+	if result.CallbackServer != "" {
+		t.Fatalf("expected no callback server with --no-relay, got %q", result.CallbackServer)
+	}
+}
+
+func TestResolveAuthMode_NoRelay_SkipsAutoDetectHeadless(t *testing.T) {
+	clearTestConfig(t)
+	t.Setenv("WK_CALLBACK_SERVER", "")
+
+	orig := isTerminal
+
+	t.Cleanup(func() { isTerminal = orig })
+
+	isTerminal = func() bool { return false }
+
+	var healthCalls int
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			healthCalls++
+
+			w.WriteHeader(http.StatusOK)
+
+			return
+		}
+
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	// Without --no-relay this setup auto-detects headless (see
+	// TestResolveAuthMode_AutoDetect_NoTTY_ReachableServer).
+	result := ResolveAuthMode(context.Background(), false, false, true, srv.URL)
+	if result.Mode != AuthModeBrowser {
+		t.Fatalf("expected browser (loopback) with --no-relay, got %s", result.Mode)
+	}
+
+	if result.Source != "flag" {
+		t.Fatalf("expected source=flag, got %s", result.Source)
+	}
+
+	if healthCalls != 0 {
+		t.Fatalf("--no-relay must not contact the relay, got %d /health calls", healthCalls)
+	}
+}
+
+func TestResolveAuthMode_NoRelay_KeepsManual(t *testing.T) {
+	clearTestConfig(t)
+
+	result := ResolveAuthMode(context.Background(), false, true, true, "")
+	if result.Mode != AuthModeManual {
+		t.Fatalf("expected manual, got %s", result.Mode)
+	}
+
+	setupTestConfig(t, `{"auth_mode":"manual"}`)
+
+	result = ResolveAuthMode(context.Background(), false, false, true, "")
+	if result.Mode != AuthModeManual || result.Source != "config" {
+		t.Fatalf("expected manual from config, got %+v", result)
 	}
 }

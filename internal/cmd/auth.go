@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -499,6 +500,7 @@ type AuthAddCmd struct {
 	CallbackServer string        `name:"callback-server" help:"Callback server URL for headless auth"`
 	PollTimeout    time.Duration `name:"poll-timeout" help:"Timeout for polling callback server" default:"5m"`
 	NoPoll         bool          `name:"no-poll" help:"In headless mode, output URL without polling (use 'wk auth poll' later)"`
+	NoRelay        bool          `name:"no-relay" help:"Never use the headless callback relay: force the local loopback flow (or --manual/--remote), even when config or auto-detect would pick headless"`
 
 	ForceConsent bool   `name:"force-consent" help:"Force consent screen to obtain a refresh token"`
 	ServicesCSV  string `name:"services" help:"Services to authorize: user|all or comma-separated ${auth_services} (Keep uses service account: wk auth service-account set)" default:"all"`
@@ -552,8 +554,12 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	manual := c.Manual || c.Remote || authURL != "" || authCode != ""
 
+	if c.NoRelay && (c.Headless || c.NoPoll || strings.TrimSpace(c.CallbackServer) != "") {
+		return usage("cannot combine --no-relay with --headless, --no-poll or --callback-server")
+	}
+
 	// Resolve auth mode: explicit flags > config > auto-detect
-	resolved := googleauth.ResolveAuthMode(ctx, c.Headless, manual, c.CallbackServer)
+	resolved := googleauth.ResolveAuthMode(ctx, c.Headless, manual, c.NoRelay, c.CallbackServer)
 	if resolved.Mode == googleauth.AuthModeHeadless {
 		if manual || c.Step != 0 || c.Timeout != 0 {
 			return usage("cannot combine --headless with manual/remote auth flags")
@@ -601,11 +607,16 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 		return fmt.Errorf("keychain access: %w", keychainErr)
 	}
 
+	if mergeErr := c.refuseWriteScopedMerge(client); mergeErr != nil {
+		return mergeErr
+	}
+
 	refreshToken, err := authorizeGoogle(ctx, googleauth.AuthorizeOptions{
 		Services:     services,
 		Scopes:       scopes,
 		Manual:       manual,
 		ForceConsent: c.ForceConsent,
+		Readonly:     c.Readonly,
 		Timeout:      timeout,
 		Client:       client,
 		AuthURL:      authURL,
@@ -634,7 +645,7 @@ func (c *AuthAddCmd) Run(ctx context.Context, flags *RootFlags) error {
 	}
 	sort.Strings(serviceNames)
 
-	if err := store.MergeToken(client, authorizedEmail, secrets.Token{
+	if err := storeAuthorizedToken(store, c.Readonly, client, authorizedEmail, secrets.Token{
 		Client:       client,
 		Email:        authorizedEmail,
 		Services:     serviceNames,
@@ -697,11 +708,16 @@ func (c *AuthAddCmd) handleRemoteAuthStep(
 			return false, usage("remote step 1 does not accept --auth-url or --auth-code")
 		}
 
+		if err := c.refuseWriteScopedMerge(client); err != nil {
+			return false, err
+		}
+
 		result, err := manualAuthURL(ctx, googleauth.AuthorizeOptions{
 			Services:     services,
 			Scopes:       scopes,
 			Manual:       true,
 			ForceConsent: c.ForceConsent,
+			Readonly:     c.Readonly,
 			Client:       client,
 		})
 		if err != nil {
@@ -750,6 +766,10 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 		return fmt.Errorf("keychain access: %w", keychainErr)
 	}
 
+	if err := c.refuseWriteScopedMerge(client); err != nil {
+		return err
+	}
+
 	// Get callback server URL
 	callbackServer, err := callbackServerURLFn(c.CallbackServer)
 	if err != nil {
@@ -761,6 +781,7 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 		Services:       services,
 		Scopes:         scopes,
 		ForceConsent:   c.ForceConsent,
+		Readonly:       c.Readonly,
 		Client:         client,
 		CallbackServer: callbackServer,
 	})
@@ -843,7 +864,7 @@ func (c *AuthAddCmd) runHeadless(ctx context.Context, client string, services []
 	}
 	sort.Strings(serviceNames)
 
-	if err := store.MergeToken(client, authorizedEmail, secrets.Token{
+	if err := storeAuthorizedToken(store, c.Readonly, client, authorizedEmail, secrets.Token{
 		Client:       client,
 		Email:        authorizedEmail,
 		Services:     serviceNames,
@@ -1016,7 +1037,7 @@ func (c *AuthPollCmd) storeToken(ctx context.Context, refreshToken string) error
 	}
 	sort.Strings(serviceNames)
 
-	if err := store.MergeToken(client, authorizedEmail, secrets.Token{
+	if err := storeAuthorizedToken(store, c.Readonly, client, authorizedEmail, secrets.Token{
 		Client:       client,
 		Email:        authorizedEmail,
 		Services:     serviceNames,
@@ -1580,4 +1601,47 @@ func splitCommaList(raw string) []string {
 		out = append(out, f)
 	}
 	return out
+}
+
+// isWriteScope reports whether scope falls outside the read-only allowlist
+// (see googleauth.IsReadOnlyScope).
+func isWriteScope(scope string) bool {
+	return !googleauth.IsReadOnlyScope(scope)
+}
+
+// refuseWriteScopedMerge fails a read-only `auth add` before any OAuth round
+// trip when the token already stored for client+email holds write scopes.
+func (c *AuthAddCmd) refuseWriteScopedMerge(client string) error {
+	if !c.Readonly {
+		return nil
+	}
+
+	store, err := openSecretsStore()
+	if err != nil {
+		return err
+	}
+
+	return readOnlyMergeError(secrets.CheckReadOnlyMerge(store, client, c.Email, isWriteScope))
+}
+
+// storeAuthorizedToken stores a freshly authorized token. A read-only
+// authorization refuses to merge into, or overwrite, a stored token that holds
+// write scopes; everything else merges as before.
+func storeAuthorizedToken(store secrets.Store, readonly bool, client string, email string, tok secrets.Token) error {
+	if !readonly {
+		return store.MergeToken(client, email, tok)
+	}
+
+	return readOnlyMergeError(secrets.MergeReadOnlyToken(store, client, email, tok, isWriteScope))
+}
+
+// readOnlyMergeError maps a refused read-only merge to a usage error (exit 2):
+// the fix is a different --client, not a retry.
+func readOnlyMergeError(err error) error {
+	var wErr *secrets.WriteScopedTokenError
+	if errors.As(err, &wErr) {
+		return &ExitError{Code: 2, Err: err}
+	}
+
+	return err
 }

@@ -24,6 +24,10 @@ type AuthorizeOptions struct {
 	Scopes       []string
 	Manual       bool
 	ForceConsent bool
+	// Readonly marks a read-only authorization: the consent URL omits
+	// include_granted_scopes so Google cannot fold earlier (possibly
+	// write-capable) grants into the new refresh token.
+	Readonly     bool
 	Timeout      time.Duration
 	Client       string
 	AuthCode     string
@@ -208,7 +212,7 @@ func authorizeServer(ctx context.Context, opts AuthorizeOptions, creds config.Cl
 		}
 	}()
 
-	authURL := cfg.AuthCodeURL(state, authURLParams(opts.ForceConsent)...)
+	authURL := cfg.AuthCodeURL(state, authURLParams(opts.ForceConsent, opts.Readonly)...)
 
 	fmt.Fprintln(os.Stderr, "Opening browser for authorization…")
 	fmt.Fprintln(os.Stderr, "If the browser doesn't open, visit this URL:")
@@ -249,10 +253,14 @@ func authorizeServer(ctx context.Context, opts AuthorizeOptions, creds config.Cl
 	}
 }
 
-func authURLParams(forceConsent bool) []oauth2.AuthCodeOption {
-	opts := []oauth2.AuthCodeOption{
-		oauth2.AccessTypeOffline,
-		oauth2.SetAuthURLParam("include_granted_scopes", "true"),
+// authURLParams returns the consent-URL options. A read-only authorization
+// omits include_granted_scopes: with incremental authorization Google would
+// otherwise return a refresh token that also carries every scope the user
+// granted this client before, including write scopes.
+func authURLParams(forceConsent bool, readonly bool) []oauth2.AuthCodeOption {
+	opts := []oauth2.AuthCodeOption{oauth2.AccessTypeOffline}
+	if !readonly {
+		opts = append(opts, oauth2.SetAuthURLParam("include_granted_scopes", "true"))
 	}
 	if forceConsent {
 		opts = append(opts, oauth2.SetAuthURLParam("prompt", "consent"))

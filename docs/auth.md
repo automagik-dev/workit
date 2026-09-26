@@ -166,6 +166,48 @@ wk auth add you@gmail.com --services user --remote --step 2 --auth-url 'http://1
 
 The `state` is cached on disk for ~10 minutes. If it expires, rerun step 1.
 
+### Read-only access for agents
+
+For a consumer that must never write, authorize a read-only token under its own
+client name and keep it off the relay:
+
+```bash
+wk --client brain-ro auth add you@gmail.com --services drive,sheets --readonly --no-relay
+```
+
+- `--readonly` requests only `*.readonly` scopes (plus the OIDC identity scopes)
+  and leaves `include_granted_scopes` out of the consent URL, so Google does not
+  fold earlier grants (for example full `drive`) into the new refresh token.
+- A read-only `auth add` (or `auth poll --readonly`) refuses to merge into, or
+  overwrite, a stored token for the same client and email that is not provably
+  read-only: one that records write scopes, or one that records no scopes at
+  all (for example a token brought in by `auth tokens import`). It fails before
+  the OAuth flow starts, exits 2, and tells you to use a dedicated `--client`.
+  Your existing login stays untouched.
+- `--no-relay` never uses the headless callback relay: config
+  `auth_mode: headless` and no-TTY auto-detection fall back to the local
+  loopback browser flow, and `--headless`, `--no-poll` or `--callback-server`
+  are rejected. `--manual` and `--remote` still work.
+
+A named client never falls back to `default`'s `credentials.json`. `wk` resolves
+the OAuth client for `--client brain-ro` in this order:
+
+1. its own `credentials-brain-ro.json`, stored with
+   `wk --client brain-ro auth credentials <file>`;
+2. the OAuth client ID built into the `wk` binary, when the build has one;
+3. `WK_CLIENT_ID` and `WK_CLIENT_SECRET`, when both are set.
+
+If none of these resolves, the command fails with a missing-credentials error
+(exit 10).
+
+So when `default` and `brain-ro` both resolve to the built-in client ID (neither
+has its own credentials file), they are the same OAuth client to Google: the
+two refresh tokens are separate only in the local keyring, and removing the
+app's access in the Google account revokes both. The same holds when both
+resolve to `WK_CLIENT_ID`. For Google-side separation (independent consent and
+revocation), register a second OAuth client and store it with
+`wk --client brain-ro auth credentials <file>`.
+
 See [docs/headless-auth.md](headless-auth.md) for full details.
 
 ## Token Management
