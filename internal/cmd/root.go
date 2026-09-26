@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"golang.org/x/term"
 
 	"github.com/automagik-dev/workit/internal/authclient"
 	"github.com/automagik-dev/workit/internal/config"
@@ -195,7 +194,7 @@ func Execute(args []string) (err error) {
 
 	// Opt-in "agent mode": default to JSON when stdout is piped/non-TTY.
 	// We intentionally do this after parsing so `--plain` can override it.
-	if envBool("WK_AUTO_JSON") && !cli.JSON && !cli.Plain && !term.IsTerminal(int(os.Stdout.Fd())) {
+	if !cli.JSON && wantsJSON(false, cli.Plain) {
 		cli.JSON = true
 	}
 

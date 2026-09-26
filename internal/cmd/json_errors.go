@@ -13,16 +13,17 @@ import (
 	"github.com/automagik-dev/workit/internal/outfmt"
 )
 
-// Error kinds emitted in the --json error envelope. Each kind maps 1:1 to a
-// stable exit code (see agent_exit_codes.go), so machine callers can branch on
-// either the process exit status or the "kind" field.
+// Error kinds emitted in the --json error envelope. Each kind is the name
+// `wk exit-codes` prints for the same stable exit code (see
+// agent_exit_codes.go), so machine callers can branch on either the process
+// exit status or the "kind" field with one vocabulary.
 const (
 	errorKindError       = "error"
 	errorKindUsage       = "usage"
-	errorKindEmpty       = "empty"
-	errorKindAuth        = "auth"
+	errorKindEmpty       = "empty_results"
+	errorKindAuth        = "auth_required"
 	errorKindNotFound    = "not_found"
-	errorKindPerm        = "perm"
+	errorKindPerm        = "permission_denied"
 	errorKindRateLimited = "rate_limited"
 	errorKindRetryable   = "retryable"
 	errorKindConfig      = "config"
@@ -104,17 +105,28 @@ func printError(jsonMode bool, err error) {
 	_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(err))
 }
 
-// cliWantsJSON reports whether parsed flags ask for JSON output. It mirrors the
-// mode selection in Execute (--json, --jq, WK_JSON via the flag default, and
-// WK_AUTO_JSON on a non-TTY stdout); --plain always wins.
-func cliWantsJSON(cli *CLI) bool {
-	if cli == nil || cli.Plain {
+// autoJSON reports whether WK_AUTO_JSON asks for JSON on this process: the
+// variable is set and stdout is not a terminal.
+func autoJSON() bool {
+	return envBool("WK_AUTO_JSON") && !term.IsTerminal(int(os.Stdout.Fd()))
+}
+
+// wantsJSON is the one JSON-mode rule shared by the output path (Execute) and
+// the error path: --plain always wins, then an explicit JSON request (--json,
+// --jq, WK_JSON), then WK_AUTO_JSON on a non-TTY stdout.
+func wantsJSON(jsonMode, plain bool) bool {
+	if plain {
 		return false
 	}
-	if cli.JSON || cli.JQ != "" {
-		return true
+	return jsonMode || autoJSON()
+}
+
+// cliWantsJSON reports whether parsed flags ask for JSON output.
+func cliWantsJSON(cli *CLI) bool {
+	if cli == nil {
+		return false
 	}
-	return envBool("WK_AUTO_JSON") && !term.IsTerminal(int(os.Stdout.Fd()))
+	return wantsJSON(cli.JSON || cli.JQ != "", cli.Plain)
 }
 
 // argsWantJSON is the pre-parse variant of cliWantsJSON, used for errors that
@@ -146,5 +158,5 @@ func argsWantJSON(args []string) bool {
 		}
 	}
 
-	return jsonMode && !plain
+	return wantsJSON(jsonMode, plain)
 }

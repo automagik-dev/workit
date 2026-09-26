@@ -17,21 +17,6 @@ import (
 	gogapi "github.com/automagik-dev/workit/internal/googleapi"
 )
 
-// expectedKindByExitCodeName classifies every name printed by `wk exit-codes`.
-// A new stable exit code must be added here, or the drift test below fails.
-var expectedKindByExitCodeName = map[string]string{
-	"error":             errorKindError,
-	"usage":             errorKindUsage,
-	"empty_results":     errorKindEmpty,
-	"auth_required":     errorKindAuth,
-	"not_found":         errorKindNotFound,
-	"permission_denied": errorKindPerm,
-	"rate_limited":      errorKindRateLimited,
-	"retryable":         errorKindRetryable,
-	"config":            errorKindConfig,
-	"cancelled":         errorKindCancelled,
-}
-
 func parseJSONErrorLine(t *testing.T, stderr string) jsonErrorBody {
 	t.Helper()
 
@@ -76,13 +61,11 @@ func TestErrorKindForExitCode_CoversAgentExitCodes(t *testing.T) {
 		if name == "ok" {
 			continue
 		}
-		want, ok := expectedKindByExitCodeName[name]
-		if !ok {
-			t.Errorf("exit code %q (%d) has no JSON error kind; classify it in errorKindForExitCode", name, code)
-			continue
-		}
-		if got := errorKindForExitCode(code); got != want {
-			t.Errorf("exit code %q (%d): kind=%q, want %q", name, code, got, want)
+		// The JSON error kind is the exit-code name itself, so callers use one
+		// vocabulary for both. A new stable exit code must be classified in
+		// errorKindForExitCode, or this fails.
+		if got := errorKindForExitCode(code); got != name {
+			t.Errorf("exit code %q (%d): kind=%q, want the exit-code name %q", name, code, got, name)
 		}
 	}
 }
@@ -305,6 +288,7 @@ func TestExecute_JSONErrors_UsageBeforeRun(t *testing.T) {
 func TestArgsWantJSON(t *testing.T) {
 	t.Setenv("WK_JSON", "")
 	t.Setenv("WK_PLAIN", "")
+	t.Setenv("WK_AUTO_JSON", "")
 
 	tests := []struct {
 		args []string
@@ -333,9 +317,88 @@ func TestArgsWantJSON(t *testing.T) {
 	}
 }
 
+// WK_AUTO_JSON on a non-TTY stdout selects JSON for normal output, so it must
+// select JSON for errors too, including errors raised before kong has parsed
+// the flags. captureStdout swaps stdout for a pipe, which is the non-TTY case
+// the auto-json output tests use.
+func TestArgsWantJSON_AutoJSONNonTTY(t *testing.T) {
+	t.Setenv("WK_JSON", "")
+	t.Setenv("WK_PLAIN", "")
+	t.Setenv("WK_AUTO_JSON", "1")
+
+	tests := []struct {
+		args []string
+		want bool
+	}{
+		{[]string{"nosuch"}, true},
+		{[]string{"drive", "get"}, true},
+		{[]string{"--generate-input", "nosuch"}, true},
+		{[]string{"--plain", "nosuch"}, false},
+		{[]string{"--json=false", "--plain", "drive", "get"}, false},
+	}
+	_ = captureStdout(t, func() {
+		for _, tc := range tests {
+			if got := argsWantJSON(tc.args); got != tc.want {
+				t.Errorf("WK_AUTO_JSON=1 argsWantJSON(%q)=%v, want %v", tc.args, got, tc.want)
+			}
+		}
+		if !cliWantsJSON(&CLI{}) {
+			t.Errorf("WK_AUTO_JSON=1 cliWantsJSON(no flags)=false, want true")
+		}
+		if cliWantsJSON(&CLI{RootFlags: RootFlags{Plain: true}}) {
+			t.Errorf("WK_AUTO_JSON=1 cliWantsJSON(--plain)=true, want false")
+		}
+	})
+}
+
+func TestExecute_JSONErrors_AutoJSONNonTTY(t *testing.T) {
+	t.Setenv("WK_JSON", "")
+	t.Setenv("WK_PLAIN", "")
+	t.Setenv("WK_AUTO_JSON", "1")
+
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"unknown command", []string{"nosuch"}},
+		{"missing argument", []string{"drive", "get"}},
+		{"generate-input unknown", []string{"--generate-input", "nosuch"}},
+		{"read-only block", []string{"--read-only", "--account", "a@b.com", "drive", "delete", "id1"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var execErr error
+			stderr := captureStderr(t, func() {
+				_ = captureStdout(t, func() {
+					execErr = Execute(tc.args)
+				})
+			})
+			if execErr == nil {
+				t.Fatalf("expected an error")
+			}
+			body := parseJSONErrorLine(t, stderr)
+			if body.Exit != ExitCode(execErr) || body.Kind != errorKindForExitCode(body.Exit) {
+				t.Fatalf("body=%#v, process exit=%d", body, ExitCode(execErr))
+			}
+		})
+	}
+
+	t.Run("plain wins", func(t *testing.T) {
+		stderr := captureStderr(t, func() {
+			_ = captureStdout(t, func() {
+				_ = Execute([]string{"--plain", "nosuch"})
+			})
+		})
+		if strings.HasPrefix(strings.TrimSpace(stderr), "{") {
+			t.Fatalf("--plain should keep human error text, got %q", stderr)
+		}
+	})
+}
+
 // The human "No data found" / "No files" lines are text-mode only: in JSON mode
 // an empty result is an empty JSON payload on stdout, exit 0, and nothing on
-// stderr (exit 3 with kind "empty" stays opt-in via --fail-empty).
+// stderr (exit 3 with kind "empty_results" stays opt-in via --fail-empty).
 func TestExecute_JSONEmptyResults_NoHumanTextOnStderr(t *testing.T) {
 	origDrive := newDriveService
 	origSheets := newSheetsService

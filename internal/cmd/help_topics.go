@@ -327,7 +327,7 @@ Error handling:
   2. If exit code is 4 (auth_required), run: wk auth add --account user@
   3. If exit code is 7 (rate_limited) or 8 (retryable), wait and retry
   4. If exit code is 3 (empty_results), the query succeeded but found nothing
-  5. Parse stderr for human-readable error messages
+  5. In JSON mode, stderr carries one JSON line: {"error":{"exit":N,"kind":"<exit-code name>","message":"..."}}
 
 Flags for agents:
   --json              Always use this. Output is a JSON envelope to stdout.
@@ -409,6 +409,10 @@ Error output:
   - stdout remains clean for JSON parsing.
   - In --json mode, errors are NOT written to stdout; always check
     the exit code and stderr.
+  - In JSON mode (--json, --jq, WK_JSON, or WK_AUTO_JSON with a piped
+    stdout) the error is one JSON line on stderr:
+      {"error":{"exit":5,"kind":"not_found","message":"..."}}
+    "kind" is the exit-code name from: wk agent exit-codes
 
 Common errors and remedies:
 
