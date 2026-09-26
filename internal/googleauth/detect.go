@@ -40,7 +40,13 @@ var isTerminal = func() bool {
 //  4. Config auth_mode=headless → headless (if callback server resolvable)
 //  5. Config auth_mode=manual → manual
 //  6. Auto: no TTY + callback server reachable → headless; otherwise browser
-func ResolveAuthMode(ctx context.Context, explicitHeadless, explicitManual bool, callbackServerFlag string) AuthModeResult {
+//
+// noRelay (auth add --no-relay) removes headless from every non-explicit
+// branch: config auth_mode=headless and auto-detect resolve to the local
+// loopback browser flow instead, so the refresh token never passes through the
+// callback relay. Callers reject --headless together with --no-relay before
+// calling; if both still arrive, the explicit --headless flag wins.
+func ResolveAuthMode(ctx context.Context, explicitHeadless, explicitManual, noRelay bool, callbackServerFlag string) AuthModeResult {
 	// 1. Explicit flags always win
 	if explicitHeadless {
 		cbURL, _ := CallbackServerURL(callbackServerFlag)
@@ -59,6 +65,10 @@ func ResolveAuthMode(ctx context.Context, explicitHeadless, explicitManual bool,
 		case AuthModeBrowser:
 			return AuthModeResult{Mode: AuthModeBrowser, Source: "config"}
 		case AuthModeHeadless:
+			if noRelay {
+				return AuthModeResult{Mode: AuthModeBrowser, Source: "flag"}
+			}
+
 			cbURL, cbErr := CallbackServerURL(callbackServerFlag)
 			if cbErr == nil {
 				return AuthModeResult{Mode: AuthModeHeadless, Source: "config", CallbackServer: cbURL}
@@ -69,6 +79,10 @@ func ResolveAuthMode(ctx context.Context, explicitHeadless, explicitManual bool,
 		case AuthModeManual:
 			return AuthModeResult{Mode: AuthModeManual, Source: "config"}
 		}
+	}
+
+	if noRelay {
+		return AuthModeResult{Mode: AuthModeBrowser, Source: "flag"}
 	}
 
 	// 3. Auto-detect: no TTY + callback server reachable → headless
