@@ -117,7 +117,9 @@ func listAllCalendarsEvents(ctx context.Context, svc *calendar.Service, from, to
 		return err
 	}
 
-	if len(calResp.Items) == 0 {
+	// In JSON mode an empty calendar list falls through to the empty
+	// {"events":[]} payload below instead of printing human text.
+	if len(calResp.Items) == 0 && !outfmt.IsJSON(ctx) {
 		u.Err().Println("No calendars")
 		return failEmptyExit(failEmpty)
 	}

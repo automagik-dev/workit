@@ -172,6 +172,26 @@ Stable exit codes for automation and agent integration:
 
 Run `wk agent exit-codes` (or `wk exit-codes`) to print these in your preferred output format.
 
+## JSON Error Envelope
+
+When JSON output is selected, a failing command writes exactly one JSON line to **stderr** and nothing to stdout:
+
+```json
+{"error":{"exit":5,"kind":"not_found","message":"..."}}
+```
+
+- `exit`: the process exit code (the table above).
+- `kind`: the exit-code **name** from the table above, so `kind` and `wk agent exit-codes` use one vocabulary (`usage`, `empty_results`, `auth_required`, `not_found`, `permission_denied`, `rate_limited`, `retryable`, `config`, `cancelled`). Any other code, including `1`, has kind `error`.
+- `message`: the same text a human run prints. A multi-line message stays inside the JSON string, so the envelope is always one line.
+
+JSON mode is selected by the same rule for output and for errors: `--plain` always wins; otherwise `--json`, `--jq` or `WK_JSON=1` select it, and so does `WK_AUTO_JSON=1` when stdout is not a terminal. The rule also covers errors raised before a command runs: unknown commands, missing arguments, `--generate-input` for an unknown command, and `--read-only`, `--command-tier` or `--enable-commands` blocks.
+
+```bash
+WK_AUTO_JSON=1 wk nosuch 2>err.json | cat    # err.json: {"error":{"exit":2,"kind":"usage",...}}
+```
+
+An empty result is not an error in JSON mode (empty payload on stdout, exit 0); exit 3 with kind `empty_results` happens only with `--fail-empty`.
+
 ## Global Flags
 
 All commands support these flags:

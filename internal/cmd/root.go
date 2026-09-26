@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/alecthomas/kong"
-	"golang.org/x/term"
 
 	"github.com/automagik-dev/workit/internal/authclient"
 	"github.com/automagik-dev/workit/internal/config"
@@ -138,7 +137,7 @@ func Execute(args []string) (err error) {
 			if len(allow) > 0 && !allow["*"] && !allow["all"] {
 				if len(cmdTokens) > 0 && !allow[strings.ToLower(cmdTokens[0])] {
 					cmdErr := usagef("command %q is not enabled (set --enable-commands to allow it)", cmdTokens[0])
-					_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(cmdErr))
+					printError(argsWantJSON(args), cmdErr)
 					return cmdErr
 				}
 			}
@@ -146,7 +145,7 @@ func Execute(args []string) (err error) {
 
 		node, findErr := findCommandNode(parser.Model.Node, cmdTokens)
 		if findErr != nil {
-			_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(findErr))
+			printError(argsWantJSON(args), findErr)
 			return findErr
 		}
 		return printGenerateInputFromNode(node)
@@ -155,22 +154,22 @@ func Execute(args []string) (err error) {
 	kctx, err := parser.Parse(args)
 	if err != nil {
 		parsedErr := wrapParseError(err)
-		_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(parsedErr))
+		printError(argsWantJSON(args), parsedErr)
 		return parsedErr
 	}
 
 	if err = enforceEnabledCommands(kctx, cli.EnableCommands); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(err))
+		printError(cliWantsJSON(cli), err)
 		return err
 	}
 
 	if err = enforceCommandTier(kctx, cli.CommandTier); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(err))
+		printError(cliWantsJSON(cli), err)
 		return err
 	}
 
 	if err = enforceReadOnly(kctx, cli.ReadOnly); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, errfmt.Format(err))
+		printError(cliWantsJSON(cli), err)
 		return err
 	}
 
@@ -195,7 +194,7 @@ func Execute(args []string) (err error) {
 
 	// Opt-in "agent mode": default to JSON when stdout is piped/non-TTY.
 	// We intentionally do this after parsing so `--plain` can override it.
-	if envBool("WK_AUTO_JSON") && !cli.JSON && !cli.Plain && !term.IsTerminal(int(os.Stdout.Fd())) {
+	if !cli.JSON && wantsJSON(false, cli.Plain) {
 		cli.JSON = true
 	}
 
@@ -243,6 +242,11 @@ func Execute(args []string) (err error) {
 		return nil
 	}
 	err = stableExitCode(err)
+
+	if outfmt.IsJSON(ctx) {
+		writeJSONError(os.Stderr, err)
+		return err
+	}
 
 	if u := ui.FromContext(ctx); u != nil {
 		msg := strings.TrimSpace(errfmt.Format(err))
