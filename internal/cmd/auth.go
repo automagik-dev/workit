@@ -925,6 +925,21 @@ func (c *AuthPollCmd) Run(ctx context.Context) error {
 		return usage("state is required")
 	}
 
+	// A read-only poll for a known --email refuses before polling when the
+	// stored token for that client+email is not provably read-only. Without
+	// --email the address is only known after the poll, so the refusal happens
+	// at store time instead.
+	if c.Readonly && strings.TrimSpace(c.Email) != "" {
+		client, err := authclient.ResolveClientWithOverride(c.Email, authclient.ClientOverrideFromContext(ctx))
+		if err != nil {
+			return err
+		}
+
+		if err := refuseReadOnlyMerge(c.Readonly, client, c.Email); err != nil {
+			return err
+		}
+	}
+
 	// Get callback server URL
 	callbackServer, err := callbackServerURLFn(c.CallbackServer)
 	if err != nil {
@@ -1610,9 +1625,18 @@ func isWriteScope(scope string) bool {
 }
 
 // refuseWriteScopedMerge fails a read-only `auth add` before any OAuth round
-// trip when the token already stored for client+email holds write scopes.
+// trip when the token already stored for client+email is not provably
+// read-only.
 func (c *AuthAddCmd) refuseWriteScopedMerge(client string) error {
-	if !c.Readonly {
+	return refuseReadOnlyMerge(c.Readonly, client, c.Email)
+}
+
+// refuseReadOnlyMerge returns a usage error (exit 2) when a read-only
+// authorization for client+email would be refused at store time: the stored
+// token holds write scopes or records none. Callers run it before any OAuth
+// or relay round trip, so a refused authorization never mints a token.
+func refuseReadOnlyMerge(readonly bool, client string, email string) error {
+	if !readonly {
 		return nil
 	}
 
@@ -1621,7 +1645,7 @@ func (c *AuthAddCmd) refuseWriteScopedMerge(client string) error {
 		return err
 	}
 
-	return readOnlyMergeError(secrets.CheckReadOnlyMerge(store, client, c.Email, isWriteScope))
+	return readOnlyMergeError(secrets.CheckReadOnlyMerge(store, client, email, isWriteScope))
 }
 
 // storeAuthorizedToken stores a freshly authorized token. A read-only

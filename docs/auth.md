@@ -66,7 +66,9 @@ wk auth services
 `wk auth add` records the scopes it *requested*. Google can grant more than that
 (for example when earlier grants are folded in), so a least-privilege check has
 to read what was *granted*. `wk auth scopes` refreshes the stored token once and
-reports the scopes from the token endpoint's response:
+reports the scopes from the token endpoint's response. When that response has
+no `scope` field, it asks Google's tokeninfo endpoint instead; `source` says
+which one answered (`token_endpoint` or `tokeninfo`):
 
 ```bash
 wk --client brain-ro --account you@gmail.com auth scopes --json
@@ -77,8 +79,8 @@ wk --client brain-ro --account you@gmail.com auth scopes --json
 (`*.readonly`, `openid`, `email`, `profile`, `userinfo.email`,
 `userinfo.profile`). A scope that is read-only in practice but not named so
 (for example `drive.metadata`) counts as a write scope. `read_only` is true only
-when `write_scopes` is empty. A missing, revoked or expired token exits with code
-4.
+when `write_scopes` is empty. A missing, revoked or expired token, or a stored
+record without a refresh token, exits with code 4.
 
 Accounts can be authorized either via OAuth refresh tokens or Workspace service accounts (domain-wide delegation). If a service account key is configured for an account, it takes precedence over OAuth refresh tokens (see `wk auth list`).
 
@@ -183,7 +185,10 @@ wk --client brain-ro auth add you@gmail.com --services drive,sheets --readonly -
   read-only: one that records write scopes, or one that records no scopes at
   all (for example a token brought in by `auth tokens import`). It fails before
   the OAuth flow starts, exits 2, and tells you to use a dedicated `--client`.
-  Your existing login stays untouched.
+  `auth poll --readonly --email <email>` likewise refuses before it polls the
+  relay; without `--email` the address is known only after the poll, so the
+  refusal comes when the token would be stored. Your existing login stays
+  untouched.
 - `--no-relay` never uses the headless callback relay: config
   `auth_mode: headless` and no-TTY auto-detection fall back to the local
   loopback browser flow, and `--headless`, `--no-poll` or `--callback-server`

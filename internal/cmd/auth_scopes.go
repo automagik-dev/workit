@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/99designs/keyring"
@@ -55,6 +56,15 @@ func (c *AuthScopesCmd) Run(ctx context.Context, flags *RootFlags) error {
 		}
 
 		return err
+	}
+
+	// A stored record without a refresh token cannot be inspected; like a
+	// missing token, the fix is to authorize again.
+	if strings.TrimSpace(tok.RefreshToken) == "" {
+		return &ExitError{
+			Code: exitCodeAuthRequired,
+			Err:  fmt.Errorf("stored token for %s (client %s) has no refresh token; re-authorize with: wk --client %s auth add %s --force-consent", email, client, client, email),
+		}
 	}
 
 	report, err := inspectGrantedScopes(ctx, client, tok.RefreshToken, c.Timeout)

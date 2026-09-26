@@ -176,7 +176,7 @@ Run `wk agent exit-codes` (or `wk exit-codes`) to print these in your preferred 
 
 ## JSON Error Envelope
 
-When JSON output is selected, a failing command writes exactly one JSON line to **stderr** and nothing to stdout:
+When JSON output is selected, a failing command writes exactly one JSON line to **stderr**. The envelope never goes to stdout, which carries only a command's result: a command that fails before producing a result leaves stdout empty, but `--fail-empty` still prints the empty JSON payload on stdout before it exits 3 with the envelope on stderr.
 
 ```json
 {"error":{"exit":5,"kind":"not_found","message":"..."}}
