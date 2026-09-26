@@ -189,6 +189,20 @@ wk --client brain-ro auth add you@gmail.com --services drive,sheets --readonly -
   relay; without `--email` the address is known only after the poll, so the
   refusal comes when the token would be stored. Your existing login stays
   untouched.
+- When that store-time refusal happens (`auth poll --readonly` without
+  `--email`), Google has already issued a read-only refresh token. `wk` drops
+  it without storing or printing it, and does **not** revoke it. Google's
+  revocation is not per token: "Revocation removes all OAuth 2.0 scopes
+  previously granted to a project, invalidating any issued access or refresh
+  tokens for all clients registered under that project"
+  ([Google OAuth 2.0 for installed apps, Token revocation](https://developers.google.com/identity/protocols/oauth2/native-app)).
+  The refused token was issued to the same OAuth client as the stored token
+  the refusal protects, so revoking it would also sign that login out. The
+  read-only scopes stay in your grant for that OAuth project until you remove
+  the app's access at <https://myaccount.google.com/permissions>, which also
+  revokes the stored token. To avoid the leftover grant, pass `--email` so the
+  refusal comes before the poll, or use a dedicated `--client` backed by its
+  own OAuth project.
 - `--no-relay` never uses the headless callback relay: config
   `auth_mode: headless` and no-TTY auto-detection fall back to the local
   loopback browser flow, and `--headless`, `--no-poll` or `--callback-server`
