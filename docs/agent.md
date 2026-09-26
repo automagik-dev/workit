@@ -83,6 +83,8 @@ wk --read-only drive ls        # OK -- listing is read-only
 wk --read-only gmail send ...  # BLOCKED
 ```
 
+`wk sync` is blocked except `sync status`, `sync list` and `sync service status`, and the self-updater `wk update` is blocked. `docs header`/`docs footer` stay available for reading but `--set`/`--clear` are blocked, and `calendar propose-time` is blocked with `--decline`/`--comment`. Commands that only change local wk state or local files (`auth add`, `config set`, `docx` edits on disk) stay available. Every command carries an explicit read-only classification in `internal/cmd/readonly_classification_test.go`, and the test fails when a new command is added without one.
+
 ### `--command-tier core|extended|complete`
 
 Limit which subcommands are visible. The three tiers are cumulative:
