@@ -184,6 +184,35 @@ func TestAuthAdd_Readonly_RefusesWriteScopedTokenBeforeOAuth(t *testing.T) {
 	}
 }
 
+// A token brought in by `auth tokens import` can record no scopes. It is not
+// provably read-only, so a --readonly add refuses it like a write-scoped one.
+func TestAuthAdd_Readonly_RefusesTokenWithoutRecordedScopesBeforeOAuth(t *testing.T) {
+	h := newReadonlyAuthHarness(t)
+
+	imported := secrets.Token{Services: []string{"drive"}, RefreshToken: "rt-imported"}
+	if err := h.store.SetToken("default", "user@example.com", imported); err != nil {
+		t.Fatalf("SetToken: %v", err)
+	}
+
+	err := runAuthAdd(t, "auth", "add", "user@example.com", "--services", "drive", "--readonly")
+	if got := ExitCode(err); got != 2 {
+		t.Fatalf("exit = %d, want 2 (err=%v)", got, err)
+	}
+
+	if !strings.Contains(err.Error(), "use a dedicated --client (e.g. --client brain-ro)") {
+		t.Fatalf("error must name the fix, got %v", err)
+	}
+
+	if h.authorizeCalls != 0 {
+		t.Fatalf("OAuth must not start when the merge would be refused (calls=%d)", h.authorizeCalls)
+	}
+
+	got, getErr := h.store.GetToken("default", "user@example.com")
+	if getErr != nil || got.RefreshToken != "rt-imported" {
+		t.Fatalf("existing token must be untouched, got %+v err=%v", got, getErr)
+	}
+}
+
 func TestAuthAdd_Readonly_DedicatedClientIsAccepted(t *testing.T) {
 	h := newReadonlyAuthHarness(t)
 

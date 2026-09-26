@@ -153,6 +153,58 @@ func TestMergeReadOnlyToken_OtherClientIsIndependent(t *testing.T) {
 	}
 }
 
+// A stored token that records no scopes (for example one brought in by
+// `auth tokens import`) is not provably read-only, so a read-only
+// authorization must not overwrite it.
+func TestMergeReadOnlyToken_RefusesTokenWithoutRecordedScopes(t *testing.T) {
+	t.Parallel()
+
+	for name, scopes := range map[string][]string{
+		"nil":   nil,
+		"empty": {},
+		"blank": {"", "  "},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			store := &KeyringStore{ring: keyring.NewArrayKeyring(nil)}
+			existing := Token{Services: []string{"drive"}, Scopes: scopes, RefreshToken: "rt-imported"}
+
+			if err := store.SetToken("default", "a@b.com", existing); err != nil {
+				t.Fatalf("SetToken: %v", err)
+			}
+
+			err := MergeReadOnlyToken(store, "default", "a@b.com", Token{
+				Scopes:       []string{"https://www.googleapis.com/auth/drive.readonly"},
+				RefreshToken: "rt-ro",
+			}, isWriteScopeForTest)
+
+			var wErr *WriteScopedTokenError
+			if !errors.As(err, &wErr) {
+				t.Fatalf("expected WriteScopedTokenError, got %v", err)
+			}
+
+			if !wErr.ScopesUnknown || len(wErr.WriteScopes) != 0 {
+				t.Fatalf("expected an unknown-scopes refusal, got %+v", wErr)
+			}
+
+			if !strings.Contains(err.Error(), "records no scopes") ||
+				!strings.Contains(err.Error(), "use a dedicated --client (e.g. --client brain-ro)") {
+				t.Fatalf("error must say why and name the fix, got %q", err.Error())
+			}
+
+			got, getErr := store.GetToken("default", "a@b.com")
+			if getErr != nil {
+				t.Fatalf("GetToken: %v", getErr)
+			}
+
+			if got.RefreshToken != "rt-imported" {
+				t.Fatalf("stored token must be untouched, got %+v", got)
+			}
+		})
+	}
+}
+
 type getTokenErrStore struct {
 	*KeyringStore
 	err error
