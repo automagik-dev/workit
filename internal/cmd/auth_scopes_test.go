@@ -65,6 +65,7 @@ type authScopesPayload struct {
 	Granted     []string `json:"granted"`
 	WriteScopes []string `json:"write_scopes"`
 	ReadOnly    bool     `json:"read_only"`
+	Source      string   `json:"source"`
 }
 
 func TestAuthScopes_JSON_ReadOnlyClient(t *testing.T) {
@@ -228,5 +229,77 @@ func TestAuthScopes_OtherRefreshErrorIsNotAuth(t *testing.T) {
 
 	if got := ExitCode(err); got == exitCodeAuthRequired || got == 0 {
 		t.Fatalf("exit = %d, want a non-auth failure (err=%v)", got, err)
+	}
+}
+
+// A stored record with an empty refresh token cannot be inspected. It must
+// exit 4 like a missing token, not 1. The real inspector runs here: it
+// rejects the empty token before any network call.
+func TestAuthScopes_EmptyRefreshTokenExitsAuth(t *testing.T) {
+	stubAuthScopes(t, "brain-ro", "", nil)
+	inspectGrantedScopes = googleauth.InspectGrantedScopes
+
+	// SetToken refuses an empty refresh token, but a keyring record decoded by
+	// GetToken can still carry one, so the record is placed directly.
+	store := newMemSecretsStore()
+	store.tokens["brain-ro:a@b.com"] = secrets.Token{
+		Client:       "brain-ro",
+		Email:        "a@b.com",
+		Scopes:       []string{"https://www.googleapis.com/auth/drive.readonly"},
+		RefreshToken: "   ",
+	}
+	openSecretsStore = func() (secrets.Store, error) { return store, nil }
+
+	var execErr error
+
+	stderr := captureStderr(t, func() {
+		_ = captureStdout(t, func() {
+			execErr = Execute([]string{"--json", "--client", "brain-ro", "--account", "a@b.com", "auth", "scopes"})
+		})
+	})
+
+	if got := ExitCode(execErr); got != exitCodeAuthRequired {
+		t.Fatalf("exit = %d, want %d (err=%v)", got, exitCodeAuthRequired, execErr)
+	}
+
+	if !strings.Contains(execErr.Error(), "--client brain-ro auth add a@b.com --force-consent") {
+		t.Fatalf("error must name the fix, got %v", execErr)
+	}
+
+	if body := parseJSONErrorLine(t, stderr); body.Kind != "auth_required" {
+		t.Fatalf("kind = %q, want auth_required", body.Kind)
+	}
+}
+
+// The JSON `source` field says how the granted set was read: from the token
+// endpoint's refresh response, or from tokeninfo when that response carried
+// no scope field.
+func TestAuthScopes_JSON_Source(t *testing.T) {
+	for _, source := range []string{googleauth.GrantedScopesSourceTokenEndpoint, googleauth.GrantedScopesSourceTokenInfo} {
+		t.Run(source, func(t *testing.T) {
+			stubAuthScopes(t, "default", "a@b.com", func(string, string) (googleauth.GrantedScopesReport, error) {
+				report := grantedReport("https://www.googleapis.com/auth/drive.readonly")
+				report.Source = source
+
+				return report, nil
+			})
+
+			out := captureStdout(t, func() {
+				_ = captureStderr(t, func() {
+					if err := Execute([]string{"--json", "--account", "a@b.com", "auth", "scopes"}); err != nil {
+						t.Fatalf("Execute: %v", err)
+					}
+				})
+			})
+
+			var payload authScopesPayload
+			if err := json.Unmarshal([]byte(out), &payload); err != nil {
+				t.Fatalf("json parse: %v\nout=%q", err, out)
+			}
+
+			if payload.Source != source {
+				t.Fatalf("source = %q, want %q (out=%q)", payload.Source, source, out)
+			}
+		})
 	}
 }
