@@ -11,8 +11,11 @@ permissions:
 # One tagging run at a time. Parallel runs from a merge train each read the
 # tag list before the others pushed, so they could compute the same N or tag
 # out of order. Queued runs wait; they are never cancelled mid-run. GitHub
-# keeps only the newest pending run per group, so a commit whose run is
-# replaced while waiting gets no tag of its own: the next tag includes it.
+# keeps only the newest pending run per group, so a run replaced while
+# waiting shows as cancelled. Nothing is lost: the run that replaced it
+# checks every untagged commit since the last tag, so an earlier push that
+# wanted a release still gets one (the tag lands on the newer commit, which
+# contains it).
 concurrency:
   group: auto-release
   cancel-in-progress: false
@@ -20,8 +23,10 @@ concurrency:
 jobs:
   tag:
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    # Skip if commit message contains [skip release] or [skip ci]
-    if: "!contains(github.event.head_commit.message, '[skip release]') && !contains(github.event.head_commit.message, '[skip ci]')"
+    # No job-level skip on head_commit.message: a `[skip release]` run can
+    # replace the pending run of a push that wanted a release, so the skip
+    # markers are evaluated over every untagged commit inside the job
+    # (.github/scripts/next-release-tag.sh).
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,40 +34,18 @@ jobs:
           # Use the built-in token for checkout; dispatch release explicitly after pushing the tag.
           token: ${{ github.token }}
 
-      - name: Skip a commit that is already tagged
-        id: tagged
-        run: |
-          EXISTING=$(git tag --points-at HEAD --list 'v[0-9]*' | head -1)
-          echo "existing=${EXISTING}" >> "$GITHUB_OUTPUT"
-          if [ -n "$EXISTING" ]; then
-            echo "HEAD is already tagged ${EXISTING}; nothing to release."
-          fi
-
-      - name: Compute next calver tag
+      - name: Decide the release tag
         id: calver
-        if: steps.tagged.outputs.existing == ''
-        run: |
-          DATE=$(date -u +%y%m%d)
-          MAJOR=2
-          # Find highest N for today
-          LATEST=$(git tag --list "v${MAJOR}.${DATE}.*" --sort=-version:refname | head -1)
-          if [ -z "$LATEST" ]; then
-            N=1
-          else
-            N=$(echo "$LATEST" | sed "s/v${MAJOR}.${DATE}\.//")
-            N=$((N + 1))
-          fi
-          TAG="v${MAJOR}.${DATE}.${N}"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "Next tag: ${TAG}"
+        run: .github/scripts/next-release-tag.sh >> "$GITHUB_OUTPUT"
 
       - name: Create tag and dispatch release
-        if: steps.tagged.outputs.existing == ''
+        if: steps.calver.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.calver.outputs.tag }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.calver.outputs.tag }}" -m "Release ${{ steps.calver.outputs.tag }}"
-          git push origin "${{ steps.calver.outputs.tag }}"
-          gh workflow run release.yml --ref main -f tag="${{ steps.calver.outputs.tag }}"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+          gh workflow run release.yml --ref main -f tag="$TAG"

@@ -127,10 +127,13 @@ jobs:
 
   # GoReleaser publishes with make_latest "false" (.goreleaser.yaml), so a
   # release that finishes last never takes "Latest" by accident. This job then
-  # points Latest at the release on the newest tagged main commit, whichever
-  # run it belongs to (.github/scripts/set-latest-release.sh). The global group
-  # serializes it across all release runs; a queued run replaced by a newer
-  # one loses nothing, because every run recomputes the same target.
+  # points Latest at the newest published release on main, whichever run it
+  # belongs to, and never moves it backwards
+  # (.github/scripts/set-latest-release.sh). It fails when this run's own tag
+  # is the newest on main but its release is not published. The global group
+  # serializes it across all release runs. A queued run replaced by a newer
+  # one shows as cancelled and loses nothing, because every run recomputes
+  # the same target.
   latest:
     needs: [goreleaser]
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -142,7 +145,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Point Latest at the newest main release
+      - name: Point Latest at the newest published main release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: .github/scripts/set-latest-release.sh
