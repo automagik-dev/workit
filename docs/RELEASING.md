@@ -89,7 +89,8 @@ next calver tag (`v2.YYMMDD.N`) and dispatches `release.yml` for it. A merge
 train can start several of these at once, so:
 
 - `auto-release.yml` runs one at a time (`concurrency: auto-release`). It skips
-  a commit that is already tagged. `[skip release]` and `[skip ci]` are read
+  a commit that a release tag already contains (a tag on it or on a later
+  commit, as when an older run is re-run). `[skip release]` and `[skip ci]` are read
   from every untagged first-parent commit since the last tag
   (`.github/scripts/next-release-tag.sh`): HEAD is tagged when any of them
   lacks a marker, and skipped only when all of them carry one.
