@@ -43,6 +43,7 @@ wk auth status                       # Show current auth state/services
 wk auth services                     # List available services and OAuth scopes
 wk auth list                         # List stored accounts
 wk auth list --check                 # Validate stored refresh tokens
+wk auth scopes --json                # Scopes Google actually granted (refreshes once)
 wk auth remove <email>               # Remove a stored refresh token
 wk auth manage                       # Open accounts manager in browser
 wk auth tokens                       # Manage stored refresh tokens

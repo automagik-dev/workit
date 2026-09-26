@@ -65,6 +65,7 @@ type AuthCmd struct {
 	List        AuthListCmd           `cmd:"" name:"list" help:"List stored accounts"`
 	Aliases     AuthAliasCmd          `cmd:"" name:"alias" help:"Manage account aliases"`
 	Status      AuthStatusCmd         `cmd:"" name:"status" help:"Show auth configuration and keyring backend"`
+	Scopes      AuthScopesCmd         `cmd:"" name:"scopes" help:"Show the OAuth scopes Google granted to the stored token (refreshes once)"`
 	Keyring     AuthKeyringCmd        `cmd:"" name:"keyring" help:"Configure keyring backend"`
 	Remove      AuthRemoveCmd         `cmd:"" name:"remove" help:"Remove a stored refresh token"`
 	Tokens      AuthTokensCmd         `cmd:"" name:"tokens" help:"Manage stored refresh tokens"`
