@@ -61,6 +61,25 @@ wk auth status
 wk auth services
 ```
 
+### Granted scopes
+
+`wk auth add` records the scopes it *requested*. Google can grant more than that
+(for example when earlier grants are folded in), so a least-privilege check has
+to read what was *granted*. `wk auth scopes` refreshes the stored token once and
+reports the scopes from the token endpoint's response:
+
+```bash
+wk --client brain-ro --account you@gmail.com auth scopes --json
+# {"client":"brain-ro","email":"you@gmail.com","granted":[...],"write_scopes":[],"read_only":true,"source":"token_endpoint"}
+```
+
+`write_scopes` is every granted scope that is not on the read-only allowlist
+(`*.readonly`, `openid`, `email`, `profile`, `userinfo.email`,
+`userinfo.profile`). A scope that is read-only in practice but not named so
+(for example `drive.metadata`) counts as a write scope. `read_only` is true only
+when `write_scopes` is empty. A missing, revoked or expired token exits with code
+4.
+
 Accounts can be authorized either via OAuth refresh tokens or Workspace service accounts (domain-wide delegation). If a service account key is configured for an account, it takes precedence over OAuth refresh tokens (see `wk auth list`).
 
 ## Multi-Account Usage

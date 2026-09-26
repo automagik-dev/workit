@@ -230,6 +230,13 @@ type DriveGetCmd struct {
 	FileID string `arg:"" name:"fileId" help:"File ID"`
 }
 
+// driveGetFields is the metadata `drive get` requests. md5Checksum,
+// version and headRevisionId let callers detect content changes without
+// downloading: md5Checksum and headRevisionId exist only for binary files,
+// while version increases on every change, including for Google-native
+// Docs/Sheets/Slides.
+const driveGetFields = "id, name, mimeType, size, modifiedTime, createdTime, parents, webViewLink, description, starred, md5Checksum, version, headRevisionId"
+
 func (c *DriveGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u := ui.FromContext(ctx)
 	account, err := requireAccount(flags)
@@ -248,7 +255,7 @@ func (c *DriveGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 
 	f, err := svc.Files.Get(fileID).
 		SupportsAllDrives(true).
-		Fields("id, name, mimeType, size, modifiedTime, createdTime, parents, webViewLink, description, starred").
+		Fields(driveGetFields).
 		Context(ctx).
 		Do()
 	if err != nil {
@@ -265,6 +272,15 @@ func (c *DriveGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 	u.Out().Printf("size\t%s", formatDriveSize(f.Size))
 	u.Out().Printf("created\t%s", f.CreatedTime)
 	u.Out().Printf("modified\t%s", f.ModifiedTime)
+	if f.Version != 0 {
+		u.Out().Printf("version\t%d", f.Version)
+	}
+	if f.Md5Checksum != "" {
+		u.Out().Printf("md5\t%s", f.Md5Checksum)
+	}
+	if f.HeadRevisionId != "" {
+		u.Out().Printf("head_revision\t%s", f.HeadRevisionId)
+	}
 	if f.Description != "" {
 		u.Out().Printf("description\t%s", f.Description)
 	}
