@@ -14,6 +14,14 @@ on:
 permissions:
   contents: write
 
+# Runs for the same tag (a tag push and a dispatch, or a manual re-run) wait
+# for each other instead of uploading to one release at once. Runs for
+# different tags still build in parallel; the `latest` job below serializes
+# the one step that must see every release: choosing "Latest".
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -116,3 +124,25 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           WK_CLIENT_ID: ${{ secrets.WK_CLIENT_ID }}
           WK_CLIENT_SECRET: ${{ secrets.WK_CLIENT_SECRET }}
+
+  # GoReleaser publishes with make_latest "false" (.goreleaser.yaml), so a
+  # release that finishes last never takes "Latest" by accident. This job then
+  # points Latest at the release on the newest tagged main commit, whichever
+  # run it belongs to (.github/scripts/set-latest-release.sh). The global group
+  # serializes it across all release runs; a queued run replaced by a newer
+  # one loses nothing, because every run recomputes the same target.
+  latest:
+    needs: [goreleaser]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    concurrency:
+      group: release-latest
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Point Latest at the newest main release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/set-latest-release.sh

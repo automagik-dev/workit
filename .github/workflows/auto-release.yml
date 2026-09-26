@@ -8,6 +8,15 @@ permissions:
   contents: write
   actions: write
 
+# One tagging run at a time. Parallel runs from a merge train each read the
+# tag list before the others pushed, so they could compute the same N or tag
+# out of order. Queued runs wait; they are never cancelled mid-run. GitHub
+# keeps only the newest pending run per group, so a commit whose run is
+# replaced while waiting gets no tag of its own: the next tag includes it.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
 jobs:
   tag:
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -20,8 +29,18 @@ jobs:
           # Use the built-in token for checkout; dispatch release explicitly after pushing the tag.
           token: ${{ github.token }}
 
+      - name: Skip a commit that is already tagged
+        id: tagged
+        run: |
+          EXISTING=$(git tag --points-at HEAD --list 'v[0-9]*' | head -1)
+          echo "existing=${EXISTING}" >> "$GITHUB_OUTPUT"
+          if [ -n "$EXISTING" ]; then
+            echo "HEAD is already tagged ${EXISTING}; nothing to release."
+          fi
+
       - name: Compute next calver tag
         id: calver
+        if: steps.tagged.outputs.existing == ''
         run: |
           DATE=$(date -u +%y%m%d)
           MAJOR=2
@@ -38,6 +57,7 @@ jobs:
           echo "Next tag: ${TAG}"
 
       - name: Create tag and dispatch release
+        if: steps.tagged.outputs.existing == ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -82,6 +82,28 @@ If the workflow needs a rerun:
 gh workflow run release.yml -f tag=vX.Y.Z
 ```
 
+### Automatic releases and "Latest"
+
+Every push to `main` runs `auto-release.yml`, which tags the commit with the
+next calver tag (`v2.YYMMDD.N`) and dispatches `release.yml` for it. A merge
+train can start several of these at once, so:
+
+- `auto-release.yml` runs one at a time (`concurrency: auto-release`) and skips
+  a commit that is already tagged.
+- `release.yml` runs for the same tag wait for each other; runs for different
+  tags build in parallel.
+- GoReleaser publishes with `make_latest: "false"`. The last job, `latest`,
+  runs one at a time across all release runs and marks Latest only on the
+  release whose tag is on the newest tagged `main` commit
+  (`.github/scripts/set-latest-release.sh`). While that newer release is still
+  being built, Latest stays where it is.
+
+To check or repair Latest by hand:
+```sh
+gh api repos/automagik-dev/workit/releases/latest --jq .tag_name
+gh release edit vX.Y.Z --latest   # only for the tag on the newest main commit
+```
+
 ## 5) Sanity-check installer and update flow
 ```sh
 curl -fsSL https://raw.githubusercontent.com/automagik-dev/workit/main/scripts/install.sh | bash
