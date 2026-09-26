@@ -194,6 +194,19 @@ func TestNextReleaseTag(t *testing.T) {
 			want: "",
 		},
 		{
+			// Re-running an older run on A after B was tagged: B's tag
+			// already contains A, so A must not get a new tag.
+			name: "re-run on a commit a newer tag contains",
+			setup: func(r *repo) {
+				r.tag("v2.260926.1")
+				r.merge("a", "feat a", "Merge pull request #1\n\nfeat: a")
+				r.merge("b", "feat b", "Merge pull request #2\n\nfeat: b")
+				r.tag("v2.260926.2")
+				r.git("checkout", "-q", "--detach", "HEAD~1")
+			},
+			want: "",
+		},
+		{
 			// The review case: B's pending run was replaced by C's, and C asks
 			// to skip. B still wants a release, so HEAD (C) is tagged.
 			name: "skip head replaces a pending release",

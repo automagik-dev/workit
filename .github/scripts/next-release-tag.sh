@@ -17,9 +17,12 @@ set -euo pipefail
 major="${RELEASE_MAJOR:-2}"
 date="${RELEASE_DATE:-$(date -u +%y%m%d)}"
 
-existing="$(git tag --points-at HEAD --list 'v[0-9]*' | head -1)"
+# A release tag on HEAD or on any later commit already ships HEAD. The
+# second case happens when an older run is re-run after a newer push was
+# tagged: tagging HEAD again would cut a new, older release.
+existing="$(git tag --contains HEAD --list 'v[0-9]*' --sort=version:refname | head -1)"
 if [ -n "$existing" ]; then
-  echo "HEAD is already tagged ${existing}; nothing to release." >&2
+  echo "HEAD is already released in ${existing}; nothing to release." >&2
   echo "tag="
   exit 0
 fi
