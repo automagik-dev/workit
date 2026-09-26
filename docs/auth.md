@@ -197,12 +197,13 @@ wk --client brain-ro auth add you@gmail.com --services drive,sheets --readonly -
   tokens for all clients registered under that project"
   ([Google OAuth 2.0 for installed apps, Token revocation](https://developers.google.com/identity/protocols/oauth2/native-app)).
   The refused token was issued to the same OAuth client as the stored token
-  the refusal protects, so revoking it would also sign that login out. The
-  read-only scopes stay in your grant for that OAuth project until you remove
-  the app's access at <https://myaccount.google.com/permissions>, which also
-  revokes the stored token. To avoid the leftover grant, pass `--email` so the
-  refusal comes before the poll, or use a dedicated `--client` backed by its
-  own OAuth project.
+  the refusal protects, so it belongs to the same Google Cloud project, and
+  revoking it would also sign that login out. The read-only scopes stay in
+  your grant for that project until you remove the app's access at
+  <https://myaccount.google.com/permissions>, which also revokes the stored
+  token. To avoid the leftover grant, pass `--email` so the
+  refusal comes before the poll, or use a dedicated `--client` whose OAuth
+  client lives in a separate Google Cloud project.
 - `--no-relay` never uses the headless callback relay: config
   `auth_mode: headless` and no-TTY auto-detection fall back to the local
   loopback browser flow, and `--headless`, `--no-poll` or `--callback-server`
@@ -224,8 +225,10 @@ has its own credentials file), they are the same OAuth client to Google: the
 two refresh tokens are separate only in the local keyring, and removing the
 app's access in the Google account revokes both. The same holds when both
 resolve to `WK_CLIENT_ID`. For Google-side separation (independent consent and
-revocation), register a second OAuth client and store it with
-`wk --client brain-ro auth credentials <file>`.
+revocation), use an OAuth client in a separate Google Cloud project and store
+it with `wk --client brain-ro auth credentials <file>`. A second OAuth client in
+the same project is not enough: Google revokes per project, invalidating the
+tokens of every client registered under it (see the revocation note above).
 
 See [docs/headless-auth.md](headless-auth.md) for full details.
 
