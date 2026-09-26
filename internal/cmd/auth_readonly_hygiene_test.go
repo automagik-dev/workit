@@ -332,6 +332,49 @@ func TestAuthPoll_Readonly_RefusesWriteScopedToken(t *testing.T) {
 	}
 }
 
+// A token brought in by `auth tokens import` can record no scopes. A
+// read-only `auth poll --email` refuses it with exit 2 before it polls the
+// relay or asks Google for the account, so no token is minted for nothing.
+func TestAuthPoll_Readonly_RefusesTokenWithoutRecordedScopesBeforePoll(t *testing.T) {
+	h := newReadonlyAuthHarness(t)
+
+	imported := secrets.Token{Services: []string{"drive"}, RefreshToken: "rt-imported"}
+	if err := h.store.SetToken("default", "user@example.com", imported); err != nil {
+		t.Fatalf("SetToken: %v", err)
+	}
+
+	pollCalls, emailCalls := 0, 0
+	pollForToken = func(context.Context, string, string, time.Duration) (string, error) {
+		pollCalls++
+
+		return "rt-ro", nil
+	}
+	fetchAuthorizedEmail = func(context.Context, string, string, []string, time.Duration) (string, error) {
+		emailCalls++
+
+		return "user@example.com", nil
+	}
+
+	err := runAuthAdd(t, "auth", "poll", "state", "--email", "user@example.com", "--services", "drive", "--readonly")
+	if got := ExitCode(err); got != 2 {
+		t.Fatalf("exit = %d, want 2 (err=%v)", got, err)
+	}
+
+	if !strings.Contains(err.Error(), "records no scopes") ||
+		!strings.Contains(err.Error(), "use a dedicated --client (e.g. --client brain-ro)") {
+		t.Fatalf("error must say why and name the fix, got %v", err)
+	}
+
+	if pollCalls != 0 || emailCalls != 0 {
+		t.Fatalf("no poll or OAuth round trip may run before the refusal (poll=%d userinfo=%d)", pollCalls, emailCalls)
+	}
+
+	got, getErr := h.store.GetToken("default", "user@example.com")
+	if getErr != nil || got.RefreshToken != "rt-imported" {
+		t.Fatalf("existing token must be untouched, got %+v err=%v", got, getErr)
+	}
+}
+
 func TestAuthAdd_NoRelay_ForcesLoopbackOverConfigHeadless(t *testing.T) {
 	h := newReadonlyAuthHarness(t)
 
