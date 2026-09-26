@@ -99,5 +99,9 @@ checksum:
     - glob: _plugin_dist/workit-plugin_*.tar.gz
 
 release:
+  # The release workflow's `latest` job sets "Latest" after every release
+  # (.github/scripts/set-latest-release.sh). Parallel runs finish in any
+  # order, so GoReleaser must not mark each release Latest as it publishes.
+  make_latest: "false"
   extra_files:
     - glob: _plugin_dist/workit-plugin_*.tar.gz
