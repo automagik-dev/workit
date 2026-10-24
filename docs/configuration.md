@@ -173,6 +173,7 @@ wk drive ls --json --results-only
 | `WK_COMMAND_TIER` | Command visibility tier: `core`, `extended`, or `complete` (default: `complete`) |
 | `WK_CALENDAR_WEEKDAY` | Set to `1` to default `--weekday` for calendar events output |
 | `WK_CONFIG_DIR` | Override config directory path (useful for isolated headless sessions) |
+| `WK_HTTP_TIMEOUT` | Max wait for Google API response headers (Go duration, e.g. `2m`; default `30s`). Does not cap body transfer, so large downloads are unaffected |
 
 ## Shell Completions
 
