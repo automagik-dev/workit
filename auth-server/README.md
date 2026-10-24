@@ -20,9 +20,9 @@ When users authenticate via the headless OAuth flow:
 | `/callback` | GET | Google OAuth callback, exchanges code for token |
 | `/token/{state}` | GET | Retrieve token (consumes it) |
 | `/status/{state}` | GET | Check token status without consuming |
-| `/m365/sessions` | POST | Create a one-click Microsoft 365 read-only login session |
+| `/m365/sessions` | POST | Create a one-click Microsoft 365 read-only login session (admin bearer token) |
 | `/m365/start/{state}` | GET | Redirect user to Microsoft authorize URL |
-| `/m365/callback` | GET | Microsoft OAuth callback with PKCE/email validation |
+| `/m365/callback` | GET | Microsoft OAuth callback with PKCE, email and tenant validation |
 
 ### Response Codes
 
@@ -58,10 +58,40 @@ When users authenticate via the headless OAuth flow:
 | `WK_PUBLIC_BASE_URL` | Public HTTPS base URL for the deployed auth server; M365 derives `/m365/callback` from this |
 | `WK_CALLBACK_SERVER` | Backward-compatible public base URL fallback |
 | `WK_M365_CLIENT_ID` | Microsoft Entra application/client ID for M365 broker |
-| `WK_M365_TENANT_ID` | Microsoft tenant ID; defaults to `organizations` |
+| `WK_M365_TENANT_ID` | Microsoft tenant ID or verified domain; required with the M365 broker (`organizations`/`common` are refused) |
 | `WK_M365_BROKER_TOKEN` | Required bearer token for trusted callers creating `/m365/sessions` |
 
 Command-line flags take precedence over environment variables.
+
+## Microsoft 365 one-click login
+
+For a user who cannot run the CLI: the operator creates a link, the user clicks it and logs into
+Microsoft, and the refresh token lands in the operator's Workit keyring under the `m365` client.
+
+1. Register an Entra app (single-tenant, delegated `User.Read`, `Mail.Read`, `Calendars.Read`) with
+   redirect URI `https://<public-base-url>/m365/callback`.
+2. Run this server behind HTTPS with `WK_PUBLIC_BASE_URL`, `WK_M365_CLIENT_ID`, `WK_M365_TENANT_ID`
+   and `WK_M365_BROKER_TOKEN` set.
+3. On the operator machine:
+
+   ```bash
+   WK_M365_BROKER_TOKEN=... wk --json auth m365 login-link bernardo@example.com --base-url https://<public-base-url>
+   ```
+
+   The first JSON document carries `login_url`; send it to the user. The command then waits until
+   the login completes (or the link expires after 10 minutes) and prints the stored result.
+   `--no-poll` prints the link and exits, so the token is never collected.
+
+Guarantees: scopes are fixed to `offline_access User.Read Mail.Read Calendars.Read`; the state is
+random, single-use and expires after 10 minutes; the PKCE verifier never leaves the server; the
+callback fails closed when the state is unknown, expired or reused, or when Graph `/me`
+(mail, else UPN) or `/organization` does not match the expected email and tenant. The token is
+keyed by a separate `poll_key` returned only to the admin caller, so the public link cannot be
+used to fetch it.
+
+Audit lines are JSON on stderr: `m365.link_created`, `m365.callback_ok`, `m365.callback_failed`
+(with `reason`) and `m365.state_expired`. They carry a short hash of the state, a masked email and
+the tenant id, never tokens, the poll key or mail content.
 
 ## Building
 

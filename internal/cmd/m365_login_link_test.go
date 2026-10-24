@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/automagik-dev/workit/internal/msauth"
+	"github.com/automagik-dev/workit/internal/secrets"
 )
 
 func TestAuthM365LoginLinkPrintsServerCreatedOneClickURL(t *testing.T) {
@@ -33,7 +34,7 @@ func TestAuthM365LoginLinkPrintsServerCreatedOneClickURL(t *testing.T) {
 
 	out := captureStdout(t, func() {
 		_ = captureStderr(t, func() {
-			if err := Execute([]string{"--json", "auth", "m365", "login-link", "bernardo@hapvida.com.br", "--base-url", "https://login.workit.ai", "--callback-url", "https://login.workit.ai/m365/callback", "--broker-token", "secret-token"}); err != nil {
+			if err := Execute([]string{"--json", "auth", "m365", "login-link", "bernardo@hapvida.com.br", "--base-url", "https://login.workit.ai", "--callback-url", "https://login.workit.ai/m365/callback", "--broker-token", "secret-token", "--no-poll"}); err != nil {
 				t.Fatalf("login-link: %v", err)
 			}
 		})
@@ -72,7 +73,7 @@ func TestAuthM365LoginLinkUsesCallbackServerDefaultWhenURLsOmitted(t *testing.T)
 
 	_ = captureStdout(t, func() {
 		_ = captureStderr(t, func() {
-			if err := Execute([]string{"--json", "auth", "m365", "login-link", "bernardo@hapvida.com.br"}); err != nil {
+			if err := Execute([]string{"--json", "auth", "m365", "login-link", "bernardo@hapvida.com.br", "--no-poll"}); err != nil {
 				t.Fatalf("login-link: %v", err)
 			}
 		})
@@ -137,5 +138,79 @@ func TestCreateRemoteM365BrokerSessionPostsToBrokerWithBearerToken(t *testing.T)
 	}
 	if session.LoginURL != "https://auth.hv.example/m365/start/state" {
 		t.Fatalf("login url = %q", session.LoginURL)
+	}
+}
+
+func TestAuthM365LoginLinkWaitsAndStoresTokenUnderM365Client(t *testing.T) {
+	origCreate, origPoll, origOpen, origKeychain := createM365BrokerSessionOnServer, pollForToken, openSecretsStore, ensureKeychainAccess
+	t.Cleanup(func() {
+		createM365BrokerSessionOnServer, pollForToken, openSecretsStore, ensureKeychainAccess = origCreate, origPoll, origOpen, origKeychain
+	})
+
+	store := newMemSecretsStore()
+	openSecretsStore = func() (secrets.Store, error) { return store, nil }
+	ensureKeychainAccess = func() error { return nil }
+	createM365BrokerSessionOnServer = func(context.Context, string, string, remoteM365BrokerSessionRequest) (msauth.BrokerSession, error) {
+		return msauth.BrokerSession{
+			State:         "state",
+			PollKey:       "poll-secret",
+			ExpectedEmail: "bernardo@hapvida.com.br",
+			LoginURL:      "https://auth.hv.example/m365/start/state",
+			ExpiresAt:     time.Now().Add(10 * time.Minute),
+		}, nil
+	}
+	var gotServer, gotKey string
+	var gotTimeout time.Duration
+	pollForToken = func(_ context.Context, server, key string, timeout time.Duration) (string, error) {
+		gotServer, gotKey, gotTimeout = server, key, timeout
+		return "m365-refresh-token", nil
+	}
+
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			if err := Execute([]string{"--json", "auth", "m365", "login-link", "Bernardo@Hapvida.com.br", "--base-url", "https://auth.hv.example", "--broker-token", "admin"}); err != nil {
+				t.Fatalf("login-link: %v", err)
+			}
+		})
+	})
+
+	if !strings.Contains(out, "https://auth.hv.example/m365/start/state") || !strings.Contains(out, `"stored": true`) {
+		t.Fatalf("output = %s", out)
+	}
+	if strings.Contains(out, "poll-secret") {
+		t.Fatalf("poll key leaked to output: %s", out)
+	}
+	if gotServer != "https://auth.hv.example" || gotKey != "poll-secret" || gotTimeout < 10*time.Minute {
+		t.Fatalf("poll args = %q %q %s", gotServer, gotKey, gotTimeout)
+	}
+	tok, err := store.GetToken(msauth.ClientName, "bernardo@hapvida.com.br")
+	if err != nil {
+		t.Fatalf("stored m365 token: %v", err)
+	}
+	if tok.RefreshToken != "m365-refresh-token" || tok.Client != msauth.ClientName || strings.Join(tok.Services, ",") != "m365" {
+		t.Fatalf("token = %#v", tok)
+	}
+}
+
+func TestAuthM365LoginLinkWithoutPollKeyPrintsNoLink(t *testing.T) {
+	origCreate, origKeychain := createM365BrokerSessionOnServer, ensureKeychainAccess
+	t.Cleanup(func() { createM365BrokerSessionOnServer, ensureKeychainAccess = origCreate, origKeychain })
+
+	ensureKeychainAccess = func() error { return nil }
+	createM365BrokerSessionOnServer = func(context.Context, string, string, remoteM365BrokerSessionRequest) (msauth.BrokerSession, error) {
+		return msauth.BrokerSession{ExpectedEmail: "bernardo@hapvida.com.br", LoginURL: "https://auth.hv.example/m365/start/state"}, nil
+	}
+
+	var err error
+	out := captureStdout(t, func() {
+		_ = captureStderr(t, func() {
+			err = Execute([]string{"auth", "m365", "login-link", "bernardo@hapvida.com.br", "--base-url", "https://auth.hv.example", "--broker-token", "admin"})
+		})
+	})
+	if err == nil || !strings.Contains(err.Error(), "poll_key") {
+		t.Fatalf("err = %v", err)
+	}
+	if strings.Contains(out, "m365/start") {
+		t.Fatalf("uncollectable link was printed: %s", out)
 	}
 }

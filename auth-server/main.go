@@ -32,7 +32,7 @@ func main() {
 	redirectURL := flag.String("redirect-url", "", "OAuth redirect URL (defaults to http://localhost:{port}/callback)")
 	publicBaseURL := flag.String("public-base-url", "", "Public HTTPS base URL for this auth server (env WK_PUBLIC_BASE_URL; defaults redirect URLs when set)")
 	m365ClientID := flag.String("m365-client-id", "", "Microsoft 365 OAuth client ID (env WK_M365_CLIENT_ID)")
-	m365TenantID := flag.String("m365-tenant-id", "", "Microsoft 365 tenant ID (env WK_M365_TENANT_ID; default organizations)")
+	m365TenantID := flag.String("m365-tenant-id", "", "Microsoft 365 tenant ID or verified domain (env WK_M365_TENANT_ID; required with the M365 broker)")
 	m365AdminToken := flag.String("m365-broker-token", "", "Admin bearer token required to create Microsoft 365 broker sessions")
 	credentialsFile := flag.String("credentials-file", "", "Path to OAuth credentials JSON file (workit format)")
 	ttl := flag.Duration("ttl", DefaultTTL, "Token time-to-live")
@@ -85,6 +85,9 @@ func main() {
 	if *m365ClientID != "" && *m365AdminToken == "" {
 		log.Fatal("M365 broker admin token is required (--m365-broker-token, WK_M365_BROKER_TOKEN, or WK_BROKER_ADMIN_TOKEN)")
 	}
+	if *m365ClientID != "" && !m365TenantPinned(*m365TenantID) {
+		log.Fatal("M365 broker requires one specific tenant (--m365-tenant-id or WK_M365_TENANT_ID); organizations/common/consumers cannot be checked for tenant mismatch")
+	}
 
 	// Create token store with TTL and start cleanup
 	store := NewTokenStore(*ttl)
@@ -134,7 +137,7 @@ func main() {
 		log.Printf("Public base URL: %s", *publicBaseURL)
 	}
 	if *m365ClientID != "" {
-		log.Printf("M365 broker enabled for tenant: %s", firstNonEmpty(*m365TenantID, defaultM365TenantID))
+		log.Printf("M365 broker enabled for tenant: %s", *m365TenantID)
 	}
 	log.Printf("Token TTL: %s", *ttl)
 
