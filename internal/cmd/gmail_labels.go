@@ -13,11 +13,12 @@ import (
 )
 
 type GmailLabelsCmd struct {
-	List   GmailLabelsListCmd   `cmd:"" name:"list" aliases:"ls" help:"List labels"`
-	Get    GmailLabelsGetCmd    `cmd:"" name:"get" aliases:"info,show" help:"Get label details (including counts)"`
-	Create GmailLabelsCreateCmd `cmd:"" name:"create" aliases:"add,new" help:"Create a new label"`
-	Modify GmailLabelsModifyCmd `cmd:"" name:"modify" aliases:"update,edit,set" help:"Modify labels on threads"`
-	Delete GmailLabelsDeleteCmd `cmd:"" name:"delete" aliases:"rm,del" help:"Delete a label"`
+	List        GmailLabelsListCmd        `cmd:"" name:"list" aliases:"ls" help:"List labels"`
+	Get         GmailLabelsGetCmd         `cmd:"" name:"get" aliases:"info,show" help:"Get label details (including counts)"`
+	Create      GmailLabelsCreateCmd      `cmd:"" name:"create" aliases:"add,new" help:"Create a new label"`
+	Modify      GmailLabelsModifyCmd      `cmd:"" name:"modify" aliases:"update,edit,set" help:"Modify labels on threads"`
+	ModifyLabel GmailLabelsModifyLabelCmd `cmd:"" name:"modify-label" aliases:"update-label,edit-label" help:"Update a label's name, color, or visibility"`
+	Delete      GmailLabelsDeleteCmd      `cmd:"" name:"delete" aliases:"rm,del" help:"Delete a label"`
 }
 
 type GmailLabelsGetCmd struct {
@@ -67,7 +68,8 @@ func (c *GmailLabelsGetCmd) Run(ctx context.Context, flags *RootFlags) error {
 }
 
 type GmailLabelsCreateCmd struct {
-	Name string `arg:"" help:"Label name"`
+	Name  string               `arg:"" help:"Label name"`
+	Props GmailLabelPropsFlags `embed:""`
 }
 
 func (c *GmailLabelsCreateCmd) Run(ctx context.Context, flags *RootFlags) error {
@@ -82,6 +84,17 @@ func (c *GmailLabelsCreateCmd) Run(ctx context.Context, flags *RootFlags) error 
 		return usage("label name is required")
 	}
 
+	req, err := buildLabelRequest(name, c.Props)
+	if err != nil {
+		return err
+	}
+	if req.LabelListVisibility == "" {
+		req.LabelListVisibility = "labelShow"
+	}
+	if req.MessageListVisibility == "" {
+		req.MessageListVisibility = "show"
+	}
+
 	svc, err := newGmailService(ctx, account)
 	if err != nil {
 		return err
@@ -92,7 +105,7 @@ func (c *GmailLabelsCreateCmd) Run(ctx context.Context, flags *RootFlags) error 
 		return err
 	}
 
-	label, err := createLabel(ctx, svc, name)
+	label, err := svc.Users.Labels.Create("me", req).Context(ctx).Do()
 	if err != nil {
 		return mapLabelCreateError(err, name)
 	}
@@ -104,12 +117,52 @@ func (c *GmailLabelsCreateCmd) Run(ctx context.Context, flags *RootFlags) error 
 	return nil
 }
 
-func createLabel(ctx context.Context, svc *gmail.Service, name string) (*gmail.Label, error) {
-	return svc.Users.Labels.Create("me", &gmail.Label{
-		Name:                  name,
-		LabelListVisibility:   "labelShow",
-		MessageListVisibility: "show",
-	}).Context(ctx).Do()
+type GmailLabelsModifyLabelCmd struct {
+	Label string               `arg:"" name:"labelIdOrName" help:"Label ID or name"`
+	Name  string               `name:"name" help:"New label name"`
+	Props GmailLabelPropsFlags `embed:""`
+}
+
+func (c *GmailLabelsModifyLabelCmd) Run(ctx context.Context, flags *RootFlags) error {
+	u := ui.FromContext(ctx)
+	account, err := requireAccount(flags)
+	if err != nil {
+		return err
+	}
+
+	raw := strings.TrimSpace(c.Label)
+	if raw == "" {
+		return usage("empty label")
+	}
+	newName := strings.TrimSpace(c.Name)
+	if newName == "" && c.Props.isEmpty() {
+		return usage("nothing to update: pass --name, --background-color/--text-color, --label-list-visibility, or --message-list-visibility")
+	}
+	req, err := buildLabelRequest(newName, c.Props)
+	if err != nil {
+		return err
+	}
+
+	svc, err := newGmailService(ctx, account)
+	if err != nil {
+		return err
+	}
+
+	current, err := resolveLabelByIDOrName(ctx, svc, raw)
+	if err != nil {
+		return err
+	}
+
+	label, err := svc.Users.Labels.Patch("me", current.Id, req).Context(ctx).Do()
+	if err != nil {
+		return mapLabelCreateError(err, newName)
+	}
+
+	if outfmt.IsJSON(ctx) {
+		return outfmt.WriteJSON(ctx, os.Stdout, map[string]any{"label": label})
+	}
+	u.Out().Printf("Updated label: %s (id: %s)", label.Name, label.Id)
+	return nil
 }
 
 type GmailLabelsListCmd struct{}
@@ -263,25 +316,9 @@ func (c *GmailLabelsDeleteCmd) Run(ctx context.Context, flags *RootFlags) error 
 		return usage("empty label")
 	}
 
-	// For destructive operations, try exact ID match first before name lookup.
-	label, err := svc.Users.Labels.Get("me", raw).Context(ctx).Do()
+	label, err := resolveLabelByIDOrName(ctx, svc, raw)
 	if err != nil {
-		if !isNotFoundAPIError(err) {
-			return err
-		}
-		// Exact ID not found; resolve by label name only.
-		idMap, mapErr := fetchLabelNameOnlyToID(svc)
-		if mapErr != nil {
-			return mapErr
-		}
-		id, ok := idMap[strings.ToLower(raw)]
-		if !ok {
-			return fmt.Errorf("label not found: %s", raw)
-		}
-		label, err = svc.Users.Labels.Get("me", id).Context(ctx).Do()
-		if err != nil {
-			return err
-		}
+		return err
 	}
 
 	// System labels cannot be deleted
@@ -302,6 +339,27 @@ func (c *GmailLabelsDeleteCmd) Run(ctx context.Context, flags *RootFlags) error 
 		kv("id", label.Id),
 		kv("name", label.Name),
 	)
+}
+
+// resolveLabelByIDOrName is used by write operations: it tries an exact
+// (case-sensitive) ID match first and only then falls back to a name lookup.
+func resolveLabelByIDOrName(ctx context.Context, svc *gmail.Service, raw string) (*gmail.Label, error) {
+	label, err := svc.Users.Labels.Get("me", raw).Context(ctx).Do()
+	if err == nil {
+		return label, nil
+	}
+	if !isNotFoundAPIError(err) {
+		return nil, err
+	}
+	idMap, err := fetchLabelNameOnlyToID(svc)
+	if err != nil {
+		return nil, err
+	}
+	id, ok := idMap[strings.ToLower(raw)]
+	if !ok {
+		return nil, fmt.Errorf("label not found: %s", raw)
+	}
+	return svc.Users.Labels.Get("me", id).Context(ctx).Do()
 }
 
 func fetchLabelIDToName(svc *gmail.Service) (map[string]string, error) {

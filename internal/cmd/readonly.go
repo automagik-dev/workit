@@ -83,6 +83,7 @@ var writeCommandPaths = map[string]bool{
 	"chat dm space":                     true, // finds or creates a DM space
 	"classroom announcements assignees": true,
 	"classroom coursework assignees":    true,
+	"gmail labels modify-label":         true, // patches label name/color/visibility
 	"gmail track setup":                 true, // stores tracking keys; --deploy provisions a worker
 }
 
