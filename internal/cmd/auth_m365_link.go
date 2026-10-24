@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,6 +20,12 @@ import (
 
 var createM365BrokerSessionOnServer = createRemoteM365BrokerSession
 
+var (
+	errM365NoPollKey         = errors.New("m365 broker returned no poll_key; upgrade the auth server or use --no-poll")
+	errM365LinkEmailMismatch = errors.New("m365 broker bound the link to a different email")
+	errM365LinkExpired       = errors.New("m365 login link expired before the login completed; a failed login is recorded in the broker audit log")
+)
+
 type AuthM365Cmd struct {
 	LoginLink AuthM365LoginLinkCmd `cmd:"" name:"login-link" help:"Create a one-click Microsoft 365 read-only login link"`
 }
@@ -30,6 +37,7 @@ type AuthM365LoginLinkCmd struct {
 	BrokerToken  string        `name:"broker-token" help:"Bearer token allowed to create sessions on the M365 broker"`
 	TTL          time.Duration `name:"ttl" help:"Login link validity duration" default:"10m"`
 	ForceConsent bool          `name:"force-consent" help:"Force Microsoft consent screen"`
+	NoPoll       bool          `name:"no-poll" help:"Print the link and exit without waiting; the token is then never collected"`
 }
 
 type remoteM365BrokerSessionRequest struct {
@@ -127,6 +135,12 @@ func (c *AuthM365LoginLinkCmd) Run(ctx context.Context, _ *RootFlags) error {
 	if err != nil {
 		return err
 	}
+	if !c.NoPoll {
+		// Fail before a link is handed out, not after the user has logged in.
+		if keychainErr := ensureKeychainAccessIfNeeded(); keychainErr != nil {
+			return fmt.Errorf("keychain access: %w", keychainErr)
+		}
+	}
 
 	session, err := createM365BrokerSessionOnServer(ctx, baseURL, brokerToken, remoteM365BrokerSessionRequest{
 		ExpectedEmail: email,
@@ -136,13 +150,50 @@ func (c *AuthM365LoginLinkCmd) Run(ctx context.Context, _ *RootFlags) error {
 		return err
 	}
 
-	if outfmt.IsJSON(ctx) {
-		return outfmt.WriteJSON(ctx, os.Stdout, session)
+	pollKey := session.PollKey
+	session.PollKey = ""
+	if !c.NoPoll {
+		// Checked before printing, so a link whose token cannot be collected is never handed out.
+		if pollKey == "" {
+			return errM365NoPollKey
+		}
+		if normalizeEmail(session.ExpectedEmail) != normalizeEmail(email) {
+			return fmt.Errorf("%w: got %s, expected %s", errM365LinkEmailMismatch, session.ExpectedEmail, email)
+		}
 	}
 
 	u := ui.FromContext(ctx)
-	u.Out().Printf("login_url\t%s", session.LoginURL)
-	u.Out().Printf("expected_email\t%s", session.ExpectedEmail)
-	u.Out().Printf("expires_at\t%s", session.ExpiresAt.Format(time.RFC3339))
-	return nil
+	if outfmt.IsJSON(ctx) {
+		if err := outfmt.WriteJSON(ctx, os.Stdout, session); err != nil {
+			return err
+		}
+	} else {
+		u.Out().Printf("login_url\t%s", session.LoginURL)
+		u.Out().Printf("expected_email\t%s", session.ExpectedEmail)
+		u.Out().Printf("expires_at\t%s", session.ExpiresAt.Format(time.RFC3339))
+	}
+	if c.NoPoll {
+		return nil
+	}
+
+	return collectM365Token(ctx, u, baseURL, pollKey, session)
+}
+
+// collectM365Token waits for the user to finish the Microsoft login, then stores the
+// refresh token under the m365 client, like `wk auth add --services m365 --readonly`.
+func collectM365Token(ctx context.Context, u *ui.UI, baseURL string, pollKey string, session msauth.BrokerSession) error {
+	if !outfmt.IsJSON(ctx) {
+		u.Err().Println("Waiting for the Microsoft 365 login to complete...")
+	}
+
+	// The broker consumes the state at the callback, which must happen before expires_at.
+	refreshToken, err := pollForToken(ctx, baseURL, pollKey, time.Until(session.ExpiresAt)+time.Minute)
+	if googleauth.IsPollTimeout(err) {
+		return errM365LinkExpired
+	}
+	if err != nil {
+		return fmt.Errorf("poll m365 broker: %w", err)
+	}
+
+	return storeM365Token(ctx, u, normalizeEmail(session.ExpectedEmail), refreshToken)
 }

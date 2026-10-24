@@ -28,6 +28,7 @@ type BrokerSession struct {
 	State         string    `json:"state"`
 	ExpectedEmail string    `json:"expected_email"`
 	LoginURL      string    `json:"login_url"`
+	PollKey       string    `json:"poll_key,omitempty"` // secret: retrieves the token; never printed
 	AuthURL       string    `json:"auth_url,omitempty"`
 	CodeVerifier  string    `json:"-"`
 	CodeChallenge string    `json:"-"`
