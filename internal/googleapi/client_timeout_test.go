@@ -28,15 +28,19 @@ func TestHTTPClientForScopes_SlowBodyOutlivesHeaderTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ServiceAccountPath: %v", err)
 	}
-	if _, err := config.EnsureDir(); err != nil {
-		t.Fatalf("EnsureDir: %v", err)
+
+	if _, ensureErr := config.EnsureDir(); ensureErr != nil {
+		t.Fatalf("EnsureDir: %v", ensureErr)
 	}
-	if err := os.WriteFile(saPath, []byte(`{"type":"service_account"}`), 0o600); err != nil {
-		t.Fatalf("write sa: %v", err)
+
+	if writeErr := os.WriteFile(saPath, []byte(`{"type":"service_account"}`), 0o600); writeErr != nil {
+		t.Fatalf("write sa: %v", writeErr)
 	}
 
 	origSA := newServiceAccountTokenSource
+
 	t.Cleanup(func() { newServiceAccountTokenSource = origSA })
+
 	newServiceAccountTokenSource = func(context.Context, []byte, string, []string) (oauth2.TokenSource, error) {
 		return oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "t"}), nil
 	}
@@ -44,9 +48,12 @@ func TestHTTPClientForScopes_SlowBodyOutlivesHeaderTimeout(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/stall" {
 			time.Sleep(300 * time.Millisecond)
+
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
+
 		for range 4 {
 			_, _ = io.WriteString(w, "chunk")
 			w.(http.Flusher).Flush()
@@ -59,26 +66,40 @@ func TestHTTPClientForScopes_SlowBodyOutlivesHeaderTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("httpClientForScopes: %v", err)
 	}
+
 	if c.Timeout != 0 {
 		t.Fatalf("http.Client.Timeout must be unset (it bounds body reads), got %v", c.Timeout)
 	}
 
-	resp, err := c.Get(srv.URL + "/slow")
+	get := func(path string) (*http.Response, error) {
+		req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL+path, nil)
+		if reqErr != nil {
+			t.Fatalf("new request: %v", reqErr)
+		}
+
+		return c.Do(req)
+	}
+
+	resp, err := get("/slow")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
+
 	body, err := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
+
 	if err != nil {
 		t.Fatalf("slow body read failed: %v", err)
 	}
+
 	if got := string(body); got != strings.Repeat("chunk", 4) {
 		t.Fatalf("unexpected body %q", got)
 	}
 
-	resp, err = c.Get(srv.URL + "/stall")
+	resp, err = get("/stall")
 	if err == nil {
 		_ = resp.Body.Close()
+
 		t.Fatalf("expected response header timeout")
 	}
 }
