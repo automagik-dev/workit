@@ -92,7 +92,11 @@ wk gmail drafts send <draftId>
 wk gmail labels list
 wk gmail labels get INBOX --json  # Includes message counts
 wk gmail labels create "My Label"
-wk gmail labels modify <threadId> --add STARRED --remove INBOX
+wk gmail labels create "alias/alpha" --background-color '#16a765' --text-color '#ffffff' \
+  --label-list-visibility labelShow --message-list-visibility show
+wk gmail labels modify <threadId> --add STARRED --remove INBOX  # Labels on threads
+wk gmail labels modify-label "alias/alpha" --name "alias/beta" --background-color '#fb4c2f' --text-color '#000000'
+# Colors must come from Gmail's fixed palette (both flags together); invalid values list the accepted ones.
 wk gmail labels delete <labelIdOrName>  # Deletes user label (guards system labels; confirm)
 
 # Batch operations

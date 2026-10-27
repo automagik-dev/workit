@@ -33,7 +33,9 @@ jobs:
             LINT_BASE="origin/${{ github.base_ref }}"
           else
             LINT_BASE="${{ github.event.before }}"
-            if [ -z "${LINT_BASE}" ] || [ "${LINT_BASE}" = "0000000000000000000000000000000000000000" ]; then
+            # A new branch pushes an all-zero "before"; a force-push leaves "before" unreachable
+            # (not in the clone). Fall back to the merge-base with main in both cases.
+            if [ -z "${LINT_BASE}" ] || ! git cat-file -e "${LINT_BASE}^{commit}" 2>/dev/null; then
               LINT_BASE="$(git merge-base HEAD origin/main)"
             fi
           fi

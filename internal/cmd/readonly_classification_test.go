@@ -263,6 +263,7 @@ var readOnlyClassification = map[string]readOnlyClass{
 	"gmail labels get":                      roRead,
 	"gmail labels list":                     roRead,
 	"gmail labels modify":                   roWrite,
+	"gmail labels modify-label":             roWrite,
 	"gmail messages search":                 roRead,
 	"gmail search":                          roRead,
 	"gmail send":                            roWrite,

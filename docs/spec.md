@@ -271,8 +271,9 @@ Flag aliases:
 - `wk gmail url <threadIds...>`
 - `wk gmail labels list`
 - `wk gmail labels get <labelIdOrName>`
-- `wk gmail labels create <name>`
+- `wk gmail labels create <name> [--background-color HEX --text-color HEX] [--label-list-visibility labelShow|labelShowIfUnread|labelHide] [--message-list-visibility show|hide]`
 - `wk gmail labels modify <threadIds...> [--add ...] [--remove ...]`
+- `wk gmail labels modify-label <labelIdOrName> [--name NAME] [--background-color HEX --text-color HEX] [--label-list-visibility ...] [--message-list-visibility ...]`
 - `wk gmail send --to a@b.com --subject S [--body B] [--body-html H] [--cc ...] [--bcc ...] [--reply-to-message-id <messageId>] [--reply-to addr] [--attach <file>...]`
 - `wk gmail drafts list [--max N] [--page TOKEN]`
 - `wk gmail drafts get <draftId> [--download]`
