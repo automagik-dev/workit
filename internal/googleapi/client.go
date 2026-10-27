@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/99designs/keyring"
@@ -21,6 +22,9 @@ import (
 )
 
 const defaultHTTPTimeout = 30 * time.Second
+
+// httpTimeoutEnv overrides the time to wait for response headers on API calls.
+const httpTimeoutEnv = "WK_HTTP_TIMEOUT"
 
 var (
 	readClientCredentials = config.ReadClientCredentialsFor
@@ -139,10 +143,10 @@ func httpClientForScopes(ctx context.Context, serviceLabel string, email string,
 		Source: ts,
 		Base:   baseTransport,
 	})
-	c := &http.Client{
-		Transport: retryTransport,
-		Timeout:   defaultHTTPTimeout,
-	}
+	// No http.Client.Timeout: it also bounds reading the response body, which
+	// kills long streaming downloads (drive download/cat, gmail attachments).
+	// The base transport bounds connect/TLS/header phases instead.
+	c := &http.Client{Transport: retryTransport}
 
 	slog.Debug("HTTP client with custom scopes created successfully", "serviceLabel", serviceLabel, "email", email)
 
@@ -150,6 +154,27 @@ func httpClientForScopes(ctx context.Context, serviceLabel string, email string,
 }
 
 func newBaseTransport() *http.Transport {
+	transport := cloneDefaultTransport()
+	transport.ResponseHeaderTimeout = responseHeaderTimeout()
+	// Detect dead HTTP/2 connections mid-body without capping total transfer time.
+	transport.HTTP2 = &http.HTTP2Config{SendPingTimeout: defaultHTTPTimeout}
+
+	return transport
+}
+
+func responseHeaderTimeout() time.Duration {
+	if v := os.Getenv(httpTimeoutEnv); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+
+		slog.Warn("ignoring invalid "+httpTimeoutEnv, "value", v)
+	}
+
+	return defaultHTTPTimeout
+}
+
+func cloneDefaultTransport() *http.Transport {
 	defaultTransport, ok := http.DefaultTransport.(*http.Transport)
 	if !ok || defaultTransport == nil {
 		return &http.Transport{

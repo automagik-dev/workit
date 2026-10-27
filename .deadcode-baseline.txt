@@ -21,7 +21,7 @@ internal/docx/validate.go:124:6: unreachable func: ValidateDiff
 internal/docx/validate.go:168:6: unreachable func: readZipEntry
 internal/docx/validate.go:198:6: unreachable func: validateContentTypes
 internal/docx/validate.go:241:6: unreachable func: validateBodyStructure
-internal/googleapi/client.go:30:6: unreachable func: tokenSourceForAccount
+internal/googleapi/client.go:34:6: unreachable func: tokenSourceForAccount
 internal/googleapi/errors.go:35:26: unreachable func: RateLimitError.Error
 internal/googleapi/errors.go:55:30: unreachable func: QuotaExceededError.Error
 internal/googleapi/errors.go:69:25: unreachable func: NotFoundError.Error
